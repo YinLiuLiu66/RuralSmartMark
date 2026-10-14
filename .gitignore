@@ -1,13 +1,40 @@
-# macOS
+# ---------- macOS ----------
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# Python-generated files
+# ---------- 编辑器 / IDE ----------
+.idea/
+*.swp
+*.swo
+
+# ---------- 环境变量 / 密钥 ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Python ----------
 __pycache__/
 *.py[oc]
+*.egg-info/
 build/
 dist/
 wheels/
-*.egg-info
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Virtual environments
-.venv
+# ---------- Node / 前端 ----------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+*.local
+pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*

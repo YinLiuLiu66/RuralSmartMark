@@ -1,0 +1,31 @@
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  text-align: left;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.card {
+  margin-top: 32px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.card h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.error {
+  color: var(--error);
+}
