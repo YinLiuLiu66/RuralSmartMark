@@ -1,9 +1,22 @@
 # RuralSmartMark
 
-前后端分离项目。
+前后端分离项目。AI 协作者请先阅读根目录 [AGENTS.md](AGENTS.md) 与
+[docs/05-next-steps.md](docs/05-next-steps.md)。
 
 - **backend** — FastAPI + Python 3.13，依赖用 [uv](https://docs.astral.sh/uv/) 管理
 - **frontend** — React 18 + Vite + TypeScript，包管理用 [pnpm](https://pnpm.io/)
+
+## 文档（设计讨论的记分板）
+
+| 文档 | 内容 |
+| --- | --- |
+| [docs/00-project-brief.md](docs/00-project-brief.md) | 项目定位、背景与核心叙事 |
+| [docs/01-architecture.md](docs/01-architecture.md) | 技术架构、目录结构与选型 |
+| [docs/02-agents.md](docs/02-agents.md) | 五个 AI Agent 的职责与优先级 |
+| [docs/03-data-model.md](docs/03-data-model.md) | 数据模型与接口约定 |
+| [docs/04-roadmap.md](docs/04-roadmap.md) | MVP 切分与里程碑 |
+| [docs/05-next-steps.md](docs/05-next-steps.md) | 下一步任务清单（当前执行进度） |
+| [docs/decisions.md](docs/decisions.md) | 决策记录（已定/待定清单） |
 
 ## 目录结构
 
