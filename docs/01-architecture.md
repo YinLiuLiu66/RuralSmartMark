@@ -1,7 +1,7 @@
 # 01 · 架构设计
 
 > 状态：🔶 草案 — 主干已定，细节待补
-> 更新时间：2026-10-14
+> 更新时间：2026-10-15
 
 ## 1. 总体架构
 
@@ -18,7 +18,7 @@
 │  └────▲─────┘  └──────▲───────┘  └──────▲───────┘  └─────▲──────┘  └─────────────┘  │
 │       │ tick 驱动      │ 调用 LLM         │               │                          │
 │  ┌────┴────────────────┴─────────────────┴───────────────┴────────────────────────┐  │
-│  │        PostgreSQL 16+ (asyncpg + SQLAlchemy 2.0 + Alembic + pgvector)          │  │
+│  │        PostgreSQL 18 (asyncpg + SQLAlchemy 2.0 + Alembic + pgvector预留)        │  │
 │  └────────────────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -27,8 +27,8 @@
 
 | 决策点 | 结论 | 理由 |
 | --- | --- | --- |
-| 数据库 | PostgreSQL 16+，SQLAlchemy 2.0 异步 | 用户已确认；知识库检索用 pgvector，不另引向量库 |
-| 实时推送 | WebSocket | 3D 沙盘需高频状态流 |
+| 数据库 | PostgreSQL 18（镜像 `pgvector/pgvector:pg18`），SQLAlchemy 2.0 异步 | pgvector 已支持 18，见 decisions #18；知识库检索暂不启用（pgvector 预留），不另引向量库 |
+| 实时推送 | WebSocket 只发增量；全量快照走 REST `GET /api/world/snapshot` | 3D 沙盘需高频状态流；主从分工见 decisions #17 |
 | Agent 编排 | 手写（**不引 LangChain**） | 5 个 Agent 工作流清晰，手写更可控、答辩讲得清 |
 | 常驻任务 | asyncio 后台任务（**不引 Celery/Redis**） | 演示型项目，后期需要再加 |
 | 鉴权 | 简单 JWT，双角色（运营方/合作社） | 约 1 天工作量，答辩有支撑 |
@@ -74,15 +74,15 @@ frontend/src/
 ```
 
 看板图表用 ECharts；大屏风格走自定义 CSS（玻璃拟态），不套 Antd 后台风。
+状态管理定稿：TanStack Query（REST 缓存）+ Zustand（沙盘实时态），见 decisions #8。
 
 ## 5. 基础设施
 
-- **docker compose**：`db`（PostgreSQL）+ 后端 + 前端（后期补）
+- **docker compose**：M1 先起单 `db` 服务（`pgvector/pgvector:pg18`，数据卷挂 `/var/lib/postgresql`，18 起官方镜像路径变更）；后端进 compose 后期补，前端开发期走 pnpm dev
 - **环境变量**：`DATABASE_URL`、`LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`、`JWT_SECRET`、`SIM_SEED`（可选固定剧本种子）
 - **CI/质量**：后端 ruff + pytest；前端 oxlint + tsc（沿用现状）
 
 ## 6. 待定问题（需拍板后更新本文档）
 
-- [ ] 状态库：TanStack Query + Zustand（我方默认）vs 纯 Zustand
-- [ ] 3D 场景的具体交互细节（相机动画、选择高亮的表现形式）
-- [ ] 溯源 H5 是否要"与 IP 角色实时对话"的能力（见 decisions.md #7）
+- [ ] 3D 场景的具体交互细节（相机动画、选择高亮的表现形式）——随 M3 定
+- 其余选型均已定稿，见 [decisions.md](./decisions.md)：状态库 #8、溯源深度 #9、sim 控制与快照主从 #17、pgvector 处置 #18
