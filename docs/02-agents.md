@@ -1,6 +1,7 @@
 # 02 · Agent 设计（五员矩阵）
 
 > 状态：🔶 草案 — 职责已明确，每个 Agent 的 Prompt/输入输出细节待补
+> 篇幅约定：各 Agent 设计统一集中在本文档；篇幅尚短暂不拆单一 Agent 文档，任一 Agent 细节显著膨胀时再拆出独立文档
 > 更新时间：2026-10-15
 
 ## 0. 什么是 Agent（本项目语境）
@@ -36,8 +37,19 @@ Agent5 管仓库调度 ←—— 礼盒在沙盘里流转 ——→ Agent4 算�
 | 输入 | Agent 1 的品牌故事 + IP 定位语 |
 | 处理 | 调用图像生成 API → 生成 IP 形象插画 / 包装图案 |
 | 输出 | 图片资产（IP 形象、包装设计图） |
-| 依赖 | 图像生成 API（文生图，国内端点） |
-| 优先级 | 冲刺阶段（需接画图 API，成本与稳定性待验证） |
+| 依赖 | SiliconFlow 文生图网关（OpenAI 兼容，decisions #13，细项见 2.1） |
+| 优先级 | 冲刺阶段（接口已定 decisions #13，启动前实测模型与定价） |
+
+### 2.1 图像生成接入细项（decisions #13）
+
+- **网关**：SiliconFlow `POST https://api.siliconflow.cn/v1/images/generations`
+- **调用与鉴权**：Bearer API Key；OpenAI SDK 兼容（换 `base_url` 即可），与文字端点（#2）共用同一套 OpenAI 兼容封装思路（`agents/llm.py`）
+- **候选模型**：`Kwai-Kolors/Kolors`、`Qwen/Qwen-Image`（Agent 2 启动前实测中文字形与画风后 pin 型号）
+- **常用参数**：`prompt` / `image_size`（如 `1024x1024`）/ `negative_prompt` / `num_inference_steps` / `seed`（固定 seed 可复现同一张图）
+- **实现要求**：
+  - 返回的图片 URL 仅 1 小时有效 → 生成后立即下载转存本地，`agent_artifact` 只存本地路径
+  - 请求头 `X-Enable-Watermark: 0`，不保留「AI 生成」默认水印
+  - 定价与限流平台文档未列明，注册后在后台确认
 
 ## 3. Agent 3 · 营销文案官（全域内容营销）
 
@@ -94,5 +106,5 @@ Agent5 管仓库调度 ←—— 礼盒在沙盘里流转 ——→ Agent4 算�
 
 ## 8. 待定问题
 
-- [ ] 图像生成 API 选哪家（Agent 2 启动前需定，见 decisions #13）
+- [x] 图像生成 API 选型 → 已定 SiliconFlow（decisions #13，细项见 2.1）
 - [ ] 各 Agent 的具体 Prompt 文案（建议后期集中调优）

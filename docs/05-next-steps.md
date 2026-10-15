@@ -113,6 +113,7 @@ uv run pytest                                 # 全绿，含新 auth 测试
 
 - [ ] Docker Desktop 在目标演示机可用且内存充足（PG 起得来）
 - [ ] OPENAI 兼容端点（智谱/DeepSeek 任一）key 可用，中文故事质量达标（M4 前置检查）
+- [ ] SiliconFlow 生图网关可注册、模型可用；定价/限流与账号额度、水印关闭（X-Enable-Watermark: 0）在后台核验（Agent 2 启动前置检查，decisions #13）
 - [ ] uv / pnpm 在团队各机器安装无障碍
 
 ## 6. 红线复查（开工前最后过一眼）
