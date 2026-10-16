@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单
 
-> 状态：✅ 当前有效 — M1 已完成，M2（sim 引擎）待启动
+> 状态：✅ 当前有效 — M1/M2 已完成，M3（3D 沙盘）待启动
 > 更新时间：2026-10-16
 > 用法：完成一项就在「当前进度」打勾；决策变化必须先改 [decisions.md](decisions.md) 再改这里
 > 素人上手顺序：本章 → [decisions.md](decisions.md) → 环境搭建（下节）→ M1
@@ -12,8 +12,9 @@
 - [x] AGENTS.md 就位（AI 协作规范）
 - [x] **M0 R3F 探针**（✅ 已完成，报告见 [05-probe-r3f.md](05-probe-r3f.md)：路线可行，M3 按 5 天排）
 - [x] **M1 数据地基**（✅ 已完成 2026-10-16：compose 单 db 服务 + 14 表 ORM（13 业务表 + user） + Alembic 首版迁移（含 vector 扩展） + JWT 双角色；pytest 10/10 绿）
-- [ ] **M2 sim 引擎** ← 下一个要做的
-- [ ] M3 及以后（见 [04-roadmap.md](04-roadmap.md)）
+- [x] **M2 sim 引擎**（✅ 已完成 2026-10-16：虚拟时钟 + 剧本双写 + 控制/快照/WS，任务细则见 §4）
+- [ ] **M3 3D 沙盘** ← 下一个要做的
+- [ ] M4 及以后（见 [04-roadmap.md](04-roadmap.md)）
 
 **MVP 验收动线**（做完 M1–M6 即达成）：
 沙盘可看可点 → Agent 1/3 产出真内容 → 人工润色可改 → 扫码可溯源 → 沙盘页内嵌溢价对照图。
@@ -100,29 +101,84 @@ uv run alembic downgrade base && uv run alembic upgrade head  # 可重放 ✅
 uv run pytest                                 # 10 passed ✅
 ```
 
-## 4. 再往后（简报，细则到点再写）
+## 4. M2 · sim 引擎（✅ 已完成 2026-10-16，"世界活了"）
 
-2. **M2 · sim 引擎**：虚拟时钟 tick = 1 模拟分钟（可暂停/变速/重置，REST 控制），
-   六类实体状态机，可重放固定剧本（seed 可选），变更落库 + WS 增量广播；
-   快照接口 `/api/world/snapshot` 读现势表
-3. **M3 · 3D 沙盘**：R3F 正式场景吃 WS 数据；探针的 `three/` 代码迁进来正式化
-4. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（智谱/DeepSeek 可切换），
+> 依据：decisions #5（可重放剧本）/ #11（预生成入库）/ #15（现势实体表 + 历史事件流水）/
+> #17（REST 控制与快照主从）/ #19（WS 不区分角色）
+> 三条铁律：① 模拟时间与真实时间分离——业务时间戳（trace/telemetry/运单时点）一律写模拟时间；
+> ② 先落库成功再广播——WS 事件只在 commit 之后发；③ reset 必须回到剧本起点——演示可无限次完整重放。
+
+### M2-a 引擎内核（时钟 + 事件总线 + 主循环）✅
+
+- [x] `sim/clock.py`：虚拟时钟——1 tick = 1 模拟分钟，sim_time 从演示日 07:00 起
+      （Asia/Shanghai 时区感知），running / speed 字段（限速 1–10×，tick 间隔 = 2s / speed）
+- [x] `ws/bus.py`：WebSocket 连接管理器 + 事件总线（事件封套 `{type, sim_time, data}`，
+      全体广播不区分角色）
+- [x] `sim/engine.py`：SimEngine——lifespan 托管 asyncio 主循环：每 tick 推进剧本 → 落库 → 广播；
+      **启动即 reset 重建世界**（后端重启 = 演示起点，不依赖从 DB 复原内存态）；
+      单 tick 失败记日志不致死循环；reset 保留当前倍速
+
+### M2-b 剧本状态机 + trace_event 双写 ✅
+
+- [x] `sim/state_machines.py`：运单五步 confirmed→picked→loaded→in_transit→delivered
+      与 shipment_next() 助手；车辆四态 / worker 枚举与 runtime 模型注释同源
+- [x] `sim/scenario.py`：初始世界（1 合作社 + 4 站点【复用 M0 探针坐标】+ 2 车 + 5 工人
+      + 2 SKU + 集货仓预置 4 托）+ 剧本链路：
+      一程 农场→集货仓（时间驱动，100 分钟周期：采摘 t=0 → 分装 t=12 → 预冷入库 t=22
+      → 运单确认 t=30 → 装车 t=36 → 发车 t=42 → 到站 t=68 → 卸货 t=74 → 送达 t=76 → 空驶返场）；
+      二程/三程 集货仓→前置仓→门店（事件驱动：存量 ≥4 触发，同车越库转 B 单直发）
+- [x] **双写规则**：每次状态转移 = 实体表现势回写 + `trace_event` 追加一行
+      （模拟时间存 payload.sim_ts；append-only）
+- [x] `telemetry` 流水：在途车每 tick 一行（固定 seed 高斯抖动）；载货在途时按 3%/tick
+      概率触发 temp_alert（固定 seed 下确定；实测约一程 2–3 次，画面有剧情）
+- [x] 固定 seed：`SIM_SEED=7` → random.Random；reset 清空运行时表回剧本起点
+      （product_sku / user / agent_* 不清，cooperative 及其下全量重建）
+
+### M2-c 控制 + 快照 + WS 路由 ✅
+
+- [x] `routes/sim.py`：POST /api/sim/control（pause/resume/speed/reset，speed 1–10 校验 422，
+      限 operator）；控制动作广播 tick.info，reset 广播 world.reset
+- [x] `routes/world.py`：GET /api/world/snapshot（时钟 + 四类实体现势 + 未送达与最近 10 笔
+      已送达运单 + 在途路线，公开读）+ WS /ws/world（增量流，不鉴权，decisions #19）
+- [x] `app.py`：撤 M1 假路由；lifespan 拉起/停止引擎（TestClient 不进 lifespan，测试零干扰）
+- [x] 事件集：`tick.info` / `entity.updated`（vehicle/worker/pallet）/ `shipment.progressed`
+      / `world.reset`；`agent.*` / `scheduler.*` 留给 M4
+
+### M2 验收清单（✅ 全部通过 2026-10-16）
+
+```bash
+cd backend && uv run ruff check . && uv run pytest   # ruff 零告警；15 passed（M1 10 + M2 5）✅
+uv run ruralsmartmark                                # 起服务世界自动运转 ✅
+# curl /api/world/snapshot：时钟在走、truck2 在途带 route、运单逐步推进 ✅
+# 控制三连：speed=8 → 6 秒推 23 tick（理论 ~24）；pause → 3 秒 0 tick ✅
+# WS 10 秒实收：tick.info ×10 / entity.updated ×12 / shipment.progressed ×2 ✅
+# DB 复核：trace_event 双写按节点累积（loaded/departed 12、temp_alert 8）；
+#          telemetry 72 行全为模拟时间（07:10→08:12，非墙上时钟）✅
+```
+
+**M2 施工记录**：剧本计划队列的 partial 一律传关键字参数（位置参数会前插到 session 之前）；
+跨 tick 只持主键不持 ORM 实例（每 tick 独立 session）。
+
+## 5. 再往后（简报，细则到点再写）
+
+1. **M3 · 3D 沙盘**：R3F 正式场景吃 WS 数据；探针的 `three/` 代码迁进来正式化
+2. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（智谱/DeepSeek 可切换），
    故事/文案两个 Agent + 工作台润色闭环（artifact 三态：draft→polished→final）
-5. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
-6. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
-7. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
+3. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
+4. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
+5. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
 
 分工建议（4 人以上时）：3D 线（M3）/ 后端线（M1+M2）/ Agent 线（M4）/
 溯源+溢价线（M5+M6）可并行，M1/M2 完成前 3D 线用 M0 探针的假数据先行。
 
-## 5. 未验证假设（开工即验证）
+## 6. 未验证假设（开工即验证）
 
 - [ ] Docker Desktop 在目标演示机可用且内存充足（PG 起得来）
 - [ ] OPENAI 兼容端点（智谱/DeepSeek 任一）key 可用，中文故事质量达标（M4 前置检查）
 - [ ] SiliconFlow 生图网关可注册、模型可用；定价/限流与账号额度、水印关闭（X-Enable-Watermark: 0）在后台核验（Agent 2 启动前置检查，decisions #13）
 - [ ] uv / pnpm 在团队各机器安装无障碍
 
-## 6. 红线复查（开工前最后过一眼）
+## 7. 红线复查（开工前最后过一眼）
 
 不引 LangChain / Celery / Redis / 向量库；PG 数据卷路径 `/var/lib/postgresql`；
 `.env` 不入库；`dist/` 不入库不手改；界面文案中文；docs 与 decisions.md 冲突时

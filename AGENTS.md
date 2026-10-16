@@ -17,6 +17,8 @@
   但 LLM / 数据库连接不可用；先 `cp backend/.env.example backend/.env` 并 `docker compose up -d`。
 - OPENAI_API_KEY 为空时：真调模型的路径不能实测，一律 mock，别假设 key 存在。
 - 前端没有测试框架，只有 `pnpm typecheck` / `pnpm lint` 兜底；别假设存在 vitest / jest。
+- M2 起：`uv run ruralsmartmark` 会用 lifespan 拉起 sim 引擎主循环（默认 2 倍速）；TestClient
+  测试不触发 lifespan，测试里真实推进需显式驱动（见 tests/test_sim.py 的模式）。
 
 ## 常用命令（后端在 backend/ 下，前端在 frontend/ 下）
 
@@ -40,17 +42,20 @@
 ```
 docker-compose.yml                 # 单 db 服务（pgvector/pgvector:0.8.7-pg18，卷挂 ./data/postgres）
 backend/
-  src/ruralsmartmark/app.py         # 路由注册；写在这里再分发
+  src/ruralsmartmark/app.py         # 路由注册 + lifespan（拉起/停止 sim 引擎主循环）
   src/ruralsmartmark/config.py      # pydantic-settings：新配置项加进 Settings 类
   src/ruralsmartmark/main.py        # uvicorn 入口（ruralsmartmark 命令绑这）
   src/ruralsmartmark/db.py          # async engine + sessionmaker 单例 + get_session 依赖
   src/ruralsmartmark/auth.py        # JWT 双角色（get_current_user / require_role）
   src/ruralsmartmark/models/        # 14 张表 ORM（runtime/business/auth 三文件，__init__ 汇总）
-  src/ruralsmartmark/routes/        # APIRouter 模块（auth 已有）
+  src/ruralsmartmark/routes/        # APIRouter 模块（auth / sim / world）
+  src/ruralsmartmark/sim/           # M2 模拟引擎：clock（虚拟时钟）/ engine（主循环）/ state_machines / scenario（剧本：初始世界 + 双写）
+  src/ruralsmartmark/ws/            # ws/bus.py：EventBus 全体广播（不区分角色，decisions #19）
   src/ruralsmartmark/seed.py        # 演示数据 seed（python -m ruralsmartmark.seed）
   migrations/                       # Alembic（生成物，ruff 不检；env.py 接 Settings/ORM）
   tests/conftest.py                 # 测试夹具：独立测试库 _test + NullPool（跨循环必需）
   tests/test_auth.py                # 401/403/200 全路径
+  tests/test_sim.py                 # M2 验收：控制/快照/WS + 一完整周期双写推进
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
   src/api/client.ts                 # fetch 封装 + ApiError，新接口客户端写这里
@@ -64,8 +69,8 @@ docs/
   05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
-尚未创建、创建前勿假设存在：backend 的 sim/ / agents/ / ws/，
-frontend 的 routes/ / stores/ 等（规划见 docs/01-architecture.md）。
+尚未创建、创建前勿假设存在：backend 的 agents/，frontend 的 routes/ / stores/ 等
+（规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
 ## 文档维护职责（必读必做）

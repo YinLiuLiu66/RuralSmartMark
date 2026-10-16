@@ -1,7 +1,7 @@
 # 03 · 数据模型与接口约定
 
-> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口，随 Alembic 首版迁移微调
-> 更新时间：2026-10-15
+> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 已亮出快照 / 控制 / WS 三接口
+> 更新时间：2026-10-16
 
 ## 1. 核心实体（约 12 张表）
 
@@ -54,35 +54,35 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查 ✅ |
+| POST | `/api/auth/token` | 登录换 JWT（双角色，M1）✅ |
+| GET | `/api/auth/me` | 身份探针（M1 验收用）✅ |
+| POST | `/api/sim/control` | 模拟时钟控制 pause/resume/speed/reset，限运营方（M2，decisions #17）✅ |
+| GET | `/api/world/snapshot` | 沙盘全量快照：时钟 + 站点/车辆/工人/托盘/运单现势 + 在途路线（M2）✅ |
+| WS | `/ws/world` | 增量事件流：tick.info / entity.updated / shipment.progressed / world.reset（M2，不鉴权）✅ |
 
-### 3.2 规划（随开发补充，本表为骨架）
+### 3.2 规划（随开发补充）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/auth/token` | 登录换 JWT（双角色） |
-| GET | `/api/world/snapshot` | 沙盘全量快照（3D 场景初始化用） |
-| GET | `/api/sites` / `/api/vehicles` / ... | 运行时实体查询 |
+| GET | `/api/sites` / `/api/vehicles` / ... | 运行时实体查询（按需加；当前快照接口已覆盖） |
 | GET | `/api/shipments/{id}` | 运单详情（含 stepper + 事件时间线） |
-| POST | `/api/sim/control` | 模拟时钟控制（pause/resume/speed/reset，限运营方角色，decisions #17） |
-| WS | `/ws/world` | 沙盘实时增量事件流（全量快照走 REST，decisions #17） |
 | POST | `/api/agent-tasks` | 发起 Agent 任务（story/copy/...） |
 | GET | `/api/agent-tasks` | 任务列表（工作台用） |
 | PATCH | `/api/agent-artifacts/{id}` | 人工润色产出物 |
 | GET | `/api/trace/{code}` | 扫码溯源数据（公开接口，无需鉴权） |
 | GET | `/api/pricing/benchmarks` | 溢价对照数据 |
 
-### 3.3 WebSocket 事件类型（草案）
+### 3.3 WebSocket 事件类型
 
-```
-tick.info           # 模拟时钟推进（虚拟时间、速度）
-entity.updated      # 实体状态变更（车辆/站点/托盘）
-shipment.progressed # 运单进入下一步
-agent.task_updated  # Agent 任务状态/进度
-agent.artifact_ready# Agent 产出物就绪
-scheduler.proposal  # Agent 5 的调度建议
-```
+已实现（M2）：`tick.info`（模拟时钟推进，含控制动作后的状态）、`entity.updated`
+（车辆 / 工人 / 托盘现势变化）、`shipment.progressed`（运单沿五步推进）、
+`world.reset`（重置通知，客户端收到后重拉快照）。
 
-> 全部为增量事件；全量快照走 `GET /api/world/snapshot`，WS 不推快照（decisions #17）。
+规划（M4+）：`agent.task_updated`（Agent 任务状态/进度）、`agent.artifact_ready`
+（Agent 产出物就绪）、`scheduler.proposal`（Agent 5 的调度建议）。
+
+> 增量事件封套统一为 `{type, sim_time, data}`；全量快照走
+> `GET /api/world/snapshot`，WS 不推快照（decisions #17）；推送不区分角色（#19）。
 
 ## 4. 权限矩阵（M1 JWT 规格）
 

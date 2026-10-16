@@ -1,7 +1,7 @@
 # 01 · 架构设计
 
-> 状态：🔶 草案 — 主干已定，细节待补
-> 更新时间：2026-10-15
+> 状态：✅ 主干定稿 — M1/M2 落地后目录结构与运行方式已同步实测形态
+> 更新时间：2026-10-16
 
 ## 1. 总体架构
 
@@ -40,23 +40,27 @@
 
 ```
 backend/src/ruralsmartmark/
-├── main.py / app.py / config.py     # 已有；config 需加 DATABASE_URL 等
+├── main.py / app.py / config.py     # 已有；app.py lifespan 托管 sim 引擎主循环
 ├── db.py                            # async engine + session
-├── models/                          # SQLAlchemy 2.0 ORM 实体（见 03 文档）
-├── schemas/                         # Pydantic 请求/响应模型
-├── api/                             # 路由层（按资源分文件：auth/site/vehicle/...）
-├── services/                        # 业务逻辑（路由只做校验+调用）
-├── sim/                             # ⭐ 模拟引擎内核
-│   ├── clock.py          # 虚拟时钟：tick 驱动，可暂停/变速/重置
-│   ├── world.py          # 世界状态：站点/车辆/托盘/运单的实体容器
-│   ├── state_machines.py # Truck: En route→Docking→Unloading→Departed 等
-│   └── scenario.py       # 剧本：初始世界生成 + 事件脚本
-├── agents/                          # Agent 编排层（见 02 文档）
-├── ws/                              # WebSocket 通道 + 事件总线
-└── auth/                            # JWT 签发/校验、双角色依赖
+├── models/                          # SQLAlchemy 2.0 ORM 实体（见 03 文档）✅ 已建
+│   ├── base.py / runtime.py / business.py / auth.py
+├── routes/                          # 路由层（auth/sim/world，新资源按文件加）
+├── schemas/                         # Pydantic 请求/响应模型（M4 落地）
+├── sim/                             # ⭐ 模拟引擎内核 ✅ 已建（M2）
+│   ├── clock.py          # 虚拟时钟：tick=1 模拟分钟，可暂停/变速/重置
+│   ├── engine.py         # SimEngine：lifespan 托管主循环，落库→广播
+│   ├── state_machines.py # 运单五步/车辆四态/worker 枚举
+│   └── scenario.py       # 剧本：初始世界生成 + 双写 + 事件拼装
+├── ws/                              # WebSocket 通道 + 事件总线 ✅ 已建（M2）
+│   └── bus.py            # EventBus：全体广播不区分角色（decisions #19）
+├── seed.py                          # 演示账号（幂等）
+└── auth.py                          # JWT 签发/校验、双角色依赖
 ```
 
-**运行方式**：uvicorn 启动时拉起 `sim` 的 asyncio 主循环，每个 tick（= 模拟时间 1 分钟，默认加速播放）推进状态机 → 变更落库 → 事件广播到 WebSocket。Agent 长任务走 asyncio 后台任务，进度经同一事件总线推送。
+**运行方式**：uvicorn lifespan 拉起 `sim` 的 asyncio 主循环（后端重启 = 演示起点），
+每 tick（= 模拟 1 分钟，默认 2 倍速）推进剧本 → 变更落库 → 事件广播到 WebSocket；
+**先落库成功再广播**（05 M2 铁律）。模拟时间与真实时间分离：trace/telemetry/运单时点
+一律写模拟时间。Agent 长任务（M4）走 asyncio 后台任务，进度经同一事件总线推送。
 
 ## 4. 前端目录结构（规划）
 

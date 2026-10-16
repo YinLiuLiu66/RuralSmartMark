@@ -81,4 +81,4 @@ def test_sim_control_operator_200() -> None:
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
-    assert resp.json()["detail"] == "not implemented until M2"
+    assert resp.json()["clock"]["running"] is False

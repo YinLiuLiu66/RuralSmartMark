@@ -1,20 +1,28 @@
-from fastapi import APIRouter, Depends, FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ruralsmartmark.auth import (
-    ROLE_OPERATOR,
-    User,
-    get_current_user,
-    require_role,
-)
+from ruralsmartmark.auth import User, get_current_user
 from ruralsmartmark.config import settings
-from ruralsmartmark.routes import auth_router
+from ruralsmartmark.routes import auth_router, sim_router, world_router
+from ruralsmartmark.sim.engine import engine as sim_engine
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # 后端重启 = 演示起点：重建剧本世界，拉起 tick 主循环（单 worker 运行）
+    await sim_engine.start()
+    yield
+    await sim_engine.stop()
+
 
 app = FastAPI(
     title="RuralSmartMark API",
-    version="0.1.0",
+    version="0.2.0",
     docs_url="/docs",
     openapi_url="/openapi.json",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -26,18 +34,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-
-# M2 会把 sim 路由拆成独立模块；M1 先挂假路由验权（05 清单 M1-c 测试要求）
-sim_router = APIRouter(prefix="/api/sim", tags=["sim"])
-
-
-@sim_router.post("/control", dependencies=[Depends(require_role(ROLE_OPERATOR))])
-async def sim_control() -> dict[str, str]:
-    """占位：M2 实现时钟控制；M1 仅验证 operator 角色门槛。"""
-    return {"detail": "not implemented until M2"}
-
-
 app.include_router(sim_router)
+app.include_router(world_router)
 
 
 @app.get("/api/health", tags=["system"])
