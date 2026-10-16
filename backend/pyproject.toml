@@ -8,6 +8,11 @@ dependencies = [
     "fastapi[standard]>=0.143.0",
     "pydantic-settings>=2.7.0",
     "openai>=3.31.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.32.0",
+    "alembic>=1.20.0",
+    "pyjwt>=2.8",
+    "argon2-cffi>=25.1.0",
 ]
 
 [project.scripts]
@@ -27,6 +32,8 @@ dev = [
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+# migrations/ 是 alembic 生成物，风格与手写代码不同，不检
+extend-exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

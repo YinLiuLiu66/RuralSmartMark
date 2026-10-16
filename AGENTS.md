@@ -13,18 +13,22 @@
 
 - 包管理器只用 uv（后端）+ pnpm（前端），不存在 requirements.txt 与 package-lock；
   uv ≥ 0.13，Python ≥ 3.13，Node ≥ 20.19，pnpm ≥ 10。uv 安装：docs.astral.sh/uv，pnpm 安装：pnpm.io/zh/installation。
-- 后端缺 `backend/.env` 时靠默认值能起，但 LLM / 数据库功能不可用；先 `cp backend/.env.example backend/.env`。
+- 后端缺 `backend/.env` 时靠默认值能起（DATABASE_URL 有默认指向 127.0.0.1:5432 的本地库），
+  但 LLM / 数据库连接不可用；先 `cp backend/.env.example backend/.env` 并 `docker compose up -d`。
 - OPENAI_API_KEY 为空时：真调模型的路径不能实测，一律 mock，别假设 key 存在。
 - 前端没有测试框架，只有 `pnpm typecheck` / `pnpm lint` 兜底；别假设存在 vitest / jest。
 
 ## 常用命令（后端在 backend/ 下，前端在 frontend/ 下）
 
+- Docker（仓库根目录执行）：
+  `docker compose up -d` → 起 PG18 数据库（rsm-postgres 容器，127.0.0.1:5432；数据落 `./data/postgres/`）
 - 后端（uv，在 backend/）：
   `uv sync` → 依赖安装（别手动建 venv）
+  `uv run alembic upgrade head` → 建表/迁移（M1 起有效；downgrade base 可回滚重放）
+  `uv run python -m ruralsmartmark.seed` → 种演示双账号 operator/coop（幂等）
   `uv run ruralsmartmark` → 起服务，端口 8000
   `uv run pytest` → 全测试；单函数：`uv run pytest tests/test_health.py::test_health`
-  `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化；
-  `uv run alembic upgrade head` / `uv run alembic revision --autogenerate -m "..."` → 数据库迁移（M1 后有效）
+  `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化
 - 前端（pnpm，在 frontend/）：
   `pnpm install` → 依赖
   `pnpm dev` → 开发服，端口 5173
@@ -34,11 +38,19 @@
 ## 目录地图（改哪去哪，产物别碰）
 
 ```
+docker-compose.yml                 # 单 db 服务（pgvector/pgvector:0.8.7-pg18，卷挂 ./data/postgres）
 backend/
   src/ruralsmartmark/app.py         # 路由注册；写在这里再分发
   src/ruralsmartmark/config.py      # pydantic-settings：新配置项加进 Settings 类
   src/ruralsmartmark/main.py        # uvicorn 入口（ruralsmartmark 命令绑这）
-  tests/                            # pytest；test_health.py 是当前唯一样例
+  src/ruralsmartmark/db.py          # async engine + sessionmaker 单例 + get_session 依赖
+  src/ruralsmartmark/auth.py        # JWT 双角色（get_current_user / require_role）
+  src/ruralsmartmark/models/        # 14 张表 ORM（runtime/business/auth 三文件，__init__ 汇总）
+  src/ruralsmartmark/routes/        # APIRouter 模块（auth 已有）
+  src/ruralsmartmark/seed.py        # 演示数据 seed（python -m ruralsmartmark.seed）
+  migrations/                       # Alembic（生成物，ruff 不检；env.py 接 Settings/ORM）
+  tests/conftest.py                 # 测试夹具：独立测试库 _test + NullPool（跨循环必需）
+  tests/test_auth.py                # 401/403/200 全路径
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
   src/api/client.ts                 # fetch 封装 + ApiError，新接口客户端写这里
@@ -52,7 +64,7 @@ docs/
   05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
-尚未创建、创建前勿假设存在：backend 的 db.py / models/ / sim/ / agents/ / ws/ / auth/，
+尚未创建、创建前勿假设存在：backend 的 sim/ / agents/ / ws/，
 frontend 的 routes/ / stores/ 等（规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
@@ -77,7 +89,8 @@ frontend 的 routes/ / stores/ 等（规划见 docs/01-architecture.md）。
 
 - 不引入 decisions.md 任一被否决的方案：LangChain / LlamaIndex / Celery / Redis / Chroma。
 - 不提交 .env、dist/、node_modules/ 等被 .gitignore 覆盖的产物；改 .gitignore 需要充分理由。
-- 不使用 `/var/lib/postgresql/data` 做数据卷挂载点（PG18 正确路径为 `/var/lib/postgresql`）。
+- 不使用 `/var/lib/postgresql/data` 做容器内数据卷挂载点（PG18 正确路径为 `/var/lib/postgresql`，真实 PGDATA 在其下 `18/docker`）；
+  本地宿主机侧卷落点为项目目录 `./data/postgres`（decisions #20，已 ignore）。
 - 不对 README / docs 做结构性改动而不同步 AGENTS.md 或 docs/05-next-steps.md。
 - 无法核实的事实（假设、传闻、未跑通的命令）一律标注为"假设"并写明验证方法。
 

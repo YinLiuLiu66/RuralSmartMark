@@ -78,6 +78,11 @@
 **结论**：PG 用 18，compose 镜像选 `pgvector/pgvector:pg18`（官方 postgres 镜像 + pgvector 扩展的构建版；纯 `postgres:18-alpine` 不内置扩展，满足不了预留诉求；有 alpine 变体则优先选变体，版本号在 M1 写 compose 时 pin 定）。pgvector 按"镜像预留、功能不启用"处置：MVP 不建知识库表、不写检索逻辑，架构图标注预留；冲刺期若给 Agent 1 上知识库检索，再补 knowledge_chunk 表。
 **理由**：2026-10 时点 pgvector 已有 PG18 构建，18 还带异步 I/O 等新特性；预留式镜像让"日后启用"零迁移成本，文档降级又避免架构图挂着无处着力的组件。⚠️ 部署注意：PG 官方镜像 18 起数据卷路径为 `/var/lib/postgresql`（不再是 `/var/lib/postgresql/data`），compose 卷按新路径挂。
 
+### #20 · PG 数据卷宿主机落点（项目目录绑定卷）
+**结论**：本地开发阶段，PG 数据卷用**项目目录绑定卷**——宿主机侧挂 `./data/postgres/`（加入 .gitignore），容器内侧挂 `/var/lib/postgresql`（PG18 新路径）。将来部署服务器时改为命名卷（docker managed volume），届时仅需改 compose 一处。
+**理由**：演示项目"数据跟着项目走"——项目目录可直接查看/清理/整目录迁移，不藏在 Docker volume 池里；`/var/lib/postgresql` 是容器内侧路径（PG18 起不再带 `/data` 后缀），与宿主机落点是两回事，此前 05 文档未区分两层导致误读。
+**拍板时间**：2026-10-16
+
 ### #19 · WebSocket 推送是否按角色区分
 **结论**：不区分。`/ws/world` 对所有连接推送同一份事件流，不做游客/运营方视野裁剪。
 **理由**：演示型项目没有"游客"角色，答辩场景单人操作；视野裁剪是纯成本无卖点。日后真有多租户需求再加。

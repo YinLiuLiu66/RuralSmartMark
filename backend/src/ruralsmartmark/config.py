@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,24 @@ class Settings(BaseSettings):
     openai_base_url: str | None = Field(
         default=None, validation_alias="OPENAI_BASE_URL"
     )
+
+    database_url: str = Field(
+        default="postgresql+asyncpg://postgres:rsm_demo_2026@127.0.0.1:5432/ruralsmartmark",
+        validation_alias="DATABASE_URL",
+    )
+
+    jwt_secret: str = Field(
+        default="dev-secret-change-me", validation_alias="JWT_SECRET"
+    )
+    jwt_expire_hours: int = Field(default=12, validation_alias="JWT_EXPIRE_HOURS")
+
+    # 留空 = 每次随机；no-default field validator 兼容空串
+    sim_seed: int | None = Field(default=None, validation_alias="SIM_SEED")
+
+    @field_validator("sim_seed", mode="before")
+    @classmethod
+    def _empty_sim_seed_is_none(cls, v: object) -> object:
+        return None if v == "" else v
 
     @property
     def cors_origin_list(self) -> list[str]:

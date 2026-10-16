@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单
 
-> 状态：✅ 当前有效 — M0 探针已完成，M1 待启动，本文件是唯一在执行的作业指导
+> 状态：✅ 当前有效 — M1 已完成，M2（sim 引擎）待启动
 > 更新时间：2026-10-16
 > 用法：完成一项就在「当前进度」打勾；决策变化必须先改 [decisions.md](decisions.md) 再改这里
 > 素人上手顺序：本章 → [decisions.md](decisions.md) → 环境搭建（下节）→ M1
@@ -10,9 +10,10 @@
 - [x] 前后端分离骨架（FastAPI / React 脚手架，`/api/health` 双端联通）
 - [x] 设计文档 00–04 全部定稿，决策 #1–#19 全部落章（无待定阻塞项）
 - [x] AGENTS.md 就位（AI 协作规范）
-- [x] **M0 R3F 探针**（✅ 已完成，报告见 [05-probe-r3f.md](05-probe-r3f.md)：路线可行，M3 按 5 天排）← M1 待启动
-- [ ] M1 数据地基
-- [ ] M2 及以后（见 [04-roadmap.md](04-roadmap.md)，不在本文档展开）
+- [x] **M0 R3F 探针**（✅ 已完成，报告见 [05-probe-r3f.md](05-probe-r3f.md)：路线可行，M3 按 5 天排）
+- [x] **M1 数据地基**（✅ 已完成 2026-10-16：compose 单 db 服务 + 14 表 ORM（13 业务表 + user） + Alembic 首版迁移（含 vector 扩展） + JWT 双角色；pytest 10/10 绿）
+- [ ] **M2 sim 引擎** ← 下一个要做的
+- [ ] M3 及以后（见 [04-roadmap.md](04-roadmap.md)）
 
 **MVP 验收动线**（做完 M1–M6 即达成）：
 沙盘可看可点 → Agent 1/3 产出真内容 → 人工润色可改 → 扫码可溯源 → 沙盘页内嵌溢价对照图。
@@ -30,16 +31,19 @@ Node.js ≥ 20.19、[pnpm](https://pnpm.io/zh/installation) ≥ 10、Docker Desk
 cd backend
 uv sync
 cp .env.example .env        # Windows 用 copy；填 OPENAI_API_KEY（可后置）
-uv run pytest               # 应全绿（当前仅 1 条 health 测试）
+docker compose up -d        # 仓库根目录执行；先起 PG（M1 后必需）
+uv run alembic upgrade head # 建 14 张表（13 业务表 + user）
+uv run python -m ruralsmartmark.seed  # 种入演示双账号 operator/coop
+uv run pytest               # 应全绿（10 条）
 uv run ruralsmartmark       # 起来后 curl http://127.0.0.1:8000/api/health
 
 # 前端（另开一个终端）
 cd frontend
 pnpm install
-pnpm dev                    # 打开 http://localhost:5173 见占位页
+pnpm dev                    # 打开 http://localhost:5173 见 3D 探针沙盘
 ```
 
-M1 完成后此处需补：`docker compose up -d` 先起库，再执行后端命令（届时更新本节与 AGENTS.md）。
+M1 已完成，上节命令已含 compose 建库 / 迁移 / seed 三步（compose 文件在仓库根目录）。
 
 ## 2. M0 · R3F 探针（✅ 已完成 2026-10-16，结论与踩坑见 [05-probe-r3f.md](05-probe-r3f.md)）
 
@@ -56,42 +60,44 @@ M1 完成后此处需补：`docker compose up -d` 先起库，再执行后端命
 **验收**：小样能在浏览器跑、可旋转可点击；探针文档写完。
 **降级触发条件**（探针结论为可行，此路线仅作 M3 风险备案：若正式场景实体数量/交互密度导致掉帧不可调，改用 2.5D（SVG 等距贴图 + DOM 交互），架构不变，`three/` 目录换成 `iso/`）。
 
-## 3. M1 · 数据地基（M0 通过后启动）
+## 3. M1 · 数据地基（✅ 已完成 2026-10-16）
 
-> 依据：decisions #1/#15/#17/#18/#19 + [03-data-model.md](03-data-model.md)（13 张表定稿）
+> 依据：decisions #1/#15/#17/#18/#19/#20 + [03-data-model.md](03-data-model.md)（13 张表定稿）
 
-### M1-a docker compose
+### M1-a docker compose（✅）
 
-- [ ] 根目录 `docker-compose.yml`，仅含 `db` 服务：
-  - 镜像 `pgvector/pgvector:pg18`（tag 落笔当天查 Docker Hub pin 最新补丁号）
-  - **数据卷挂 `/var/lib/postgresql`**（PG18 不再带 `/data` 后缀，挂错库不落盘）
+- [x] 根目录 `docker-compose.yml`，仅含 `db` 服务：
+  - 镜像 `pgvector/pgvector:0.8.7-pg18`（pin 定；官方镜像无 alpine 变体，Debian bookworm 基底）
+  - **数据卷：宿主机 `./data/postgres` → 容器 `/var/lib/postgresql`**（decisions #20：本地项目目录绑定卷，上服务器改命名卷；容器内侧是 PG18 新路径，真实 PGDATA 为 `/var/lib/postgresql/18/docker`）
+  - `./data/` 加入 .gitignore
   - 环境变量 `POSTGRES_PASSWORD`（本地演示值即可，进 `.env` 不进 git）
-  - 健康检查 `pg_isready -U postgres`
-- [ ] `backend/.env.example` 增加 `DATABASE_URL`（asyncpg 驱动格式）
-- [ ] `.env.example` 同步：`LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` / `JWT_SECRET` / `SIM_SEED`
+  - 健康检查 `pg_isready -U postgres`（✅ 容器 healthy）
+- [x] `backend/.env.example` 增加 `DATABASE_URL`（asyncpg 驱动格式）
+- [x] `.env.example` 同步：`JWT_SECRET` / `JWT_EXPIRE_HOURS` / `SIM_SEED`（LLM_* 沿用既有 OPENAI_* 配置）
 
-### M1-b ORM 模型 + Alembic
+### M1-b ORM 模型 + Alembic（✅）
 
-- [ ] `backend` 加依赖 `sqlalchemy[asyncio]` `asyncpg` `alembic`
-- [ ] `src/ruralsmartmark/db.py`：async engine + sessionmaker（全局单例）
-- [ ] `src/ruralsmartmark/models/`：13 张表 ORM（对照 03 文档逐表核对字段）
-- [ ] Alembic init + 首版迁移：`alembic init migrations` → 生成并检查首版脚本
-- [ ] **迁移里 `CREATE EXTENSION IF NOT EXISTS vector`**（扩展开箱预留，decisions #18）
+- [x] `backend` 加依赖 `sqlalchemy[asyncio]` `asyncpg` `alembic`
+- [x] `src/ruralsmartmark/db.py`：async engine + sessionmaker（全局单例）
+- [x] `src/ruralsmartmark/models/`：14 张表 ORM（13 业务表 + `user`；`product_sku.story_id` 因循环依赖改逻辑外键不加 DB 约束）
+- [x] Alembic init + 首版迁移（`migrations/env.py` 接 Settings 与 ORM metadata，asyncpg 异步引擎）
+- [x] **迁移里 `CREATE EXTENSION IF NOT EXISTS vector`**（扩展开箱预留，decisions #18）✅ 已验证
 
-### M1-c JWT
+### M1-c JWT（✅）
 
-- [ ] 依赖 `pyjwt` + 密码哈希（`passlib[bcrypt]` 或 argon2）
-- [ ] `POST /api/auth/token`（演示双账号运营方/合作社，账号进 seed 不进注册流程）
-- [ ] FastAPI 依赖注入 `get_current_user` / `require_role("operator")` 等
-- [ ] 测试：无 token 401 / 错角色 403 / 正常 200（sim control 用假路由验权）
+- [x] 依赖 `pyjwt` + 密码哈希（argon2-cffi）
+- [x] `POST /api/auth/token`（演示双账号 operator/coop，账号进 seed 不进注册流程）
+- [x] FastAPI 依赖注入 `get_current_user` / `require_role("operator")`（+ `/api/auth/me` 验收探针、`/api/sim/control` 假路由验权）
+- [x] 测试：无 token 401 / 错角色 403 / 正常 200（tests/test_auth.py 9 条 + health 1 条，全绿）
+- [x] seed 脚本：`uv run python -m ruralsmartmark.seed`（幂等）
 
-### M1 验收清单
+### M1 验收清单（✅ 全部通过 2026-10-16）
 
 ```bash
-docker compose up -d                          # db 健康
-cd backend && uv run alembic upgrade head     # 13 张表建成
-uv run alembic downgrade base && uv run alembic upgrade head  # 可重放
-uv run pytest                                 # 全绿，含新 auth 测试
+docker compose up -d                          # db healthy
+cd backend && uv run alembic upgrade head     # 15 张表建成（14 + alembic_version）
+uv run alembic downgrade base && uv run alembic upgrade head  # 可重放 ✅
+uv run pytest                                 # 10 passed ✅
 ```
 
 ## 4. 再往后（简报，细则到点再写）

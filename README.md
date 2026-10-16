@@ -22,11 +22,18 @@
 
 ```
 RuralSmartMark/
+├── docker-compose.yml    # 单 db 服务（PG18 + pgvector，数据落 ./data/postgres/）
 ├── backend/
 │   ├── src/ruralsmartmark/
 │   │   ├── app.py        # FastAPI 实例、CORS、路由
 │   │   ├── config.py     # pydantic-settings 配置
+│   │   ├── db.py         # async engine/sessionmaker 单例
+│   │   ├── auth.py       # JWT 双角色鉴权
+│   │   ├── models/       # 14 张表 ORM
+│   │   ├── routes/       # APIRouter 模块
+│   │   ├── seed.py       # 演示账号 seed（python -m ruralsmartmark.seed）
 │   │   └── main.py       # 启动入口（uvicorn）
+│   ├── migrations/       # Alembic 迁移
 │   ├── tests/
 │   ├── .env.example
 │   ├── pyproject.toml
@@ -52,16 +59,25 @@ RuralSmartMark/
 | uv | >= 0.13 |
 | Node.js | >= 20.19 |
 | pnpm | >= 10 |
+| Docker | compose v2 |
 
 ## 快速开始
+
+### 数据库（前置，仓库根目录执行）
+
+```bash
+docker compose up -d       # PG18 + pgvector，数据落 ./data/postgres/
+```
 
 ### 后端
 
 ```bash
 cd backend
 uv sync
-cp .env.example .env      # 填写 OPENAI_API_KEY 等
-uv run ruralsmartmark     # http://127.0.0.1:8000
+cp .env.example .env       # 填写 OPENAI_API_KEY 等
+uv run alembic upgrade head           # 建 14 张表
+uv run python -m ruralsmartmark.seed  # 种演示账号 operator/coop
+uv run ruralsmartmark      # http://127.0.0.1:8000
 ```
 
 交互式 API 文档：<http://127.0.0.1:8000/docs>

@@ -1,0 +1,22 @@
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg18
+    container_name: rsm-postgres
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rsm_demo_2026}
+      POSTGRES_DB: ruralsmartmark
+      # 容器时区固定上海，避免时间字段在展示层出现 8 小时偏移的错觉
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # decisions #20：本地项目目录绑定卷（上服务器改命名卷）
+      # 容器内侧是 PG18 新路径 /var/lib/postgresql（不再带 /data 后缀）
+      - ./data/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ruralsmartmark"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
