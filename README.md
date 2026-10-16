@@ -34,6 +34,7 @@ RuralSmartMark/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/client.ts # 请求封装
+│   │   ├── three/        # 3D 沙盘（M0 探针，报告见 docs/05-probe-r3f.md）
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   ├── .env.example

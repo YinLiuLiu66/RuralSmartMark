@@ -1,55 +1,62 @@
-import { useEffect, useState } from 'react'
-import { fetchHealth, type HealthResponse } from './api/client'
+import { useMemo, useState } from 'react'
+import ProbeScene from './three/ProbeScene'
+import FpsBadge from './three/FpsBadge'
+import { SITES } from './three/probeData'
 import './App.css'
 
-type Status =
-  | { kind: 'loading' }
-  | { kind: 'ok'; data: HealthResponse }
-  | { kind: 'error'; message: string }
-
 function App() {
-  const [status, setStatus] = useState<Status>({ kind: 'loading' })
-
-  useEffect(() => {
-    let cancelled = false
-
-    fetchHealth()
-      .then((data) => {
-        if (!cancelled) setStatus({ kind: 'ok', data })
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setStatus({
-            kind: 'error',
-            message: error instanceof Error ? error.message : '未知错误',
-          })
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = useMemo(() => SITES.find((s) => s.id === selectedId) ?? null, [selectedId])
 
   return (
-    <main className="app">
-      <h1>RuralSmartMark</h1>
-      <p className="subtitle">前端 React 18 + Vite + TypeScript</p>
+    <main className="probe">
+      <div className="probe-stage">
+        <ProbeScene selectedId={selectedId} onSelect={setSelectedId} />
 
-      <section className="card">
-        <h2>后端连通性</h2>
-        {status.kind === 'loading' && <p>检测中…</p>}
-        {status.kind === 'ok' && (
-          <p className="ok">
-            {status.data.service} 状态：{status.data.status}
-          </p>
-        )}
-        {status.kind === 'error' && (
-          <p className="error">
-            {status.message}（确认后端已在 127.0.0.1:8000 启动）
-          </p>
-        )}
-      </section>
+        <header className="probe-head">
+          <h1>RuralSmartMark · M0 探针</h1>
+          <p>程序化 low-poly 等距沙盘：拖动旋转 / 滚轮缩放 / 点击站点查看数据卡</p>
+        </header>
+
+        <aside className="probe-card">
+          {selected ? (
+            <>
+              <h2 style={{ color: selected.color }}>{selected.name}</h2>
+              <dl>
+                <div>
+                  <dt>库存</dt>
+                  <dd>{selected.info.pallets} 托</dd>
+                </div>
+                <div>
+                  <dt>温区</dt>
+                  <dd>{selected.info.tempZone}</dd>
+                </div>
+                <div>
+                  <dt>今日吞吐</dt>
+                  <dd>{selected.info.throughput}</dd>
+                </div>
+                <div>
+                  <dt>备注</dt>
+                  <dd>{selected.info.note}</dd>
+                </div>
+              </dl>
+              <button type="button" onClick={() => setSelectedId(null)}>
+                关闭
+              </button>
+            </>
+          ) : (
+            <p className="probe-card-empty">
+              点击任一站点方块
+              <br />
+              查看模拟数据卡
+            </p>
+          )}
+        </aside>
+
+        <FpsBadge />
+
+        <footer className="probe-foot">探针小样 · three 0.169 + fiber 8.17 + drei 9.114</footer>
+      </div>
     </main>
   )
 }

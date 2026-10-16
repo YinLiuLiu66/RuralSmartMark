@@ -42,16 +42,18 @@ backend/
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
   src/api/client.ts                 # fetch 封装 + ApiError，新接口客户端写这里
-  src/App.tsx                       # 占位页
+  src/three/                        # 3D 沙盘代码（three 0.169 + fiber 8.17 + drei 9.114，pin 组合勿动，v8 绑 React 18）
+  src/App.tsx                       # M0 探针壳（M3 需改造为正式沙盘页）
   vite.config.ts                    # /api → 127.0.0.1:8000 开发代理
 docs/
   decisions.md                      # 决策权威：拍板条目唯一真源
   00–04*.md                         # 设计权威：架构 / 数据模型 / 路线图
   05-next-steps.md                  # 唯一动态任务清单：进度与未验证假设
+  05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
 尚未创建、创建前勿假设存在：backend 的 db.py / models/ / sim/ / agents/ / ws/ / auth/，
-frontend 的 routes/ / three/ / stores/ 等（规划见 docs/01-architecture.md）。
+frontend 的 routes/ / stores/ 等（规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
 ## 文档维护职责（必读必做）
