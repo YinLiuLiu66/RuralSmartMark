@@ -62,19 +62,23 @@ backend/src/ruralsmartmark/
 **先落库成功再广播**（05 M2 铁律）。模拟时间与真实时间分离：trace/telemetry/运单时点
 一律写模拟时间。Agent 长任务（M4）走 asyncio 后台任务，进度经同一事件总线推送。
 
-## 4. 前端目录结构（规划）
+## 4. 前端目录结构（M3 已落地，M4 多页时引入 react-router 拆分）
 
 ```
 frontend/src/
-├── api/                # 已有 client.ts，按资源拆模块
-├── routes/             # react-router
-│   ├── Sandbox/        # ⭐ 主页面：3D 沙盘 + 环绕看板 + 详情卡
-│   ├── AgentWorkbench/ # Agent 任务列表 + 产出物审阅/润色（人机协同演示位）
-│   └── Trace/          # /t/:code 扫码 H5（移动端优先，独立无壳布局）
-├── three/              # R3F：Scene / CameraRig / entities/*（站点、冷链车、托盘）
-├── ws/                 # WS 客户端：快照 + 增量，合并进状态库
+├── api/                # 已有 client.ts（含 fetchWorldSnapshot/simControl），按资源拆模块
+│   ├── client.ts       # fetch 封装 + ApiError（M3 已扩展快照与 sim 控制）
+│   ├── types.ts        # 快照与 WS 事件封套类型 ✅ 已建
+│   └── ws.ts           # /ws/world WS 客户端 + 自动重连 ✅ 已建
 ├── stores/             # Zustand：实体状态、选中对象、模拟时钟
-└── panels/             # 模板化详情卡（站点卡/车辆卡/托盘卡/运单卡）
+│   └── world.ts        # 沙盘实时态：快照打底 + WS 增量合并 ✅ 已建
+├── panels/             # 模板化详情卡
+│   └── ClockBar.tsx    # 模拟时钟控制条 ✅ 已建（站点/车辆/托盘卡在 three/DetailCard.tsx）
+├── routes/             # react-router（M4 工作台/溯源页启用）
+│   ├── Sandbox/        # ⭐ 主页面：3D 沙盘 + 环绕看板 + 详情卡（M3 已以单页实现，多页时再拆）
+│   ├── AgentWorkbench/ # Agent 任务列表 + 产出物审阅/润色（M4）
+│   └── Trace/          # /t/:code 扫码 H5（M5）
+└── three/              # R3F：Scene / entities/*（站点、冷链车、托盘）✅ M3 已建
 ```
 
 看板图表用 ECharts；大屏风格走自定义 CSS（玻璃拟态），不套 Antd 后台风。
