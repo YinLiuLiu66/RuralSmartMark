@@ -1,61 +1,55 @@
-import { useMemo, useState } from 'react'
-import ProbeScene from './three/ProbeScene'
+import { useEffect, useState } from 'react'
+
+import { useWorld } from './stores/world'
+import ClockBar from './panels/ClockBar'
+import DetailCard from './three/DetailCard'
+import WorldScene from './three/WorldScene'
 import FpsBadge from './three/FpsBadge'
-import { SITES } from './three/probeData'
 import './App.css'
 
+type SelectedKind = 'site' | 'vehicle' | 'shipment'
+
 function App() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selected = useMemo(() => SITES.find((s) => s.id === selectedId) ?? null, [selectedId])
+  const connect = useWorld((s) => s.connect)
+  const disconnect = useWorld((s) => s.disconnect)
+  const reload = useWorld((s) => s.reload)
+  const ready = useWorld((s) => s.ready)
+  // 详情卡选中态：站点/车辆在 3D 场景里点，运单只在卡片侧列出可点
+  const [selected, setSelected] = useState<{ kind: SelectedKind; id: number } | null>(null)
+
+  useEffect(() => {
+    void reload()
+    connect()
+    return () => disconnect()
+  }, [connect, disconnect, reload])
 
   return (
     <main className="probe">
       <div className="probe-stage">
-        <ProbeScene selectedId={selectedId} onSelect={setSelectedId} />
+        <WorldScene
+          selectedKind={selected?.kind === 'shipment' ? null : (selected?.kind ?? null)}
+          selectedId={selected?.id ?? null}
+          onSelect={(kind, id) => setSelected({ kind, id })}
+        />
 
         <header className="probe-head">
-          <h1>RuralSmartMark · M0 探针</h1>
-          <p>程序化 low-poly 等距沙盘：拖动旋转 / 滚轮缩放 / 点击站点查看数据卡</p>
+          <h1>云岭蓝莓 · 数字孪生供应链沙盘</h1>
+          <p>拖动旋转 / 滚轮缩放 / 点击站点或车辆查看实时详情</p>
         </header>
 
-        <aside className="probe-card">
-          {selected ? (
-            <>
-              <h2 style={{ color: selected.color }}>{selected.name}</h2>
-              <dl>
-                <div>
-                  <dt>库存</dt>
-                  <dd>{selected.info.pallets} 托</dd>
-                </div>
-                <div>
-                  <dt>温区</dt>
-                  <dd>{selected.info.tempZone}</dd>
-                </div>
-                <div>
-                  <dt>今日吞吐</dt>
-                  <dd>{selected.info.throughput}</dd>
-                </div>
-                <div>
-                  <dt>备注</dt>
-                  <dd>{selected.info.note}</dd>
-                </div>
-              </dl>
-              <button type="button" onClick={() => setSelectedId(null)}>
-                关闭
-              </button>
-            </>
-          ) : (
-            <p className="probe-card-empty">
-              点击任一站点方块
-              <br />
-              查看模拟数据卡
-            </p>
-          )}
-        </aside>
+        <ClockBar />
+
+        <DetailCard
+          kind={selected?.kind ?? null}
+          id={selected?.id ?? null}
+          onClose={() => setSelected(null)}
+        />
 
         <FpsBadge />
 
-        <footer className="probe-foot">探针小样 · three 0.169 + fiber 8.17 + drei 9.114</footer>
+        <footer className="probe-foot">
+          {ready ? '实时同步中' : '连接世界…'} · three 0.169 + fiber 8.17 + drei 9.114
+        </footer>
       </div>
     </main>
   )

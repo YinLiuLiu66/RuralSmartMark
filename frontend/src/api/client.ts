@@ -1,3 +1,5 @@
+import type { SimClock, WorldSnapshot } from './types'
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
@@ -30,4 +32,20 @@ export interface HealthResponse {
 
 export function fetchHealth(): Promise<HealthResponse> {
   return request<HealthResponse>('/api/health')
+}
+
+export function fetchWorldSnapshot(): Promise<WorldSnapshot> {
+  return request<WorldSnapshot>('/api/world/snapshot')
+}
+
+export function simControl(action: string, speed?: number): Promise<{ clock: SimClock }> {
+  return request<{ clock: SimClock }>('/api/sim/control', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem('rsm_jwt') ?? ''}` },
+    body: JSON.stringify({ action, speed }),
+  })
+}
+
+export function saveToken(token: string): void {
+  localStorage.setItem('rsm_jwt', token)
 }

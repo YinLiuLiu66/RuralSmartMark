@@ -58,10 +58,18 @@ backend/
   tests/test_sim.py                 # M2 验收：控制/快照/WS + 一完整周期双写推进
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
-  src/api/client.ts                 # fetch 封装 + ApiError，新接口客户端写这里
-  src/three/                        # 3D 沙盘代码（three 0.169 + fiber 8.17 + drei 9.114，pin 组合勿动，v8 绑 React 18）
-  src/App.tsx                       # M0 探针壳（M3 需改造为正式沙盘页）
-  vite.config.ts                    # /api → 127.0.0.1:8000 开发代理
+  src/api/client.ts                 # fetch 封装 + ApiError + snapshot/simControl 接口
+  src/api/types.ts                  # 世界快照与 WS 事件封套类型（与 docs/03 §3 对齐）
+  src/api/ws.ts                     # WS 客户端（相对 URL 推导 + 指数退避重连）
+  src/stores/world.ts               # Zustand 沙盘实时态：快照打底 + WS 增量合并
+  src/panels/ClockBar.tsx           # 模拟时钟控制条（operator 按钮，decisions #17）
+  src/three/WorldScene.tsx          # 正式 3D 场景（吃 M2 快照/WS 数据）
+  src/three/SiteMeshes.tsx          # 站点网格（库存映射高度，可点选）
+  src/three/VehicleMesh.tsx         # 车辆网格（在途插值/停靠，可点选）
+  src/three/DetailCard.tsx          # 详情卡（站点/车辆/运单 stepper）
+  src/three/FpsBadge.tsx            # rAF 帧率徽章
+  src/App.tsx / App.css             # 沙盘主页壳（含 stepper 等样式）
+  vite.config.ts                    # /api 与 /ws（ws:true）→ 127.0.0.1:8000 开发代理
 docs/
   decisions.md                      # 决策权威：拍板条目唯一真源
   00–04*.md                         # 设计权威：架构 / 数据模型 / 路线图
@@ -69,7 +77,7 @@ docs/
   05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
-尚未创建、创建前勿假设存在：backend 的 agents/，frontend 的 routes/ / stores/ 等
+尚未创建、创建前勿假设存在：backend 的 agents/ / schemas/，frontend 的 routes/ 等
 （规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 

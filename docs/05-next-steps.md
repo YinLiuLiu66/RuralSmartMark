@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单
 
-> 状态：✅ 当前有效 — M1/M2 已完成，M3（3D 沙盘）待启动
+> 状态：✅ 当前有效 — M1/M2/M3 已完成，M4（Agent 1/3 + 工作台）待启动
 > 更新时间：2026-10-16
 > 用法：完成一项就在「当前进度」打勾；决策变化必须先改 [decisions.md](decisions.md) 再改这里
 > 素人上手顺序：本章 → [decisions.md](decisions.md) → 环境搭建（下节）→ M1
@@ -13,8 +13,9 @@
 - [x] **M0 R3F 探针**（✅ 已完成，报告见 [05-probe-r3f.md](05-probe-r3f.md)：路线可行，M3 按 5 天排）
 - [x] **M1 数据地基**（✅ 已完成 2026-10-16：compose 单 db 服务 + 14 表 ORM（13 业务表 + user） + Alembic 首版迁移（含 vector 扩展） + JWT 双角色；pytest 10/10 绿）
 - [x] **M2 sim 引擎**（✅ 已完成 2026-10-16：虚拟时钟 + 剧本双写 + 控制/快照/WS，任务细则见 §4）
-- [ ] **M3 3D 沙盘** ← 下一个要做的
-- [ ] M4 及以后（见 [04-roadmap.md](04-roadmap.md)）
+- [x] **M3 3D 沙盘**（✅ 已完成 2026-10-16：快照+WS 数据链路 / 场景正式化 / 钟控条，细则见 §5）
+- [ ] **M4 Agent 1/3** ← 下一个要做的
+- [ ] M5 及以后（见 §6）
 
 **MVP 验收动线**（做完 M1–M6 即达成）：
 沙盘可看可点 → Agent 1/3 产出真内容 → 人工润色可改 → 扫码可溯源 → 沙盘页内嵌溢价对照图。
@@ -159,26 +160,75 @@ uv run ruralsmartmark                                # 起服务世界自动运�
 **M2 施工记录**：剧本计划队列的 partial 一律传关键字参数（位置参数会前插到 session 之前）；
 跨 tick 只持主键不持 ORM 实例（每 tick 独立 session）。
 
-## 5. 再往后（简报，细则到点再写）
+## 5. M3 · 3D 沙盘（✅ 已完成 2026-10-16，"看得见"）
 
-1. **M3 · 3D 沙盘**：R3F 正式场景吃 WS 数据；探针的 `three/` 代码迁进来正式化
-2. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（智谱/DeepSeek 可切换），
+> 依据：M0 探针结论（[05-probe-r3f.md](05-probe-r3f.md)：版本 pin 组合 + 正交相机 near=-80 +
+> drei Line + e.delta>6 防误触）+ decisions #8（Zustand 管沙盘实时态）；
+> 数据源 = M2 `GET /api/world/snapshot`（初始化）+ `/ws/world` 增量（实时）。
+
+### M3-a 数据链路（类型 + client + 状态库）✅
+
+- [x] `api/types.ts`：WorldSnapshot / 事件封套 `{type, sim_time, data}` 类型（与 03 §3.1 对齐）
+- [x] `api/client.ts` 加 `fetchWorldSnapshot()` / `simControl()`；新增 `api/ws.ts`：
+      WS 连接（相对 URL 自动推导协议与 host，兼容代理与同源部署）+ 指数退避自动重连
+- [x] `stores/world.ts`：Zustand——快照全量 + WS 增量合并（entity.updated 按 entity+id
+      upsert；shipment.progressed 并入运单列表；tick.info 驱动实时钟；`world.reset` 重拉快照）
+
+### M3-b 场景正式化（探针 → 正式沙盘）✅
+
+- [x] `three/WorldScene.tsx`：沿用探针的相机/灯光/网格/OrbitControls；站点吃
+      stores 快照（`pos_x/pos_z`），托盘量映射站点方块高度；站点/车辆皆可点选
+- [x] `three/VehicleMesh.tsx`：在途车辆读快照 `route`（起止站坐标 + departed/arrives），
+      按 `tick.info.sim_time` 起讫直线插值（正交 45° 俯视下与公路弧线偏差可忽略，探针实测）；
+      到站车停靠站点旁固定位置；车辆按 id 区分色标
+- [x] 详情卡 `three/DetailCard.tsx`：站点卡（名称/类型/库存/批次列表）/ 车辆卡（状态/温湿度/
+      路线起止 + 当前-active 运单五步 stepper）/ 运单卡——复用探针玻璃拟态卡样式
+- [x] `probeData.ts` 假数据退役：探针三件套（ProbeScene/FpsBadge 沿用/probeData 删），
+      站点配色改按站点序（探针四色：绿/橙/蓝/紫）
+
+### M3-c 沙盘控制条（decisions #17 控制入口演示位）✅
+
+- [x] 顶部时钟条 `panels/ClockBar.tsx`：`sim_time` + 速度 + 运行态（tick.info 驱动）
+- [x] operator 已登录则显示 暂停/继续/变速（1/2/4/8×）/重置 按钮（`POST /api/sim/control`，
+      JWT 存 localStorage `rsm_jwt`；未登录隐藏按钮不显示登录表单——M4 工作台再补登录 UI）
+- [x] `world.reset`/重置按钮反馈：快照重拉 + 卡片关闭（reset 由 store 统一处理）
+
+### M3 验收（✅ 全部通过 2026-10-16）
+
+```bash
+cd frontend && pnpm typecheck && pnpm lint && pnpm build
+# tsc 零错误 / oxlint 0 warnings 0 errors / vite build ✓（996KB 大包警告为探针已知项，收尾期拆包）
+uv run ruralsmartmark && pnpm dev                            # 双端起来
+# 浏览器实测（GUI 黑盒，1280×860）：
+# 站点真实数据卡（名称/类型/在库托盘/批次）✅；帧率 120–121 fps 无掉帧 ✅
+# 时钟实时推进（5 真实秒 = 5 模拟分钟 @2×）✅
+# 8× 变速 5 秒推 17 分钟、暂停钟面冻结、重置回 07:00 ✅
+# 在途车沿路移动、停靠位置固定可点 ✅；车辆卡含温湿度/路线/运单 stepper ✅
+```
+
+**M3 施工记录（踩坑）**：vite 开发代理必须显式配 `/ws` 条目（`ws: true` +
+`target: ws://127.0.0.1:8000`），否则 WS 走不通表现为"时钟冻结、快照正常"；
+WS 客户端 URL 用 `new URL(path, location.href)` 相对推导，勿手拼 host（代理链路下会构造出坏路径）。
+
+## 6. 再往后（简报，细则到点再写）
+
+1. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（智谱/DeepSeek 可切换），
    故事/文案两个 Agent + 工作台润色闭环（artifact 三态：draft→polished→final）
-3. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
-4. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
-5. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
+2. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
+3. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
+4. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
 
 分工建议（4 人以上时）：3D 线（M3）/ 后端线（M1+M2）/ Agent 线（M4）/
 溯源+溢价线（M5+M6）可并行，M1/M2 完成前 3D 线用 M0 探针的假数据先行。
 
-## 6. 未验证假设（开工即验证）
+## 7. 未验证假设（开工即验证）
 
 - [ ] Docker Desktop 在目标演示机可用且内存充足（PG 起得来）
 - [ ] OPENAI 兼容端点（智谱/DeepSeek 任一）key 可用，中文故事质量达标（M4 前置检查）
 - [ ] SiliconFlow 生图网关可注册、模型可用；定价/限流与账号额度、水印关闭（X-Enable-Watermark: 0）在后台核验（Agent 2 启动前置检查，decisions #13）
 - [ ] uv / pnpm 在团队各机器安装无障碍
 
-## 7. 红线复查（开工前最后过一眼）
+## 8. 红线复查（开工前最后过一眼）
 
 不引 LangChain / Celery / Redis / 向量库；PG 数据卷路径 `/var/lib/postgresql`；
 `.env` 不入库；`dist/` 不入库不手改；界面文案中文；docs 与 decisions.md 冲突时
