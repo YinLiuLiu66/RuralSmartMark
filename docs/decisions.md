@@ -3,7 +3,7 @@
 > 本文档是讨论的"记分板"：每聊清楚一条，就把对应条目从「待定」挪到「已定」。
 > 格式：`#序号 · 标题 · 状态`，已定条目附结论与理由，待定条目附当前倾向与需要谁拍板。
 
-最后更新：2026-10-15
+最后更新：2026-10-20
 
 ---
 
@@ -88,8 +88,23 @@
 **理由**：演示型项目没有"游客"角色，答辩场景单人操作；视野裁剪是纯成本无卖点。日后真有多租户需求再加。
 
 ### #21 · LLM 配置项命名以代码为准
-**结论**：LLM 接入沿用 OpenAI SDK 的标准环境变量名 `OPENAI_API_KEY` / `OPENAI_BASE_URL`；模型名等 M4 落地时再补（沿用 `OPENAI_*` 前缀）。#2 里的 `LLM_*` 是早期设想，未落地，不再作为实现依据。
+**结论**：LLM 接入沿用 OpenAI SDK 的标准环境变量名 `OPENAI_API_KEY` / `OPENAI_BASE_URL`；模型名等 M4 落地时再补（沿用 `OPENAI_*` 前缀）。#2 里的 `LLM_*` 是早期设想，未落地，不再作为实现依据。模型名已由 #22/#23 定稿为 `OPENAI_MODEL`（现行 #23）。
 **理由**：`config.py` 与 `backend/.env.example` 已按 `OPENAI_*` 实现，可直接接智谱/通义/DeepSeek 等兼容端点；保留 `LLM_*` 会让 M4 同时存在两套变量名。
+**拍板时间**：2026-10-20
+
+### #22 · 文本模型初定（GLM-5.3-Flash，已被 #23 取代）
+**结论**：**已被 #23 取代**（GLM 的思维链实测结论保留备查）。MVP 文本生成固定用 SiliconFlow 的 `zai-org/GLM-5.3-Flash`，变量名 `OPENAI_MODEL`，`Settings.openai_model` 默认值同名；`OPENAI_BASE_URL` 指向 `https://api.siliconflow.cn/v1`。图像模型仍按 #13 单独选型、单独变量（Agent 2 启动前补），不与文本模型共用。
+**实现注意**：该模型默认输出 `reasoning_content`（思维链），正文在 `content`，思维链长度波动大（一句话也可能烧掉 500–1000 tokens）；`max_tokens` 必须覆盖"思维链 + 正文"（短演示 ≥1200，故事类建议 ≥2000），否则 `finish_reason=length` 且正文为空。`enable_thinking=false`、`thinking:{"type":"disabled"}`、`reasoning_effort:"none"` 三种关思考写法实测均被静默忽略（HTTP 200，思维链照常）。
+**流式**：`stream:true` 可用（SSE `data:` 行 + `[DONE]` 结尾）；先流 `reasoning_content` 再流 `content`，实测首 token 约 1 秒、正文首字 2.6–7.7 秒；带 `stream_options.include_usage` 时末尾会追加一个 `choices: []` 的 usage 块，解析必须防空 choices。M4 的 `agents/llm.py` 应丢弃思维链、只把 `content` 推给前端，并对"实时生成"演示位做超时兜底。
+**验证方法**：`GET /v1/models` 200 且列表含该 id；`POST /v1/chat/completions` 200 返回中文正文；`stream:true` 实测收到 content 增量（2026-10-20 已实测）。
+**理由**：与 #13 同网关同一把 key，一套 OpenAI 兼容封装同时覆盖文本与图像；换模型只改 `.env` 一行（#2/#21）。
+**拍板时间**：2026-10-20
+
+### #23 · 文本模型改定（DeepSeek-V3.1-Terminus）
+**结论**：MVP 文本生成改用 SiliconFlow 的 `deepseek-ai/DeepSeek-V3.1-Terminus`，替换 #22 的 GLM-5.3-Flash；变量名与默认值不变（`OPENAI_MODEL` / `Settings.openai_model`）。图像模型仍按 #13 单独选型、单独变量。
+**实现注意**：该模型不输出思维链，正文直出；流式实测首字约 0.7 秒、短问答 1 秒内完成，100 字故事约 9 秒（143 completion tokens）。`stream_options.include_usage` 时末尾仍有 `choices: []` 的 usage 块，解析需防空 choices；正文可能带 Markdown 记号（如 `**`），工作台渲染需处理。无需再尝试关闭思考。
+**验证方法**：`GET /v1/models` 200 且含该 id；`POST /v1/chat/completions` 200 返回中文故事；`stream:true` 实测首字 0.68 秒（2026-10-20 已实测）。
+**理由**：日常生成更快、无思维链，适合答辩现场"实时生成"演示位；同一 SiliconFlow key 与封装，换模型只改 `.env`（#21/#22 的接口结论不变）。
 **拍板时间**：2026-10-20
 
 ---

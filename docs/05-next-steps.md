@@ -1,7 +1,7 @@
 # 05 · 下一步任务清单
 
 > 状态：✅ 当前有效 — M1/M2/M3 已完成，M4（Agent 1/3 + 工作台）待启动
-> 更新时间：2026-10-16
+> 更新时间：2026-10-20
 > 用法：完成一项就在「当前进度」打勾；决策变化必须先改 [decisions.md](decisions.md) 再改这里
 > 素人上手顺序：本章 → [decisions.md](decisions.md) → 环境搭建（下节）→ M1
 
@@ -212,7 +212,7 @@ WS 客户端 URL 用 `new URL(path, location.href)` 相对推导，勿手拼 hos
 
 ## 6. 再往后（简报，细则到点再写）
 
-1. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（智谱/DeepSeek 可切换），
+1. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（文本模型已定 `deepseek-ai/DeepSeek-V3.1-Terminus`，走 SiliconFlow，decisions #23），
    故事/文案两个 Agent + 工作台润色闭环（artifact 三态：draft→polished→final）
 2. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
 3. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
@@ -224,7 +224,8 @@ WS 客户端 URL 用 `new URL(path, location.href)` 相对推导，勿手拼 hos
 ## 7. 未验证假设（开工即验证）
 
 - [ ] Docker Desktop 在目标演示机可用且内存充足（PG 起得来）
-- [ ] OPENAI 兼容端点（智谱/DeepSeek 任一）key 可用，中文故事质量达标（M4 前置检查）
+- [x] OpenAI 兼容端点与 key 可用（2026-10-20 实测 SiliconFlow：`/v1/models` 200 且含目标 id，`/v1/chat/completions` 200 返回中文）
+- [ ] 中文故事/文案质量达标（M4 用真实 Prompt 试跑判定；`deepseek-ai/DeepSeek-V3.1-Terminus` 直出正文、支持流式，单次约 9 秒，见 decisions #23）
 - [ ] SiliconFlow 生图网关可注册、模型可用；定价/限流与账号额度、水印关闭（X-Enable-Watermark: 0）在后台核验（Agent 2 启动前置检查，decisions #13）
 - [ ] uv / pnpm 在团队各机器安装无障碍
 

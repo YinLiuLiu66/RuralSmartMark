@@ -87,7 +87,7 @@ frontend/src/
 ## 5. 基础设施
 
 - **docker compose**：M1 先起单 `db` 服务（`pgvector/pgvector:pg18`，数据卷挂 `/var/lib/postgresql`，18 起官方镜像路径变更）；后端进 compose 后期补，前端开发期走 pnpm dev
-- **环境变量**：`DATABASE_URL`、`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`JWT_SECRET`、`SIM_SEED`（可选固定剧本种子）；模型名 M4 落地时补（decisions #21）
+- **环境变量**：`DATABASE_URL`、`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL`（文本模型 `deepseek-ai/DeepSeek-V3.1-Terminus`，decisions #23）、`JWT_SECRET`、`SIM_SEED`（可选固定剧本种子）
 - **CI/质量**：后端 ruff + pytest；前端 oxlint + tsc（沿用现状）
 
 ## 6. 待定问题（需拍板后更新本文档）

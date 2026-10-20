@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     openai_base_url: str | None = Field(
         default=None, validation_alias="OPENAI_BASE_URL"
     )
+    # 默认值锁定演示用文本模型（decisions #22），换模型只改 .env
+    openai_model: str = Field(
+        default="deepseek-ai/DeepSeek-V3.1-Terminus", validation_alias="OPENAI_MODEL"
+    )
 
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:rsm_demo_2026@127.0.0.1:5432/ruralsmartmark",

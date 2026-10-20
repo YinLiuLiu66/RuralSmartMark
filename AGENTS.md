@@ -17,7 +17,8 @@
   口令与 compose 默认值一致，所以不建 `.env` 也能连（建表仍走下方 alembic 命令；已实测可连）。
   若改过 `POSTGRES_PASSWORD` 或沿用旧数据卷，默认值会失效——在 `backend/.env` 写实际 `DATABASE_URL`。
 - `.env` 主要用于 LLM（也可覆盖 JWT_SECRET / PORT 等）：根目录 `cp backend/.env.example backend/.env`
-  后填 `OPENAI_API_KEY`；为空时真实模型路径一律 mock，别假设 key 存在。
+  后填 `OPENAI_API_KEY`；`OPENAI_MODEL` 默认 `deepseek-ai/DeepSeek-V3.1-Terminus`（decisions #23，走 SiliconFlow）；
+  key 为空时真实模型路径一律 mock，别假设 key 存在。
 - `uv run pytest` 需要 PG 在跑（conftest 自动建 `ruralsmartmark_test` 库，单函数也一样）。
 - 前端没有测试框架，只有 `pnpm typecheck` / `pnpm lint` 兜底；别假设存在 vitest / jest。
 - M2 起：`uv run ruralsmartmark` 会用 lifespan 拉起 sim 引擎主循环（默认 2 倍速）；TestClient

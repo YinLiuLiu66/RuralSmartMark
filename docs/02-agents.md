@@ -100,7 +100,7 @@ Agent5 管仓库调度 ←—— 礼盒在沙盘里流转 ——→ Agent4 算�
 ## 7. LLM 接入规范
 
 - 统一走 `agents/llm.py` 封装的 OpenAI 兼容客户端
-- 配置项：`OPENAI_API_KEY` / `OPENAI_BASE_URL`（国内端点，可换厂商；模型名 M4 定，decisions #21）
+- 配置项：`OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`（文本模型 `deepseek-ai/DeepSeek-V3.1-Terminus`，decisions #23；直出正文、支持流式，封装仍应忽略可能出现的 `reasoning_content`）
 - 所有 Agent 的 Prompt 集中管理（便于答辩时展示与调优）
 - 演示数据策略（已定，decisions #11）：答辩前预生成入库为主，现场全命中数据库；保留一个"实时生成"演示位作加分项
 
