@@ -13,9 +13,12 @@
 
 - 包管理器只用 uv（后端）+ pnpm（前端），不存在 requirements.txt 与 package-lock；
   uv ≥ 0.13，Python ≥ 3.13，Node ≥ 20.19，pnpm ≥ 10。uv 安装：docs.astral.sh/uv，pnpm 安装：pnpm.io/zh/installation。
-- 后端缺 `backend/.env` 时靠默认值能起（DATABASE_URL 有默认指向 127.0.0.1:5432 的本地库），
-  但 LLM / 数据库连接不可用；先 `cp backend/.env.example backend/.env` 并 `docker compose up -d`。
-- OPENAI_API_KEY 为空时：真调模型的路径不能实测，一律 mock，别假设 key 存在。
+- 数据库：根目录 `docker compose up -d` 起 PG18；`DATABASE_URL` 默认值连 127.0.0.1:5432/ruralsmartmark，
+  口令与 compose 默认值一致，所以不建 `.env` 也能连（建表仍走下方 alembic 命令；已实测可连）。
+  若改过 `POSTGRES_PASSWORD` 或沿用旧数据卷，默认值会失效——在 `backend/.env` 写实际 `DATABASE_URL`。
+- `.env` 主要用于 LLM（也可覆盖 JWT_SECRET / PORT 等）：根目录 `cp backend/.env.example backend/.env`
+  后填 `OPENAI_API_KEY`；为空时真实模型路径一律 mock，别假设 key 存在。
+- `uv run pytest` 需要 PG 在跑（conftest 自动建 `ruralsmartmark_test` 库，单函数也一样）。
 - 前端没有测试框架，只有 `pnpm typecheck` / `pnpm lint` 兜底；别假设存在 vitest / jest。
 - M2 起：`uv run ruralsmartmark` 会用 lifespan 拉起 sim 引擎主循环（默认 2 倍速）；TestClient
   测试不触发 lifespan，测试里真实推进需显式驱动（见 tests/test_sim.py 的模式）。

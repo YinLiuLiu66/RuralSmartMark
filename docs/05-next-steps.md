@@ -75,7 +75,7 @@ M1 已完成，上节命令已含 compose 建库 / 迁移 / seed 三步（compos
   - 环境变量 `POSTGRES_PASSWORD`（本地演示值即可，进 `.env` 不进 git）
   - 健康检查 `pg_isready -U postgres`（✅ 容器 healthy）
 - [x] `backend/.env.example` 增加 `DATABASE_URL`（asyncpg 驱动格式）
-- [x] `.env.example` 同步：`JWT_SECRET` / `JWT_EXPIRE_HOURS` / `SIM_SEED`（LLM_* 沿用既有 OPENAI_* 配置）
+- [x] `.env.example` 同步：`JWT_SECRET` / `JWT_EXPIRE_HOURS` / `SIM_SEED`（LLM 配置沿用既有 `OPENAI_*`，见 decisions #21）
 
 ### M1-b ORM 模型 + Alembic（✅）
 

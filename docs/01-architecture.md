@@ -1,7 +1,7 @@
 # 01 · 架构设计
 
 > 状态：✅ 主干定稿 — M1/M2 落地后目录结构与运行方式已同步实测形态
-> 更新时间：2026-10-16
+> 更新时间：2026-10-20
 
 ## 1. 总体架构
 
@@ -87,7 +87,7 @@ frontend/src/
 ## 5. 基础设施
 
 - **docker compose**：M1 先起单 `db` 服务（`pgvector/pgvector:pg18`，数据卷挂 `/var/lib/postgresql`，18 起官方镜像路径变更）；后端进 compose 后期补，前端开发期走 pnpm dev
-- **环境变量**：`DATABASE_URL`、`LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`、`JWT_SECRET`、`SIM_SEED`（可选固定剧本种子）
+- **环境变量**：`DATABASE_URL`、`OPENAI_API_KEY`、`OPENAI_BASE_URL`、`JWT_SECRET`、`SIM_SEED`（可选固定剧本种子）；模型名 M4 落地时补（decisions #21）
 - **CI/质量**：后端 ruff + pytest；前端 oxlint + tsc（沿用现状）
 
 ## 6. 待定问题（需拍板后更新本文档）

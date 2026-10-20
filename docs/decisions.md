@@ -14,7 +14,7 @@
 **理由**：直接上 PG 免去日后迁移；既然用 PG 就不单独引 Chroma/Qdrant。18 与镜像细节见 #18。
 
 ### #2 · LLM 底座
-**结论**：国内 OpenAI 兼容端点（智谱/通义/DeepSeek 等），通过 `LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL` 配置切换。
+**结论**：国内 OpenAI 兼容端点（智谱/通义/DeepSeek 等），通过 OpenAI SDK 标准变量 `OPENAI_API_KEY`/`OPENAI_BASE_URL` 配置切换（早期写的 `LLM_*` 命名已由 #21 取代）。
 **理由**：网络稳定、成本低，兼容 OpenAI SDK。
 
 ### #3 · 3D 素材策略
@@ -86,6 +86,11 @@
 ### #19 · WebSocket 推送是否按角色区分
 **结论**：不区分。`/ws/world` 对所有连接推送同一份事件流，不做游客/运营方视野裁剪。
 **理由**：演示型项目没有"游客"角色，答辩场景单人操作；视野裁剪是纯成本无卖点。日后真有多租户需求再加。
+
+### #21 · LLM 配置项命名以代码为准
+**结论**：LLM 接入沿用 OpenAI SDK 的标准环境变量名 `OPENAI_API_KEY` / `OPENAI_BASE_URL`；模型名等 M4 落地时再补（沿用 `OPENAI_*` 前缀）。#2 里的 `LLM_*` 是早期设想，未落地，不再作为实现依据。
+**理由**：`config.py` 与 `backend/.env.example` 已按 `OPENAI_*` 实现，可直接接智谱/通义/DeepSeek 等兼容端点；保留 `LLM_*` 会让 M4 同时存在两套变量名。
+**拍板时间**：2026-10-20
 
 ---
 
