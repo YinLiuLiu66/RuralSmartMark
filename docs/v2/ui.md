@@ -232,10 +232,10 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 3D 构建方式对齐 WareTrack：代码拼 Box/Cylinder/Cone/Sphere/Plane 等低多边形几何体，MeshStandardMaterial + CanvasTexture 生成标签/二维码；不引 GLTFLoader/外部模型；镜头正交等距、软光、暖色。
 - 字体优先系统 Songti/PingFang；Noto 作为可选 fallback，不依赖 Google Fonts CDN。
 
-## 9. 实现状态（Phase 0，2026-10-21）
+## 9. 实现状态（Phase 1，2026-10-21）
 
-- 已落地：token、桌面 shell、移动端 fallback、R3F 等距场景（果园/四站点/批次/卡车）、4 个站点标签 + 批次标签、批次选择、`/trace/:code` 骨架。
-- 未落地：审核 dialog、产出物 Tabs 内容、站点点击卡、批次沿路动画、KPI 实时更新、SSE；按 Phase 1–3 补。
-- 视觉验收：1280×720 桌面、390×844 溯源页与桌面端提示；无横向溢出。
-- 已知缺口：3D 场景仍为骨架（建筑/树木简化），Phase 1 加交互，Phase 4 打磨。
+- 已落地：token、桌面 shell、移动端 fallback、R3F 等距场景（果园/四站点/批次移动/站点状态/站点点击）、pipeline store/workspace API/SSE、工位卡、JSON 审核 dialog、产出物 Tabs、KPI、审核后自动启动下一站。
+- 未落地：各 Agent 的专用表单、真实 Agent、溯源 H5 内容/API、包装贴图、真实图像生成；Phase 2–3 补。
+- 视觉验收：1280×720 完整 mock 流水线；390×844 溯源页与桌面端提示；无横向溢出。
+- 已知缺口：审核仍是 JSON 编辑；3D 建筑/树木简化；bundle 约 1.23MB，Phase 4 拆包。
 

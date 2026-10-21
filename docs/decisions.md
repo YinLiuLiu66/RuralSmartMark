@@ -78,3 +78,9 @@
 **结论**：Phase 0 以“后端 4 测试 + ruff 零告警 + `pnpm typecheck/lint/build` + 1280/390 视觉验收”通过；不把未实现的流水线/SSE/溯源 API 说成已完成。
 **验证**：见 docs/05-next-steps.md §0/§7。
 **拍板时间**：2026-10-21
+
+### #46 · Phase 1 流水线实现
+**结论**：四 Agent 顺序状态机；`AgentRun` 先落库再广播；`/api/batches/{id}/workspace` 聚合 batch/runs/artifacts；SSE 用单 `message` 事件 + `type` 字段；审核通过后前端自动启动下一站；Phase 1 审核 UI 用 JSON 编辑器，Phase 2 换各 Agent 专用表单。
+**理由**：先跑通端到端，再接真实模型；workspace 减少前端多次请求；单通道 SSE 简化重连；审核后自动启动让“通过并进入下一站”名副其实。
+**验证**：pytest 8 passed；ruff/typecheck/lint/build 全绿；浏览器 batch 2 `traced` 四产出、batch 3 `packaging_review`。
+**拍板时间**：2026-10-21

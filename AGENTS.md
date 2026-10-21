@@ -12,9 +12,10 @@
 
 ## 当前阶段（2026-10-21）
 
-- **Phase 0 已完成**：`rewrite/v2` 分支；旧 v1 后端/前端已移出工作树（`main` 保留历史）；SQLite 9 张表 + Alembic 初始迁移；seed（产品/知识库/基准价/2 个批次）；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；后端 4 测试；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架；typecheck/lint/build 全绿。
-- **下一步 Phase 1**：mock 四 Agent 流水线 + 人工审核 + SSE + 站点卡 + 批次移动。
-- **尚未实现**：真实 Agent、SSE、公开溯源 API/对话、包装合成、定价计算、真实图像生成。别假设它们存在。
+- **Phase 0 已完成**：`rewrite/v2` 分支；旧 v1 后端/前端/文档/Postgres 数据已移出工作树（`main` 保留历史）；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
+- **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次沿站点移动、审核后自动启动下一站。
+- **下一步 Phase 2**：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。
+- **尚未实现**：真实 Agent、公开溯源 API/IP 对话、包装贴图、真实图像生成、确定性定价计算（当前 mock 156% 仅为演示）。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -65,19 +66,25 @@
 backend/
   src/ruralsmartmark/
     main.py config.py db.py deps.py models.py schemas.py
-    routes/ health.py products.py batches.py demo.py
-    agents/ base.py                 # AgentName/AgentStatus；流水线 Phase 1 补
+    routes/ health.py products.py batches.py demo.py pipeline.py
+    agents/ base.py mock.py orchestrator.py   # 状态机 + mock 四 Agent
     providers/ llm.py image.py      # Provider 接口 + Mock
+    services/ events.py workspace.py # SSE 事件总线 + workspace 聚合
     seed/ __init__.py __main__.py   # 幂等 seed
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
-  tests/ conftest.py test_health.py test_seed.py test_batches.py
+  tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
 frontend/
   src/api/client.ts                 # fetch 封装 + Product/Batch 类型
+  src/api/pipeline.ts               # workspace/run/approve/reject 类型与 API
+  src/agents.ts                     # Agent 元数据、状态映射、下一站/审核站
   src/stores/world.ts               # Zustand：批次/选中批次
-  src/three/Scene.tsx               # 等距正交场景（果园/四站点/批次/卡车）
+  src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/busy
+  src/three/Scene.tsx               # 等距正交场景（果园/四站点/批次移动/站点状态）
   src/three/stations.ts             # 四站点元数据
-  src/routes/Sandbox.tsx            # 桌面沙盘 `/`
+  src/components/StationCard.tsx    # 工位卡（运行/审核/重跑/产出预览）
+  src/components/ReviewDialog.tsx   # 原生 dialog 审核（Phase 1 为 JSON 编辑）
+  src/routes/Sandbox.tsx            # 桌面沙盘 `/` + SSE + 审核动线
   src/routes/Trace.tsx              # 移动溯源骨架 `/trace/:code`
   src/styles/global.css             # Tailwind v4 @theme + 山野编辑部 token
   vite.config.ts package.json
@@ -90,7 +97,7 @@ docs/
 .agent/skills/                      # 可复用技能包
 ```
 
-尚未创建、创建前勿假设存在：SSE、Agent 流水线、溯源 API/对话、包装合成、定价计算、真实图像 Provider。
+尚未创建、创建前勿假设存在：真实 Agent、公开溯源 API/IP 对话、包装合成、定价计算、真实图像 Provider。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
 ## 文档维护职责（必读必做）

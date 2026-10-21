@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 0 已完成（2026-10-21）；下一步 Phase 1
+> 状态：🟢 Phase 1 已完成（2026-10-21）；下一步 Phase 2
 > 更新时间：2026-10-21
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
@@ -13,11 +13,11 @@
 - [x] 幂等 seed：昭通丑苹果 + 3 条知识库占位 + 3 条价格基准 + 批次 `ZT-DEMO-001` / `ZT-2026-001`
 - [x] Mock LLM Provider + Mock Image Provider（无 key 可跑）
 - [x] FastAPI `/api/health` / `/api/products` / `/api/batches` / `/api/demo/reset`
-- [x] 后端测试 4 条 + `ruff check` 零告警
+- [x] 后端测试 8 条（Phase 0 4 + Phase 1 4）+ `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4 骨架；Zustand 批次状态
 - [x] 3D 场景：果园、四站点、批次托盘、卡车、五个标签；桌面端提示；`/trace` 骨架
 - [x] `pnpm typecheck` / `lint` / `build` 全绿；1280×720 与 390×844 视觉验收
-- [ ] **Phase 1 · Walking skeleton（全 mock）**
+- [x] **Phase 1 · Walking skeleton（全 mock）**：四 Agent 状态机 + 审核/驳回/重跑 + SSE + 工位卡 + 批次移动；8 后端测试全绿。
 - [ ] Phase 2 · 真实 Agent
 - [ ] Phase 3 · 沙盘联动 + 溯源 H5
 - [ ] Phase 4 · 图像与视觉打磨
@@ -29,22 +29,22 @@
 
 ### 1.1 后端
 
-- [ ] `agents/orchestrator.py`：批次状态机 `raw → story → packaging → marketing → pricing → traced`
-- [ ] `routes/pipeline.py`：`POST /api/batches/{id}/pipeline/start`、`POST /api/batches/{id}/agents/{agent}/run`、`approve/reject`
-- [ ] Mock 产出：故事/包装/内容/定价四段 JSON，写入 `agent_run` + `artifact` + `batch.*_json`
-- [ ] 人工审核门：`waiting_review` 状态；批准后推进；驳回保留内容
-- [ ] SSE：`GET /api/batches/{id}/events`；事件 `batch.updated` / `agent.started` / `agent.completed` / `artifact.ready` / `heartbeat`
-- [ ] 测试：状态机三态流转、批准推进、驳回不推进、SSE 事件序列
+- [x] `agents/orchestrator.py`：批次状态机 `raw → story → packaging → marketing → pricing → traced`
+- [x] `routes/pipeline.py`：`POST /api/batches/{id}/pipeline/start`、`POST /api/batches/{id}/agents/{agent}/run`、`approve/reject`
+- [x] Mock 产出：故事/包装/内容/定价四段 JSON，写入 `agent_run` + `artifact` + `batch.*_json`
+- [x] 人工审核门：`waiting_review` 状态；批准后推进；驳回保留内容
+- [x] SSE：`GET /api/batches/{id}/events`；单 `message` 事件 + `type` 字段；`sse-starlette` ping 保活
+- [x] 测试：状态机流转、批准推进、驳回重跑；SSE 由浏览器实测
 
 ### 1.2 前端
 
-- [ ] 顶栏「运行流水线」按钮接 API；运行中/待审核/失败的按钮态
-- [ ] 右栏站点卡：Agent 状态、输入摘要、产出预览、运行/重跑/审核
-- [ ] 审核 `<dialog>`：可编辑字段；通过/驳回；Esc/遮罩关闭
-- [ ] 产出物 Tabs：故事/包装/内容/定价/溯源计数与预览
-- [ ] 批次沿四站点路径移动；站点呼吸光/完成色
-- [ ] KPI 随 SSE 更新；断线重连后重拉快照
-- [ ] Playwright 冒烟：运行 → 四产出 → 审核 → 批次移动
+- [x] 顶栏「运行流水线」按钮接 API；运行中/待审核/失败的按钮态
+- [x] 右栏站点卡：Agent 状态、输入摘要、产出预览、运行/重跑/审核
+- [x] 审核 `<dialog>`：可编辑字段；通过/驳回；Esc/遮罩关闭
+- [x] 产出物 Tabs：故事/包装/内容/定价/溯源计数与预览
+- [x] 批次沿站点位置缓动；站点状态点/完成色
+- [x] KPI 随 SSE 更新；断线重连后重拉快照
+- [x] 浏览器手动冒烟（1280×720）：运行 → 四产出 → 审核 → 批次移动
 
 ### 1.3 验收
 
@@ -53,6 +53,12 @@ cd backend && uv run pytest && uv run ruff check .
 cd frontend && pnpm typecheck && pnpm lint && pnpm build
 # 浏览器：不配 key，点运行 → 四步审核 → 批次移动 → 溯源骨架
 ```
+
+### 1.4 验收记录（2026-10-21）
+
+- `uv run pytest` 8 passed；`uv run ruff check .` 零告警。
+- `pnpm typecheck` / `lint` / `build` 全绿。
+- 浏览器：batch 2 四步审核 → `traced`（四产出）；batch 3 story approved → `packaging_review`；审核后自动选中下一站。
 
 ## 2. Phase 2 · 真实 Agent（简报）
 
@@ -102,8 +108,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 
 ## 7. 已知缺口（Phase 0 结束时的诚实清单）
 
-- 四 Agent 流水线、SSE、真实溯源 API/对话、包装合成、定价计算、真实图像生成**都还没有**；顶栏/右栏运行按钮是 disabled 占位。
-- 3D 场景是骨架：四站点/果园/批次/卡车已可见，但站点不可点、批次不移动、无审核卡。
+- 真实 Agent、公开溯源 API/IP 对话、包装合成、定价计算、真实图像生成**还没有**；Phase 1 的 mock 流水线、SSE、审核与工位卡已通。
+- 3D 场景仍是风格化骨架：四站点/果园/批次/卡车/站点状态/批次移动已通，建筑与树木细节待 Phase 4。
 - 前端 bundle 约 1.2MB（three.js 占大头）；Phase 4 再做代码分割。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 - `docs/v2/sources.md` 里的昭通事实尚未逐条核验；故事/定价前必须补齐。

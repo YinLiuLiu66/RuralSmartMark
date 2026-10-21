@@ -1,8 +1,44 @@
-import { Html, OrbitControls, RoundedBox } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import { Html, OrbitControls, RoundedBox, useCursor } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
 
+import type { StationStatus } from "../agents";
 import { STATIONS, type StationMeta, type Vec3 } from "./stations";
+
+const STATUS_LABEL: Record<StationStatus, string> = {
+  idle: "待运行",
+  running: "生成中",
+  review: "待审核",
+  done: "已通过",
+  failed: "失败",
+};
+
+const STATUS_COLOR: Record<StationStatus, string> = {
+  idle: "#8A8A80",
+  running: "#B6402A",
+  review: "#8A5A00",
+  done: "#3F6B4F",
+  failed: "#B3261E",
+};
+
+const BATCH_POSITIONS: Record<string, Vec3> = {
+  intake: [-3, 0, -4],
+  story: [-9, 0, 2.8],
+  packaging: [0, 0, 5.8],
+  marketing: [8, 0, 1.8],
+  pricing: [14, 0, 6.8],
+  trace: [14, 0, 7.8],
+};
+
+const BATCH_LABEL: Record<string, string> = {
+  intake: "原料",
+  story: "故事 IP",
+  packaging: "包装",
+  marketing: "内容",
+  pricing: "定价",
+  trace: "溯源",
+};
 
 function Tree({ position }: { position: Vec3 }) {
   return (
@@ -38,9 +74,31 @@ function Orchard() {
   );
 }
 
-function StationBuilding({ station }: { station: StationMeta }) {
+function StationBuilding({
+  station,
+  status,
+  onSelect,
+}: {
+  station: StationMeta;
+  status: StationStatus;
+  onSelect?: (stationId: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  useCursor(hovered);
+
   return (
-    <group position={station.position}>
+    <group
+      position={station.position}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.(station.id);
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={() => setHovered(false)}
+    >
       <mesh position={[0, 0.06, 0]} receiveShadow>
         <boxGeometry args={[3.0, 0.12, 2.4]} />
         <meshStandardMaterial color="#D9D2C0" />
@@ -67,37 +125,80 @@ function StationBuilding({ station }: { station: StationMeta }) {
         <boxGeometry args={[1.0, 0.3, 0.06]} />
         <meshStandardMaterial color="#C9A46A" />
       </mesh>
-      <Html
-        position={[0, 2.95, 0]}
-        center
-        style={{ pointerEvents: "none" }}
-      >
-        <div className="whitespace-nowrap rounded-full border border-line bg-surface/95 px-3 py-1 text-[11px] font-medium text-ink shadow-card">
+      <mesh position={[0, 2.58, 0]} castShadow>
+        <sphereGeometry args={[0.11, 12, 12]} />
+        <meshStandardMaterial
+          color={STATUS_COLOR[status]}
+          emissive={STATUS_COLOR[status]}
+          emissiveIntensity={status === "running" ? 1.2 : 0.2}
+        />
+      </mesh>
+      <Html position={[0, 3.0, 0]} center style={{ pointerEvents: "none" }}>
+        <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface/95 px-3 py-1 text-[11px] font-medium text-ink shadow-card">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: STATUS_COLOR[status] }}
+          />
           {station.name}
+          <span className="font-normal text-ink-faint">· {STATUS_LABEL[status]}</span>
         </div>
       </Html>
     </group>
   );
 }
 
-function BatchPallet({ code, onClick }: { code: string; onClick?: () => void }) {
+function BatchPallet({
+  code,
+  station,
+  onClick,
+}: {
+  code: string;
+  station: string;
+  onClick?: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const groupRef = useRef<THREE.Group>(null);
+  const initialized = useRef(false);
+  const target = BATCH_POSITIONS[station] ?? BATCH_POSITIONS.intake;
+  const targetVec = useMemo(() => new THREE.Vector3(...target), [target]);
+  const label = BATCH_LABEL[station] ?? "原料";
+  useCursor(hovered);
+
+  useEffect(() => {
+    if (!initialized.current && groupRef.current) {
+      groupRef.current.position.set(...target);
+      initialized.current = true;
+    }
+  }, [target]);
+
+  useFrame((_, delta) => {
+    groupRef.current?.position.lerp(targetVec, 1 - Math.exp(-delta * 6));
+  });
+
   return (
-    <group position={[-3, 0, -4]} onClick={onClick}>
+    <group
+      ref={groupRef}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.();
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={() => setHovered(false)}
+    >
       <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
         <boxGeometry args={[1.4, 0.24, 1.0]} />
         <meshStandardMaterial color="#C9A46A" />
       </mesh>
       <mesh position={[0, 0.55, 0]} castShadow>
         <boxGeometry args={[1.0, 0.7, 0.8]} />
-        <meshStandardMaterial color="#E7D8BF" />
+        <meshStandardMaterial color={station === "intake" ? "#E7D8BF" : "#C9A46A"} />
       </mesh>
-      <Html
-        position={[0, 1.25, 0]}
-        center
-        style={{ pointerEvents: "none" }}
-      >
+      <Html position={[0, 1.25, 0]} center style={{ pointerEvents: "none" }}>
         <div className="whitespace-nowrap rounded-full border border-apple/30 bg-apple-weak px-3 py-1 text-[11px] font-medium text-apple shadow-card">
-          {code} · 原料
+          {code} · {label}
         </div>
       </Html>
     </group>
@@ -125,11 +226,22 @@ function Truck() {
   );
 }
 
-function Stations() {
+function Stations({
+  statuses,
+  onSelect,
+}: {
+  statuses: Record<string, StationStatus>;
+  onSelect?: (stationId: string) => void;
+}) {
   return (
     <>
       {STATIONS.map((station) => (
-        <StationBuilding key={station.id} station={station} />
+        <StationBuilding
+          key={station.id}
+          station={station}
+          status={statuses[station.id] ?? "idle"}
+          onSelect={onSelect}
+        />
       ))}
     </>
   );
@@ -137,10 +249,16 @@ function Stations() {
 
 function SceneContent({
   batchCode,
+  batchStation,
+  stationStatuses,
   onSelectBatch,
+  onSelectStation,
 }: {
   batchCode: string;
+  batchStation: string;
+  stationStatuses: Record<string, StationStatus>;
   onSelectBatch?: () => void;
+  onSelectStation?: (stationId: string) => void;
 }) {
   const [ready, setReady] = useState(false);
 
@@ -153,8 +271,8 @@ function SceneContent({
 
   return (
     <>
-      <Stations />
-      <BatchPallet code={batchCode} onClick={onSelectBatch} />
+      <Stations statuses={stationStatuses} onSelect={onSelectStation} />
+      <BatchPallet code={batchCode} station={batchStation} onClick={onSelectBatch} />
       <Truck />
     </>
   );
@@ -162,10 +280,16 @@ function SceneContent({
 
 export function Scene({
   batchCode,
+  batchStation,
+  stationStatuses,
   onSelectBatch,
+  onSelectStation,
 }: {
   batchCode: string;
+  batchStation: string;
+  stationStatuses: Record<string, StationStatus>;
   onSelectBatch?: () => void;
+  onSelectStation?: (stationId: string) => void;
 }) {
   return (
     <Canvas
@@ -216,7 +340,13 @@ export function Scene({
       </mesh>
 
       <Orchard />
-      <SceneContent batchCode={batchCode} onSelectBatch={onSelectBatch} />
+      <SceneContent
+        batchCode={batchCode}
+        batchStation={batchStation}
+        stationStatuses={stationStatuses}
+        onSelectBatch={onSelectBatch}
+        onSelectStation={onSelectStation}
+      />
 
       <OrbitControls
         makeDefault

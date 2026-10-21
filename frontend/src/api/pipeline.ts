@@ -1,0 +1,81 @@
+import type { Batch } from "./client";
+
+export type AgentKey = "story" | "packaging" | "marketing" | "pricing";
+
+export interface BatchFull extends Batch {
+  story_json: Record<string, unknown> | null;
+  packaging_json: Record<string, unknown> | null;
+  marketing_json: Record<string, unknown> | null;
+  pricing_json: Record<string, unknown> | null;
+}
+
+export interface AgentRun {
+  id: number;
+  batch_id: number;
+  agent: AgentKey;
+  status: string;
+  note: string | null;
+  output_json: Record<string, unknown> | null;
+  error: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface Artifact {
+  id: number;
+  batch_id: number;
+  kind: AgentKey;
+  content_json: Record<string, unknown> | null;
+  file_path: string | null;
+  approved_at: string | null;
+}
+
+export interface BatchWorkspace {
+  batch: BatchFull;
+  runs: AgentRun[];
+  artifacts: Artifact[];
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let detail = `API ${response.status}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (body.detail) detail = body.detail;
+    } catch {
+      // keep the status text
+    }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as T;
+}
+
+export const pipelineApi = {
+  workspace: (batchId: number) => request<BatchWorkspace>(`/batches/${batchId}/workspace`),
+  start: (batchId: number) =>
+    request<BatchWorkspace>(`/batches/${batchId}/pipeline/start`, { method: "POST" }),
+  run: (batchId: number, agent: AgentKey, note?: string) =>
+    request<BatchWorkspace>(`/batches/${batchId}/agents/${agent}/run`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+  approve: (batchId: number, agent: AgentKey, output?: Record<string, unknown>) =>
+    request<BatchWorkspace>(`/batches/${batchId}/agents/${agent}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ output }),
+    }),
+  reject: (batchId: number, agent: AgentKey, note?: string) =>
+    request<BatchWorkspace>(`/batches/${batchId}/agents/${agent}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+};

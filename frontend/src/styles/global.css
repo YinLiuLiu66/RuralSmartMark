@@ -50,6 +50,10 @@
   ::selection {
     background: var(--color-apple-weak);
   }
+
+  dialog::backdrop {
+    background: rgb(31 42 36 / 0.35);
+  }
 }
 
 @layer components {

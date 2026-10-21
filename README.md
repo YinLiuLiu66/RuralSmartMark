@@ -6,15 +6,15 @@
 
 ## 当前状态（2026-10-21）
 
-**Phase 0 已完成**：
+**Phase 1 已完成**：
 
-- `rewrite/v2` 分支；旧 v1 代码移出工作树（`main` 保留历史）。
-- FastAPI + SQLite（9 张表）+ Alembic 初始迁移 + 幂等 seed。
-- Mock LLM / Image Provider；无 `OPENAI_API_KEY` 也能跑。
-- 前端 React 19 + R3F 9 + Tailwind 4：桌面沙盘骨架、果园/四站点/批次/卡车、移动端溯源骨架。
-- 后端 4 测试、ruff、前端 typecheck/lint/build 全绿；1280×720 与 390×844 视觉验收通过。
+- `rewrite/v2` 分支；旧 v1 代码、设计文档、Postgres 数据移出工作树（`main` 保留历史）。
+- FastAPI + SQLite（9 张表）+ Alembic + 幂等 seed；Mock LLM/Image Provider，无 key 可跑。
+- 四 Agent mock 流水线：故事 → 包装 → 内容 → 定价；人工审核/驳回/重跑 + SSE + workspace。
+- 前端 React 19 + R3F 9 + Tailwind 4：3D 沙盘、工位卡、JSON 审核弹窗、批次沿站点移动、KPI/产出物 Tabs、移动端溯源骨架。
+- 后端 8 测试、ruff、前端 typecheck/lint/build 全绿；浏览器完整 mock 动线通过。
 
-**Phase 1 下一步**：mock 四 Agent 流水线、人工审核、SSE、站点卡、批次移动。真实 Agent / 溯源 API / 包装合成 / 定价计算尚未实现。
+**Phase 2 下一步**：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。真实 Agent、公开溯源 API/IP 对话、包装贴图、真实图像生成尚未实现。
 
 ## 快速开始
 
@@ -86,6 +86,12 @@ docs/
 | GET | `/api/batches` | 批次列表 |
 | POST | `/api/batches` | 新建批次 |
 | GET | `/api/batches/{id}` | 批次详情 |
+| GET | `/api/batches/{id}/workspace` | 批次 + 运行记录 + 产出物 |
+| POST | `/api/batches/{id}/pipeline/start` | 运行下一步 |
+| POST | `/api/batches/{id}/agents/{agent}/run` | 重跑当前 Agent |
+| POST | `/api/batches/{id}/agents/{agent}/approve` | 审核通过 |
+| POST | `/api/batches/{id}/agents/{agent}/reject` | 驳回 |
+| GET | `/api/batches/{id}/events` | SSE 实时事件 |
 | GET | `/api/batches/by-code/{code}` | 按批次码查 |
 | POST | `/api/demo/reset` | 重置演示批次 |
 

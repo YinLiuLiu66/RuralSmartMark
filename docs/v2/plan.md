@@ -100,7 +100,7 @@
 - 字体：标题 Songti SC / Noto Serif SC，界面 PingFang SC / Noto Sans SC；数字用 tabular；不依赖外部字体 CDN。
 - 卡片：16–20px 圆角、细边框、柔和阴影；不用重玻璃拟态。
 - 3D：低多边形、暖阳光、软阴影；建筑带一点乡村屋檐/木构意象，不做写实仓库。
-- 动效：站点呼吸光、批次沿路移动、数字 count-up、产出物翻页；不做游戏化弹窗/彩带。
+- 动效：站点状态点、批次沿路移动、数字 count-up、产出物翻页；不做游戏化弹窗/彩带。
 
 ---
 
@@ -163,7 +163,7 @@
 - 一块 48×36 的低多边形县域地块；果园在左上，故事馆在左中，包装工坊在中下，内容工坊在右中，云仓/门店在右下；一条环路串起来。
 - 批次：托盘 + 纸箱；包装前是牛皮纸毛坯，包装后换成生成贴图的礼盒；沿 CatmullRom 曲线移动。
 - 卡车：包装完成后从云仓出发，沿路开到门店；不参与复杂调度，只表达"出库"。
-- 站点状态：idle 灰、running 呼吸光、waiting_review 琥珀、done 绿；屋顶浮动图标。
+- 站点状态：idle 灰、running 主色发光点、waiting_review 琥珀、done 绿；Phase 1 用状态点 + 静态 emissive，呼吸光留 Phase 4。
 - 广告牌/直播屏：内容工坊完成后显示生成的小红书封面/标题。
 - 二维码：定价完成后出现在礼盒侧面/门店立牌；点击打开手机框预览。
 - 果园：成排苹果树（instanced），可点选看产地/批次信息。
@@ -254,6 +254,7 @@ AGENTS.md README.md
 
 - `GET /api/products`、`GET /api/products/{slug}`
 - `POST /api/batches`、`GET /api/batches`、`GET /api/batches/{id}`
+- `GET /api/batches/{id}/workspace`（batch + runs + artifacts）
 - `POST /api/batches/{id}/pipeline/start`
 - `POST /api/batches/{id}/agents/{agent}/run`（body: note）
 - `POST /api/batches/{id}/agents/{agent}/approve`（body: edited output）
@@ -265,7 +266,7 @@ AGENTS.md README.md
 
 ### SSE 事件
 
-`batch.updated`、`agent.started`、`agent.log`、`agent.completed`、`agent.failed`、`artifact.ready`、`pricing.updated`、`trace.scanned`、`heartbeat`。事件带 `id`，支持 `Last-Event-ID` 重连；前端重连后重新拉批次快照。
+Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.failed`、`artifact.ready`；`sse-starlette` ping 保活。`agent.log`、`pricing.updated`、`trace.scanned` 待 Phase 2–3。事件带 `id`；前端重连后重新拉 workspace 快照。
 
 ---
 
@@ -411,4 +412,13 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - `pnpm typecheck/lint/build` 全绿；1280×720 桌面与 390×844 溯源页/桌面端提示视觉验收。
 - 未实现：四 Agent 流水线、SSE、公开溯源 API/对话、包装合成、定价计算、真实图像生成；Phase 1 起补。
 - v1 设计文档、探针报告、根目录旧 Postgres 数据（80MB）与 `.DS_Store` 已从工作树移除；追溯走 git history（main 分支）。
+
+---
+
+## 15. Phase 1 实施记录（2026-10-21）
+
+- 四 Agent mock 流水线：story → packaging → marketing → pricing；统一状态机 + `AgentRun`/`Artifact`/workspace。
+- 人工审核/驳回/重跑；SSE 事件总线；前端工位卡、JSON 审核 dialog、批次沿站点移动、审核后自动启动下一站。
+- 验证：`pytest` 8 passed；`ruff` 零告警；`tsc`/`oxlint`/`vite build` 全绿；浏览器 batch 2 `traced`（四产出）与 batch 3 `packaging_review` 实测。
+- 下一步 Phase 2：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。
 

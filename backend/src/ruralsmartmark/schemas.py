@@ -48,3 +48,53 @@ class BatchCreate(BaseModel):
 class DemoResetOut(BaseModel):
     products: int
     batches: int
+
+
+class AgentRunOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    batch_id: int
+    agent: str
+    status: str
+    note: str | None = None
+    output_json: dict | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class ArtifactOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    batch_id: int
+    kind: str
+    content_json: dict | None = None
+    file_path: str | None = None
+    approved_at: datetime | None = None
+
+
+class BatchFullOut(BatchOut):
+    story_json: dict | None = None
+    packaging_json: dict | None = None
+    marketing_json: dict | None = None
+    pricing_json: dict | None = None
+
+
+class BatchWorkspaceOut(BaseModel):
+    batch: BatchFullOut
+    runs: list[AgentRunOut]
+    artifacts: list[ArtifactOut]
+
+
+class AgentRunRequest(BaseModel):
+    note: str | None = None
+
+
+class ApproveRequest(BaseModel):
+    output: dict | None = None
+
+
+class RejectRequest(BaseModel):
+    note: str | None = None
