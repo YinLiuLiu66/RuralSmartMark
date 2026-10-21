@@ -52,6 +52,7 @@
 
 ```
 docker-compose.yml                 # 单 db 服务（pgvector/pgvector:0.8.7-pg18，卷挂 ./data/postgres）
+.agent/skills/                     # 可复用 Agent 技能包（agents-md-craft / frontend-craft / liu-meta-skill）
 backend/
   src/ruralsmartmark/app.py         # 路由注册 + lifespan（拉起/停止 sim 引擎主循环）
   src/ruralsmartmark/config.py      # pydantic-settings：新配置项加进 Settings 类
