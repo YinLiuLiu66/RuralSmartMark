@@ -29,6 +29,18 @@
 - M6 起：`price_benchmark` 三档演示测算随 `build_initial_world` 幂等 upsert（reset 不清空），
   公开接口 `/api/pricing/benchmarks`；沙盘右下“溢价对照”卡为纯 CSS，不引 ECharts（decisions #31）。
 
+## 技能包同步（每个 Agent 开工必做）
+
+- `.agent/skills/` 是仓库内技能的唯一真源：`agents-md-craft` / `frontend-craft` / `liu-meta-skill`。
+- 每个 Agent 开工时，把当前任务需要的技能目录**复制或软链**到自己的技能发现目录：
+  - ZCode：`~/.zcode/skills/`（或项目级 `.zcode/skills/`，以当前版本实际加载路径为准）
+  - Claude Code：`.claude/skills/`
+  - 其他工具：按该工具文档的 skills / rules 目录。
+- 只同步需要的技能，不要默认全量加载；同步后确认当前会话能列出/调用该技能。
+- 方向是单向的：`.agent/skills/` → 工具目录；目标已有同名技能时以 `.agent/skills/` 为准，
+  不要反向修改仓库里的源。
+- 工具私有目录（`.claude/`、`.zcode/` 等）不入库；`.agent/skills/` 才是团队共享源。
+
 ## 常用命令（后端在 backend/ 下，前端在 frontend/ 下）
 
 - Docker（仓库根目录执行）：
