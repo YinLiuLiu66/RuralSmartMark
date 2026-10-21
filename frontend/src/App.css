@@ -239,6 +239,10 @@
   margin-top: 0;
 }
 
+.app-shell.trace-shell {
+  padding-top: 0;
+}
+
 .top-nav {
   position: fixed;
   inset: 0 0 auto;

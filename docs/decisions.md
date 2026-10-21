@@ -142,6 +142,16 @@
 **验证方法**：`python -m ruralsmartmark.agents.pregenerate` 重跑后逐句核对终稿；`ruff` / `pytest` / `pnpm typecheck` / `pnpm lint` / `pnpm build` 全绿；浏览器验收见 05 §6。
 **拍板时间**：2026-10-21
 
+### #30 · M5 溯源 H5（固定演示码 + 预置时间线）
+**结论**：
+- 演示码固定为 `MJDEMO22`，绑定一条预置的完整演示托盘（批号 `MJ-DEMO-001`，停在凯里门店）；`build_initial_world` 每次 reset 重建这条时间线，码与 URL 不变。溯源时间线读 `trace_event`，故事取**最新 final 品牌故事原文**（不另生成第一人称文案）。
+- 新增公开接口 `GET /api/trace/{code}`（无需鉴权）与前端 `/t/:code` 页面；页面时间线显示 `HH:mm` + “演示日”，不强调固定日历日期；M5 不做温度曲线，只把 `temp_alert` 作为时间线事件展示。
+- 工作台提供当前 origin 下的二维码 + 可点击链接（`/t/MJDEMO22`）；手机扫码需用局域网地址打开工作台（`pnpm dev --host` + 电脑局域网 IP），二维码跟随当前 origin，不硬编码 localhost。
+- 补一条 `delivered`（门店签收）流水：仅在最终一程送达门店时写入，避免把集货仓/前置仓的到站误标成“签收”。
+**理由**：演示可靠性优先——固定码可提前印二维码/贴演示板，预置时间线开箱即有完整链路，不依赖现场等待或重启后重新生成；故事原文复用符合 #9/#16 的最小范围，避免新增 Agent 类型与表结构。
+**验证方法**：`GET /api/trace/MJDEMO22` 返回完整时间线与最终故事；`GET /api/trace/UNKNOWN` 404；`pytest` / `ruff` / `pnpm typecheck` / `pnpm lint` / `pnpm build` 全绿；浏览器桌面 + 390px 手机视口实测。
+**拍板时间**：2026-10-21
+
 ---
 
 ## ❓ 待定

@@ -83,9 +83,11 @@ Agent5 管仓库调度 ←—— 礼盒在沙盘里流转 ——→ Agent4 算�
 
 - **时间线**：该礼盒从采摘 → 集货仓 → 冷链车 → 前置仓 → 签收的全程记录
   （读 `trace_event` 流水表，`trace_code` 只锚 `pallet_id`，见 decisions #15）
-- **IP 口吻文案**：以 IP 角色第一人称讲述这段旅程（复用 Agent 1 已定稿的品牌故事，答辩前预生成落库，见 decisions #11）
+- **IP 口吻文案**：复用 Agent 1 已定稿的品牌故事原文（答辩前预生成落库，见 decisions #11）；M5 不另生成第一人称旅程文案。
 
 > 💡 这是 Agent 与沙盘联动的最直观证明：沙盘里记录的每一次运输，就是溯源故事。
+>
+> **M5 落地（2026-10-21，decisions #30）**：固定演示码 `MJDEMO22` + 预置 17 节点时间线；页面直接展示最新 final 品牌故事，第一人称/IP 对话留 M7。实现见 `backend/src/ruralsmartmark/routes/trace.py` 与 `frontend/src/routes/Trace.tsx`。
 
 | 优先级 | ⭐ MVP（时间线版，decisions #16）：闭环收口件，非答辩高光，最小打磨 |
 

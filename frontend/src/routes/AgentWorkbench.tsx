@@ -10,6 +10,7 @@ import type { AgentStatus, AgentTask } from '../api/types'
 import { connectWorldSocket } from '../api/ws'
 import ArtifactEditor from '../components/ArtifactEditor'
 import LoginDialog from '../components/LoginDialog'
+import TraceQrCard from '../components/TraceQrCard'
 import { useAuth } from '../stores/auth'
 
 const TASK_STATUS: Record<AgentStatus, string> = {
@@ -66,6 +67,7 @@ export default function AgentWorkbench() {
   const queryClient = useQueryClient()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
 
   const tasksQuery = useQuery({
     queryKey: ['agent-tasks'],
@@ -134,6 +136,11 @@ export default function AgentWorkbench() {
           <p>AI 产出先落库；人工润色后定稿，答辩断网也能重放。</p>
         </div>
         <div className="wb-create">
+          {role === 'operator' && (
+            <button type="button" className="ghost" onClick={() => setQrOpen(true)}>
+              溯源二维码
+            </button>
+          )}
           {busy && <span className="wb-muted">已有任务在生成…</span>}
           <button
             type="button"
@@ -196,6 +203,7 @@ export default function AgentWorkbench() {
           )}
         </section>
       </div>
+      {qrOpen && <TraceQrCard onClose={() => setQrOpen(false)} />}
     </main>
   )
 }

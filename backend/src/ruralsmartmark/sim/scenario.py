@@ -32,7 +32,7 @@ from ruralsmartmark.models import (
     Vehicle,
     Worker,
 )
-from ruralsmartmark.sim.clock import SimClock
+from ruralsmartmark.sim.clock import SIM_START, SimClock
 from ruralsmartmark.sim.state_machines import shipment_next
 
 # 站点与站 key 一一对应；坐标取 M0 探针 probeData.ts 同款
@@ -67,6 +67,10 @@ CYCLE_TICKS = 100  # 一程周期（模拟分钟）
 BATCH_PER_CYCLE = 4  # 每周期采摘托数
 TRUCK2_THRESHOLD = 4  # 集货仓存货 ≥ 此值触发二程
 MAX_CARGO = 8  # 单程装载上限
+
+# M5 演示样张（decisions #30）：固定码 + 完整时间线，每次 reset 重建
+DEMO_TRACE_CODE = "MJDEMO22"
+DEMO_BATCH_NO = "MJ-DEMO-001"
 
 TEMP_BASE = 3.8
 TEMP_JITTER = 0.6
@@ -187,7 +191,75 @@ async def build_initial_world(session: AsyncSession) -> WorldRefs:
             )
         )
     await session.flush()
+    await _seed_demo_trace(session, refs)
     return refs
+
+
+async def _seed_demo_trace(session: AsyncSession, refs: WorldRefs) -> None:
+    """固定演示码 + 一条完整时间线（decisions #30）。
+
+    reset 会清空运行时表，这里随世界重建；码不变，二维码/链接可提前固定。
+    演示托盘停在门店，不参与二程/三程的取货查询。
+    """
+    existing = await session.scalar(
+        select(TraceCode.id).where(TraceCode.code == DEMO_TRACE_CODE)
+    )
+    if existing is not None:
+        return
+
+    pallet = Pallet(
+        sku_id=refs.sku["麻江蓝莓文创礼盒"],
+        qty=96,
+        batch_no=DEMO_BATCH_NO,
+        current_site_id=refs.site["market"],
+    )
+    session.add(pallet)
+    await session.flush()
+    session.add(
+        TraceCode(
+            code=DEMO_TRACE_CODE,
+            pallet_id=pallet.id,
+            activated_at=SIM_START,
+        )
+    )
+
+    events = (
+        (0, "harvested", "farm", None, "演示样张 · 清晨采摘装托", None),
+        (12, "packed", "farm", None, "文创礼盒分装（12 盒/托）", None),
+        (22, "stored", "farm", None, "产地冷库预冷暂存", None),
+        (36, "loaded", None, "truck1", "冷链车装载出库", None),
+        (42, "departed", None, "truck1", "冷链车发车，运单进入在途", None),
+        (55, "temp_alert", None, "truck1", "冷链温度越限告警", {"temperature": 8.4}),
+        (68, "arrived", "hub", None, "到站，等待卸货", None),
+        (74, "unloaded", "hub", None, "卸货入仓", None),
+        (88, "loaded", None, "truck2", "冷链车装载出库", None),
+        (90, "departed", None, "truck2", "冷链车发车，运单进入在途", None),
+        (118, "arrived", "depot", None, "到站，等待卸货", None),
+        (124, "unloaded", "depot", None, "卸货入仓", None),
+        (140, "loaded", None, "truck2", "冷链车装载出库", None),
+        (142, "departed", None, "truck2", "冷链车发车，运单进入在途", None),
+        (166, "arrived", "market", None, "到站，等待卸货", None),
+        (172, "unloaded", "market", None, "卸货入仓", None),
+        (174, "delivered", "market", None, "门店签收 · 消费者扫码溯源", None),
+    )
+    for offset, kind, site_key, vehicle_key, note, extra in events:
+        payload: dict[str, Any] = {
+            "sim_ts": (SIM_START + timedelta(minutes=offset)).isoformat(
+                timespec="seconds"
+            )
+        }
+        if extra:
+            payload.update(extra)
+        session.add(
+            TraceEvent(
+                pallet_id=pallet.id,
+                site_id=refs.site[site_key] if site_key else None,
+                vehicle_id=refs.vehicle[vehicle_key] if vehicle_key else None,
+                kind=kind,
+                payload=payload,
+                note=note,
+            )
+        )
 
 
 class WorldScript:
@@ -306,10 +378,31 @@ class WorldScript:
         vehicle: str | None = None,
         note: str | None = None,
     ) -> None:
+        await self._trace_ids(
+            session,
+            self.batch_pallet_ids,
+            kind,
+            site=site,
+            vehicle=vehicle,
+            note=note,
+        )
+
+    async def _trace_ids(
+        self,
+        session: AsyncSession,
+        pallet_ids: list[int],
+        kind: str,
+        *,
+        site: str | None = None,
+        vehicle: str | None = None,
+        note: str | None = None,
+    ) -> None:
         site_id = self.refs.site[site] if site else None
         vehicle_id = self.refs.vehicle[vehicle] if vehicle else None
-        for pid in self.batch_pallet_ids:
+        for pid in pallet_ids:
             pallet = await session.get(Pallet, pid)
+            if pallet is None:
+                continue
             await self._trace_pallet(
                 session,
                 pallet,
@@ -426,6 +519,14 @@ class WorldScript:
 
     async def _deliver_b(self, session: AsyncSession) -> None:
         await self._ship_deliver(session, self.t2_sid_b, idle="market")
+        # 最终一程到达门店才写“签收”；集货仓/前置仓的到站只记 unloaded
+        await self._trace_ids(
+            session,
+            self.t2_cargo_ids,
+            "delivered",
+            site="market",
+            note="门店签收 · 消费者扫码溯源",
+        )
 
     async def _confirm(
         self, session: AsyncSession, src: str, dst: str, vkey: str

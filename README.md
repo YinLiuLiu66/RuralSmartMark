@@ -41,6 +41,7 @@ RuralSmartMark/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/client.ts # 请求封装
+│   │   ├── routes/Trace.tsx # 溯源 H5 /t/:code（M5）
 │   │   ├── three/        # 3D 沙盘（M0 探针，报告见 docs/05-probe-r3f.md）
 │   │   ├── App.tsx
 │   │   └── main.tsx
@@ -88,11 +89,14 @@ uv run ruralsmartmark      # http://127.0.0.1:8000
 ```bash
 cd frontend
 pnpm install
-pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` Agent 工作台）
+pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` 工作台，`/t/:code` 溯源）
 ```
 
 前端通过 `vite.config.ts` 中的代理把 `/api/*` 转发到 `http://127.0.0.1:8000`，
 开发期不需要额外处理跨域。
+
+溯源演示页：<http://localhost:5173/t/MJDEMO22>（固定演示码 `MJDEMO22`，后端启动/reset 会重建完整时间线）。
+手机扫码：用 `pnpm dev --host` 启动，并在电脑浏览器用局域网地址打开工作台，点“溯源二维码”。
 
 ## 常用命令
 
@@ -103,6 +107,7 @@ pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` Ag
 | backend | `uv run ruff check .` | 静态检查 |
 | backend | `uv run ruff format .` | 格式化 |
 | frontend | `pnpm dev` | 启动开发服务 |
+| frontend | `pnpm dev --host` | 启动开发服务并允许局域网访问（手机扫码溯源用） |
 | frontend | `pnpm build` | 类型检查 + 生产构建 |
 | frontend | `pnpm lint` | oxlint 检查 |
 | frontend | `pnpm preview` | 预览生产构建产物 |
@@ -112,5 +117,6 @@ pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` Ag
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查 |
+| GET | `/api/trace/{code}` | 公开溯源数据（M5，无需鉴权；固定演示码 `MJDEMO22`） |
 
 业务接口统一挂在 `/api` 前缀下，方便前端代理和反向代理规则收敛。

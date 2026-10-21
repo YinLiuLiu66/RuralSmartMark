@@ -1,7 +1,7 @@
 # 03 · 数据模型与接口约定
 
-> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 亮出快照/控制/WS，M4 增加 Agent 任务与产出物接口
-> 更新时间：2026-10-20
+> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 亮出快照/控制/WS，M4 增加 Agent 任务与产出物接口，M5 增加公开溯源接口
+> 更新时间：2026-10-21
 
 ## 1. 核心实体（约 12 张表）
 
@@ -64,6 +64,7 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | GET | `/api/agent-tasks/{id}` | 单任务详情 ✅ |
 | PATCH | `/api/agent-artifacts/{id}` | 编辑 / 润色 / 定稿（M4，decisions #25）✅ |
 | GET | `/api/agent-artifacts/{id}` | 单产出物 ✅ |
+| GET | `/api/trace/{code}` | 扫码溯源（公开，无需鉴权）：产品/批次 + 最新 final 品牌故事 + `trace_event` 时间线（M5，decisions #30）✅ |
 
 ### 3.2 规划（随开发补充）
 
@@ -71,7 +72,6 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | --- | --- | --- |
 | GET | `/api/sites` / `/api/vehicles` / ... | 运行时实体查询（按需加；当前快照接口已覆盖） |
 | GET | `/api/shipments/{id}` | 运单详情（含 stepper + 事件时间线） |
-| GET | `/api/trace/{code}` | 扫码溯源数据（公开接口，无需鉴权） |
 | GET | `/api/pricing/benchmarks` | 溢价对照数据 |
 
 ### 3.3 WebSocket 事件类型

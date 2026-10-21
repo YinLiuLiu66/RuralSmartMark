@@ -127,3 +127,37 @@ export interface AgentTask {
   updated_at: string
   artifacts: AgentArtifact[]
 }
+
+// ---- 溯源 H5（M5，decisions #30）----
+
+export interface TraceProduct {
+  sku_id: number
+  name: string
+  box_price: number
+  batch_no: string
+  qty: number
+}
+
+export interface TraceStory {
+  artifact_id: number
+  content: string
+}
+
+export interface TraceEvent {
+  id: number
+  kind: string
+  label: string
+  sim_time: string | null
+  site_name: string | null
+  vehicle_plate: string | null
+  note: string | null
+  temperature: number | null
+}
+
+export interface TraceResponse {
+  code: string
+  is_demo: boolean
+  product: TraceProduct
+  story: TraceStory | null
+  timeline: TraceEvent[]
+}

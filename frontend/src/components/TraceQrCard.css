@@ -1,0 +1,63 @@
+/* 溯源二维码弹窗（M5）：复用 .modal 外观，只补布局。 */
+
+.trace-qr-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.trace-qr-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.trace-qr-code {
+  flex: none;
+  padding: 8px;
+  border-radius: 10px;
+  background: #fff;
+  line-height: 0;
+}
+
+.trace-qr-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
+.trace-qr-copy p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.trace-qr-copy a {
+  color: #93c5fd;
+}
+
+.trace-qr-copy code {
+  font-size: 11px;
+  color: #94a3b8;
+  overflow-wrap: anywhere;
+}
+
+.trace-qr-copy .trace-qr-note {
+  padding: 8px 10px;
+  border: 1px solid rgb(251 191 36 / 25%);
+  border-radius: 8px;
+  background: rgb(251 191 36 / 10%);
+  color: #fcd34d;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.trace-qr-note code {
+  color: #fde68a;
+}
+
+@media (max-width: 480px) {
+  .trace-qr-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

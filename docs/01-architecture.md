@@ -1,7 +1,7 @@
 # 01 · 架构设计
 
-> 状态：✅ 主干定稿 — M1–M4 落地后目录结构与运行方式已同步实测形态
-> 更新时间：2026-10-20
+> 状态：✅ 主干定稿 — M1–M5 落地后目录结构与运行方式已同步实测形态
+> 更新时间：2026-10-21
 
 ## 1. 总体架构
 
@@ -44,8 +44,9 @@ backend/src/ruralsmartmark/
 ├── db.py                            # async engine + session
 ├── models/                          # SQLAlchemy 2.0 ORM 实体（见 03 文档）✅ 已建
 │   ├── base.py / runtime.py / business.py / auth.py
-├── routes/                          # 路由层（auth/sim/world/agents，新资源按文件加）
-├── schemas/                         # Pydantic 请求/响应模型（M4 起：agents.py）
+├── routes/                          # 路由层（auth/sim/world/agents/trace，新资源按文件加）
+│   └── trace.py                     # 公开溯源接口 /api/trace/{code}（M5，#30）
+├── schemas/                         # Pydantic 请求/响应模型（M4 agents.py / M5 trace.py）
 ├── agents/                          # ⭐ M4：手写 LLM 编排（decisions #6）
 │   ├── llm.py          # OpenAI 兼容封装（AsyncOpenAI；空 key 走 mock）
 │   ├── prompts.py      # 故事/文案 Prompt 集中管理
@@ -56,7 +57,7 @@ backend/src/ruralsmartmark/
 │   ├── clock.py          # 虚拟时钟：tick=1 模拟分钟，可暂停/变速/重置
 │   ├── engine.py         # SimEngine：lifespan 托管主循环，落库→广播
 │   ├── state_machines.py # 运单五步/车辆四态/worker 枚举
-│   └── scenario.py       # 剧本：初始世界生成 + 双写 + 事件拼装
+│   └── scenario.py       # 剧本：初始世界生成 + 双写 + 事件拼装 + 固定演示溯源（#30）
 ├── ws/                              # WebSocket 通道 + 事件总线 ✅ 已建（M2）
 │   └── bus.py            # EventBus：全体广播不区分角色（decisions #19）
 ├── seed.py                          # 演示账号（幂等）
@@ -68,24 +69,26 @@ backend/src/ruralsmartmark/
 **先落库成功再广播**（05 M2 铁律）。模拟时间与真实时间分离：trace/telemetry/运单时点
 一律写模拟时间。Agent 长任务（M4）走 asyncio 后台任务，进度经同一事件总线推送。
 
-## 4. 前端目录结构（M4 起多页：`/` 沙盘 + `/workbench` 工作台）
+## 4. 前端目录结构（M5 起三页：`/` 沙盘 + `/workbench` 工作台 + `/t/:code` 溯源）
 
 ```
 frontend/src/
-├── api/                # 已有 client.ts（含 fetchWorldSnapshot/simControl），按资源拆模块
-│   ├── client.ts       # fetch 封装 + ApiError（M3 已扩展快照与 sim 控制）
-│   ├── types.ts        # 快照与 WS 事件封套类型 ✅ 已建
+├── api/                # 按资源拆模块
+│   ├── client.ts       # fetch 封装 + ApiError（M3 快照/控制，M4 登录态）
+│   ├── agents.ts       # Agent 任务 REST（M4）
+│   ├── trace.ts        # 公开溯源 REST + 固定演示码（M5）
+│   ├── types.ts        # 快照/WS/Agent/溯源类型 ✅
 │   └── ws.ts           # /ws/world WS 客户端 + 自动重连 ✅ 已建
 ├── stores/             # Zustand：实体状态、选中对象、模拟时钟
 │   ├── world.ts        # 沙盘实时态：快照打底 + WS 增量合并 ✅ 已建
 │   └── auth.ts         # 登录态 token/role/username（M4）
-├── components/         # TopNav / LoginDialog / ArtifactEditor（M4）
+├── components/         # TopNav / LoginDialog / ArtifactEditor（M4）/ TraceQrCard（M5）
 ├── panels/             # 模板化详情卡
 │   └── ClockBar.tsx    # 模拟时钟控制条 ✅ 已建（站点/车辆/托盘卡在 three/DetailCard.tsx）
 ├── routes/             # react-router（M4 起启用，decisions #24）
 │   ├── Sandbox.tsx     # ⭐ 主页面：3D 沙盘 + 环绕看板 + 详情卡（M3 单页迁入）
 │   ├── AgentWorkbench.tsx # Agent 任务列表 + 产出物审阅/润色（M4）
-│   └── Trace/          # /t/:code 扫码 H5（M5）
+│   └── Trace.tsx       # /t/:code 扫码 H5 + Trace.css（M5）
 └── three/              # R3F：Scene / entities/*（站点、冷链车、托盘）✅ M3 已建
 ```
 

@@ -9,6 +9,7 @@ from ruralsmartmark.routes import (
     agents_router,
     auth_router,
     sim_router,
+    trace_router,
     world_router,
 )
 from ruralsmartmark.sim.engine import engine as sim_engine
@@ -42,6 +43,7 @@ app.include_router(auth_router)
 app.include_router(sim_router)
 app.include_router(world_router)
 app.include_router(agents_router)
+app.include_router(trace_router)
 
 
 @app.get("/api/health", tags=["system"])

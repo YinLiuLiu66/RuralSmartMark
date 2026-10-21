@@ -12,8 +12,9 @@ from sqlalchemy import func, select
 from ruralsmartmark import db
 from ruralsmartmark.app import app
 from ruralsmartmark.config import settings
-from ruralsmartmark.models import Pallet, Shipment, TraceEvent
+from ruralsmartmark.models import Pallet, Shipment, TraceCode, TraceEvent
 from ruralsmartmark.sim.engine import engine
+from ruralsmartmark.sim.scenario import DEMO_TRACE_CODE
 
 client = TestClient(app)
 
@@ -114,7 +115,15 @@ def test_scenario_one_cycle_dual_writes(monkeypatch) -> None:
             kinds = dict(
                 (
                     await session.execute(
-                        select(TraceEvent.kind, func.count()).group_by(TraceEvent.kind)
+                        select(TraceEvent.kind, func.count())
+                        .where(
+                            ~TraceEvent.pallet_id.in_(
+                                select(TraceCode.pallet_id).where(
+                                    TraceCode.code == DEMO_TRACE_CODE
+                                )
+                            )
+                        )
+                        .group_by(TraceEvent.kind)
                     )
                 ).all()
             )
@@ -149,3 +158,34 @@ def test_scenario_one_cycle_dual_writes(monkeypatch) -> None:
     assert (hub_stock or 0) == 4  # 周期批次已入库，等待下一趟二程
     assert (on_vehicle or 0) == 0  # 101 分钟时点：卡车均已卸货/返场
     assert kinds.get("temp_alert", 0) >= 1  # 演示剧情：冷链越限告警至少一次
+
+
+def test_final_leg_writes_delivered_trace(monkeypatch) -> None:
+    """最终一程到门店才写 delivered；集货仓/前置仓到站不算签收。"""
+    monkeypatch.setattr(settings, "sim_seed", 7)
+
+    async def main() -> int:
+        await engine.reset()
+        script = engine.script
+        assert script is not None
+        for _ in range(175):
+            async with db.session_factory() as session, session.begin():
+                await script.step(session)
+            engine.clock.advance()
+
+        async with db.session_factory() as session:
+            delivered = await session.scalar(
+                select(func.count())
+                .select_from(TraceEvent)
+                .where(
+                    TraceEvent.kind == "delivered",
+                    ~TraceEvent.pallet_id.in_(
+                        select(TraceCode.pallet_id).where(
+                            TraceCode.code == DEMO_TRACE_CODE
+                        )
+                    ),
+                )
+            )
+        return delivered or 0
+
+    assert asyncio.run(main()) >= 1
