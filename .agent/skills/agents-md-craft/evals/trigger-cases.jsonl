@@ -1,0 +1,10 @@
+{"text":"帮我给这个仓库写一份 AGENTS.md","should":true,"family":"draft"}
+{"text":"AGENTS.md 怎么写才有效","should":true,"family":"draft"}
+{"text":"我们的 AGENTS.md 太长了，帮我精简到两屏内","should":true,"family":"optimize"}
+{"text":"monorepo 每个包都要一份 AGENTS.md 吗","should":true,"family":"layout"}
+{"text":"审查一下这份 CLAUDE.md 有没有过时和自相矛盾的规则","should":true,"family":"review"}
+{"text":"把 CI 里的命令整理进 AGENTS.md，别写占位符","should":true,"family":"draft"}
+{"text":"帮我把这个工作流做成可复用的 skill","should":false,"family":"skill-authoring"}
+{"text":"给这个仓库写个 README，介绍功能和安装步骤","should":false,"family":"readme"}
+{"text":"评估一下 liu-meta-skill 的边界和触发描述","should":false,"family":"skill-eval"}
+{"text":"这段代码帮我重构一下，顺便补个测试","should":false,"family":"unrelated"}

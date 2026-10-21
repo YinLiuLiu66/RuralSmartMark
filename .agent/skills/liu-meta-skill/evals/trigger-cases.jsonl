@@ -1,0 +1,8 @@
+{"text":"把这个工作流沉淀成可复用的 skill","should":true,"family":"build"}
+{"text":"评估一下这个 skill 的边界","should":true,"family":"review"}
+{"text":"给这个 skill 补几条触发用例","should":true,"family":"eval"}
+{"text":"优化一下这个 skill 的 description","should":true,"family":"optimize"}
+{"text":"给这个 skill 加个自我改进循环","should":true,"family":"improve"}
+{"text":"给工作区加个会话管理面板","should":false,"family":"plugin"}
+{"text":"翻译一下这篇文章","should":false,"family":"negative"}
+{"text":"总结一下这段会议记录","should":false,"family":"negative"}
