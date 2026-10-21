@@ -1,11 +1,9 @@
-from fastapi.testclient import TestClient
+async def test_health(client):
+    response = await client.get("/api/health")
 
-from ruralsmartmark.app import app
-
-client = TestClient(app)
-
-
-def test_health() -> None:
-    response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response.json() == {
+        "status": "ok",
+        "app": "ruralsmartmark-v2",
+        "db": "ok",
+    }

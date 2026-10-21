@@ -13,8 +13,13 @@
 .env.*
 !.env.example
 
-# ---------- Docker 数据卷（decisions #20：本地项目目录绑定卷） ----------
+# ---------- 工具私有目录（不入库） ----------
+.zcode/
+.claude/
+
+# ---------- 本地数据 / 生成物（v2 SQLite、未来 artifacts） ----------
 /data/
+backend/data/
 
 # ---------- Python ----------
 __pycache__/

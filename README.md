@@ -1,126 +1,106 @@
-# RuralSmartMark
+# 乡土印记 v2 · RuralSmartMark
 
-前后端分离项目。AI 协作者请先阅读根目录 [AGENTS.md](AGENTS.md) 与
-[docs/05-next-steps.md](docs/05-next-steps.md)。
+县域农产品的 AI 品牌流水线：一个产品批次从田间走到消费者，四个 Agent 完成**故事/IP → 包装设计 → 内容营销 → 定价/溯源**；3D 沙盘可视化整条流水线，消费者扫码看溯源 H5。
 
-- **backend** — FastAPI + Python 3.13，依赖用 [uv](https://docs.astral.sh/uv/) 管理
-- **frontend** — React 18 + Vite + TypeScript，包管理用 [pnpm](https://pnpm.io/)
+首个案例：**昭通丑苹果**（云南省昭通市昭阳区）。区域事实可查；合作社、品牌名与人物为演示合成。
 
-## 文档（设计讨论的记分板）
+## 当前状态（2026-10-21）
 
-| 文档 | 内容 |
-| --- | --- |
-| [docs/00-project-brief.md](docs/00-project-brief.md) | 项目定位、背景与核心叙事 |
-| [docs/01-architecture.md](docs/01-architecture.md) | 技术架构、目录结构与选型 |
-| [docs/02-agents.md](docs/02-agents.md) | 五个 AI Agent 的职责与优先级 |
-| [docs/03-data-model.md](docs/03-data-model.md) | 数据模型与接口约定 |
-| [docs/04-roadmap.md](docs/04-roadmap.md) | MVP 切分与里程碑 |
-| [docs/05-next-steps.md](docs/05-next-steps.md) | 下一步任务清单（当前执行进度） |
-| [docs/decisions.md](docs/decisions.md) | 决策记录（已定/待定清单） |
+**Phase 0 已完成**：
 
-## 目录结构
+- `rewrite/v2` 分支；旧 v1 代码移出工作树（`main` 保留历史）。
+- FastAPI + SQLite（9 张表）+ Alembic 初始迁移 + 幂等 seed。
+- Mock LLM / Image Provider；无 `OPENAI_API_KEY` 也能跑。
+- 前端 React 19 + R3F 9 + Tailwind 4：桌面沙盘骨架、果园/四站点/批次/卡车、移动端溯源骨架。
+- 后端 4 测试、ruff、前端 typecheck/lint/build 全绿；1280×720 与 390×844 视觉验收通过。
 
-```
-RuralSmartMark/
-├── docker-compose.yml    # 单 db 服务（PG18 + pgvector，数据落 ./data/postgres/）
-├── backend/
-│   ├── src/ruralsmartmark/
-│   │   ├── app.py        # FastAPI 实例、CORS、路由
-│   │   ├── config.py     # pydantic-settings 配置
-│   │   ├── db.py         # async engine/sessionmaker 单例
-│   │   ├── auth.py       # JWT 双角色鉴权
-│   │   ├── models/       # 14 张表 ORM
-│   │   ├── routes/       # APIRouter 模块
-│   │   ├── seed.py       # 演示账号 seed（python -m ruralsmartmark.seed）
-│   │   └── main.py       # 启动入口（uvicorn）
-│   ├── migrations/       # Alembic 迁移
-│   ├── tests/
-│   ├── .env.example
-│   ├── pyproject.toml
-│   └── uv.lock
-├── frontend/
-│   ├── src/
-│   │   ├── api/client.ts # 请求封装
-│   │   ├── components/PricingCard.tsx # 沙盘右下溢价对照卡（M6）
-│   │   ├── routes/Trace.tsx # 溯源 H5 /t/:code（M5）
-│   │   ├── three/        # 3D 沙盘（M0 探针，报告见 docs/05-probe-r3f.md）
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── .env.example
-│   ├── package.json
-│   ├── pnpm-lock.yaml
-│   └── vite.config.ts
-└── README.md
-```
-
-## 环境要求
-
-| 工具 | 版本 |
-| --- | --- |
-| Python | >= 3.13 |
-| uv | >= 0.13 |
-| Node.js | >= 20.19 |
-| pnpm | >= 10 |
-| Docker | compose v2 |
+**Phase 1 下一步**：mock 四 Agent 流水线、人工审核、SSE、站点卡、批次移动。真实 Agent / 溯源 API / 包装合成 / 定价计算尚未实现。
 
 ## 快速开始
 
-### 数据库（前置，仓库根目录执行）
-
-```bash
-docker compose up -d       # PG18 + pgvector，数据落 ./data/postgres/
-```
+环境：Python ≥ 3.13、uv ≥ 0.13、Node ≥ 20.19、pnpm ≥ 10。**不需要 Docker/Postgres。**
 
 ### 后端
 
 ```bash
 cd backend
+cp .env.example .env      # 首次；已有 .env 跳过；OPENAI_API_KEY 可空，空则 Mock
 uv sync
-cp .env.example .env       # 填写 OPENAI_API_KEY 等
-uv run alembic upgrade head           # 建 14 张表
-uv run python -m ruralsmartmark.seed  # 种演示账号 operator/coop
-uv run python -m ruralsmartmark.agents.pregenerate  # 可选：预生成故事/文案（断网演示）
-uv run ruralsmartmark      # http://127.0.0.1:8000
+uv run alembic upgrade head
+uv run python -m ruralsmartmark.seed
+uv run ruralsmartmark     # http://127.0.0.1:8000
 ```
-
-交互式 API 文档：<http://127.0.0.1:8000/docs>
 
 ### 前端
 
 ```bash
 cd frontend
 pnpm install
-pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` 工作台，`/t/:code` 溯源）
+pnpm dev                  # http://127.0.0.1:5173
 ```
 
-前端通过 `vite.config.ts` 中的代理把 `/api/*` 转发到 `http://127.0.0.1:8000`，
-开发期不需要额外处理跨域。
+- 桌面沙盘：<http://127.0.0.1:5173/>
+- 溯源骨架：<http://127.0.0.1:5173/trace/ZTDEMO26>
+- API 文档：<http://127.0.0.1:8000/docs>
 
-溯源演示页：<http://localhost:5173/t/MJDEMO22>（固定演示码 `MJDEMO22`，后端启动/reset 会重建完整时间线）。
-手机扫码：用 `pnpm dev --host` 启动，并在电脑浏览器用局域网地址打开工作台，点“溯源二维码”。
+Vite 已把 `/api` 代理到 `127.0.0.1:8000`。
 
-沙盘右下角有可折叠的“溢价对照”卡：三档散装行情 vs 礼盒价，数据为演示测算（decisions #31）。
+## 目录结构
+
+```
+backend/
+  src/ruralsmartmark/       # FastAPI 应用、ORM、routes、providers、seed
+  migrations/               # Alembic
+  tests/                    # health / seed / batches
+frontend/
+  src/three/                # R3F 等距场景
+  src/routes/               # Sandbox / Trace
+  src/stores/               # Zustand
+  src/styles/               # Tailwind v4 + 山野编辑部 token
+docs/
+  decisions.md              # 决策（v1 #1–#31 + v2 #32 起）
+  v2/plan.md                # v2 产品/架构方案
+  v2/ui.md                  # 前端设计契约
+  v2/sources.md             # 昭通事实待核验清单
+  05-next-steps.md          # 当前进度与下一步
+```
 
 ## 常用命令
 
 | 位置 | 命令 | 说明 |
 | --- | --- | --- |
 | backend | `uv run ruralsmartmark` | 启动开发服务（热重载） |
-| backend | `uv run pytest` | 运行测试 |
+| backend | `uv run pytest` | 后端测试（临时 SQLite） |
 | backend | `uv run ruff check .` | 静态检查 |
-| backend | `uv run ruff format .` | 格式化 |
-| frontend | `pnpm dev` | 启动开发服务 |
-| frontend | `pnpm dev --host` | 启动开发服务并允许局域网访问（手机扫码溯源用） |
-| frontend | `pnpm build` | 类型检查 + 生产构建 |
-| frontend | `pnpm lint` | oxlint 检查 |
-| frontend | `pnpm preview` | 预览生产构建产物 |
+| backend | `uv run alembic upgrade head` | 迁移 |
+| backend | `uv run python -m ruralsmartmark.seed` | 幂等 seed |
+| frontend | `pnpm dev` | 开发服 |
+| frontend | `pnpm typecheck` / `pnpm lint` / `pnpm build` | 前端检查/构建 |
 
-## 接口约定
+## 接口（Phase 0）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/health` | 健康检查 |
-| GET | `/api/trace/{code}` | 公开溯源数据（M5，无需鉴权；固定演示码 `MJDEMO22`） |
-| GET | `/api/pricing/benchmarks` | 公开溢价对照（M6，无需鉴权；演示测算） |
+| GET | `/api/health` | 健康检查（含 DB） |
+| GET | `/api/products` | 产品档案 |
+| GET | `/api/batches` | 批次列表 |
+| POST | `/api/batches` | 新建批次 |
+| GET | `/api/batches/{id}` | 批次详情 |
+| GET | `/api/batches/by-code/{code}` | 按批次码查 |
+| POST | `/api/demo/reset` | 重置演示批次 |
 
-业务接口统一挂在 `/api` 前缀下，方便前端代理和反向代理规则收敛。
+## 设计方向
+
+- 「山野编辑部」：暖色纸感、衬线标题、低多边形乡村；不是 WMS 冷色控制塔。
+- 3D 构建对齐 WareTrack：代码拼低多边形几何体 + 平面材质 + CanvasTexture；不引 GLB/写实资产。
+- 桌面看 3D 沙盘，手机只看扫码溯源 H5。
+- 不做游戏化、多产品 UI、登录/权限、真实电商 API、Canva/Midjourney、IoT 温度曲线。
+
+## 文档
+
+- [AGENTS.md](AGENTS.md) — AI 协作约束（人类可跳过）
+- [docs/v2/plan.md](docs/v2/plan.md) — 完整方案
+- [docs/v2/ui.md](docs/v2/ui.md) — 前端设计契约
+- [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
+- [docs/decisions.md](docs/decisions.md) — 决策记录
+- [docs/05-next-steps.md](docs/05-next-steps.md) — 当前进度与下一步

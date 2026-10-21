@@ -1,34 +1,19 @@
-# RuralSmartMark Frontend
+# 乡土印记 v2 · frontend
 
-React 18 + Vite + TypeScript。运行说明见仓库根目录 [README](../README.md)。
-
-## 快速开始
+React 19 + TypeScript + Vite + React Three Fiber + Zustand + Tailwind CSS v4。
 
 ```bash
 cd frontend
 pnpm install
-pnpm dev        # http://localhost:5173
+pnpm dev        # http://127.0.0.1:5173
+pnpm typecheck
+pnpm lint
+pnpm build
 ```
 
-## 与后端联调
+`/api` 由 Vite 代理到 `http://127.0.0.1:8000`。页面：
 
-`vite.config.ts` 已配置代理，`/api/*` 会转发到 `http://127.0.0.1:8000`，
-前提是后端已启动且监听 8000 端口。
+- `/` 桌面沙盘（Phase 0：数据层 + 最小 3D 场景）
+- `/trace/:code` 移动端溯源骨架（Phase 3 接入）
 
-如需指向其他后端地址，在 `.env` 中设置：
-
-```bash
-VITE_API_BASE_URL=https://api.example.com
-```
-
-留空则走同源（即代理）。
-
-## 常用命令
-
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm dev` | 启动开发服务 |
-| `pnpm build` | 类型检查 + 生产构建 |
-| `pnpm preview` | 预览 `dist/` |
-| `pnpm lint` | oxlint 检查 |
-| `pnpm typecheck` | 仅类型检查 |
+设计契约与 token 见 `docs/v2/ui.md`；方案见 `docs/v2/plan.md`。

@@ -1,23 +1,31 @@
-# RuralSmartMark Backend
+# 乡土印记 v2 · backend
 
-FastAPI 服务端。运行说明见仓库根目录 [README](../README.md)。
-
-## 快速开始
+FastAPI + SQLAlchemy 2.0 + SQLite。无需 Docker/Postgres。
 
 ```bash
 cd backend
+cp .env.example .env          # 首次；把 OPENAI_API_KEY 填上（不填则走 mock）
 uv sync
-cp .env.example .env   # 按需填写
-uv run ruralsmartmark
+uv run alembic upgrade head
+uv run python -m ruralsmartmark.seed
+uv run ruralsmartmark         # http://127.0.0.1:8000
 ```
 
-服务默认监听 `http://127.0.0.1:8000`，交互式文档在 `/docs`。
+测试与检查：
 
-## 常用命令
+```bash
+uv run pytest
+uv run ruff check .
+uv run ruff format .
+```
 
-| 目的 | 命令 |
-| --- | --- |
-| 启动开发服务 | `uv run ruralsmartmark` |
-| 运行测试 | `uv run pytest` |
-| 代码检查 | `uv run ruff check .` |
-| 格式化 | `uv run ruff format .` |
+接口：
+
+- `GET /api/health`
+- `GET /api/products`
+- `GET /api/batches`
+- `POST /api/batches`（body: `{"product_slug": "zhaotong-ugly-apple", "quantity_kg": 300}`）
+- `GET /api/batches/{id}` / `GET /api/batches/by-code/{code}`
+- `POST /api/demo/reset`
+
+SQLite 文件默认在 `backend/data/app.db`（已 gitignore）。`docs/v2/plan.md` 是当前方案。

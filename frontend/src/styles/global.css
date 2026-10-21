@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f7f3ea;
+  --color-surface: #fffdf8;
+  --color-surface-2: #f0eadf;
+  --color-ink: #1f2a24;
+  --color-ink-muted: #5f655f;
+  --color-ink-faint: #8a8a80;
+  --color-line: #e0d8c8;
+  --color-line-strong: #8a8578;
+  --color-apple: #b6402a;
+  --color-apple-hover: #96311f;
+  --color-apple-weak: #f7e4de;
+  --color-leaf: #3f6b4f;
+  --color-leaf-weak: #e6efe8;
+  --color-amber: #8a5a00;
+  --color-danger: #b3261e;
+  --color-kraft: #c9a46a;
+
+  --font-display: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-ui: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --shadow-card: 0 1px 2px rgb(31 42 36 / 0.06), 0 10px 30px rgb(31 42 36 / 0.08);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  ::selection {
+    background: var(--color-apple-weak);
+  }
+}
+
+@layer components {
+  .shell {
+    display: grid;
+    grid-template-rows: 64px minmax(0, 1fr) 108px;
+    height: 100dvh;
+    background: var(--color-paper);
+  }
+
+  .shell-main {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr) 360px;
+    min-height: 0;
+  }
+
+  .shell-main > * {
+    min-width: 0;
+  }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  @media (max-width: 1279px) {
+    .shell-main {
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .right-rail {
+      display: none;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    .shell {
+      display: none;
+    }
+
+    .desktop-only {
+      display: flex;
+    }
+  }
+}
