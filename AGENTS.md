@@ -26,6 +26,8 @@
 - M5 起：固定演示溯源码 `MJDEMO22`（批次 `MJ-DEMO-001`），公开页 `/t/MJDEMO22`；
   每次后端启动/reset 会重建这条 17 节点时间线，码与 URL 不变（decisions #30）。
   手机扫码需用 `pnpm dev --host` 启动并用局域网地址打开工作台，二维码跟随当前 origin。
+- M6 起：`price_benchmark` 三档演示测算随 `build_initial_world` 幂等 upsert（reset 不清空），
+  公开接口 `/api/pricing/benchmarks`；沙盘右下“溢价对照”卡为纯 CSS，不引 ECharts（decisions #31）。
 
 ## 常用命令（后端在 backend/ 下，前端在 frontend/ 下）
 
@@ -57,8 +59,8 @@ backend/
   src/ruralsmartmark/db.py          # async engine + sessionmaker 单例 + get_session 依赖
   src/ruralsmartmark/auth.py        # JWT 双角色（get_current_user / require_role）
   src/ruralsmartmark/models/        # 14 张表 ORM（runtime/business/auth 三文件，__init__ 汇总）
-  src/ruralsmartmark/routes/        # APIRouter 模块（auth / sim / world / agents / trace）
-  src/ruralsmartmark/schemas/       # Pydantic 请求/响应（agents.py M4 / trace.py M5）
+  src/ruralsmartmark/routes/        # APIRouter 模块（auth / sim / world / agents / trace / pricing）
+  src/ruralsmartmark/schemas/       # Pydantic 请求/响应（agents M4 / trace M5 / pricing M6）
   src/ruralsmartmark/agents/        # M4 LLM 编排：llm（AsyncOpenAI）/ prompts / context（DB 事实）/ materials（麻江素材）/ pregenerate
   src/ruralsmartmark/sim/           # M2 模拟引擎：clock / engine / state_machines / scenario（剧本 + 双写 + 固定演示溯源）
   src/ruralsmartmark/ws/            # ws/bus.py：EventBus 全体广播（不区分角色，decisions #19）
@@ -69,18 +71,20 @@ backend/
   tests/test_sim.py                 # M2 验收：控制/快照/WS + 双写推进 + 最终签收流水
   tests/test_agents.py              # M4 验收：mock 模型下的发起/三态流转/权限
   tests/test_trace.py               # M5 验收：公开溯源、固定演示码、17 节点时间线
+  tests/test_pricing.py             # M6 验收：公开溢价、三档测算、reset 幂等
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
   src/api/client.ts                 # fetch 封装 + ApiError + 快照/时钟/登录接口
   src/api/agents.ts                 # Agent 任务 REST（TQ 使用）
   src/api/trace.ts                  # 公开溯源 REST + 固定演示码/二维码 URL（M5）
-  src/api/types.ts                  # 世界快照、WS、Agent 任务、溯源类型（对齐 docs/03 §3）
+  src/api/pricing.ts                # 公开溢价对照 REST（M6）
+  src/api/types.ts                  # 世界快照、WS、Agent、溯源、溢价类型（对齐 docs/03 §3）
   src/api/ws.ts                     # WS 客户端（相对 URL 推导 + 指数退避重连）
   src/stores/world.ts               # Zustand 沙盘实时态：快照打底 + WS 增量合并
   src/stores/auth.ts                # Zustand 登录态（token/role/username）
   src/panels/ClockBar.tsx           # 模拟时钟控制条（operator 按钮，decisions #17）
-  src/components/                   # TopNav / LoginDialog / ArtifactEditor（M4）/ TraceQrCard（M5）
-  src/routes/Sandbox.tsx            # 沙盘页 `/`（M3 单页迁入）
+  src/components/                   # TopNav / LoginDialog / ArtifactEditor（M4）/ TraceQrCard（M5）/ PricingCard（M6）
+  src/routes/Sandbox.tsx            # 沙盘页 `/`（M3 迁入，M6 右下溢价卡）
   src/routes/AgentWorkbench.tsx     # Agent 工作台 `/workbench`（M4）
   src/routes/Trace.tsx              # 溯源 H5 `/t/:code`（M5，配 Trace.css）
   src/three/WorldScene.tsx          # 正式 3D 场景（吃 M2 快照/WS 数据）
@@ -97,7 +101,7 @@ docs/
   05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
-尚未创建、创建前勿假设存在：后端 pricing 路由、Agent 2/5、M6 溢价图等
+尚未创建、创建前勿假设存在：独立数据看板（M7，ECharts）、Agent 2/5、温度曲线等
 （规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
@@ -131,7 +135,7 @@ docs/
 
 - 完成一个可验证的工作单元（验收命令跑通即算）就该提交，不攒大批改动；未跑通测试的半成品不提交。
 - message 格式沿用 git log 既有风格：`feat|fix|docs|refactor(mN): 一句话结论`。
-- **提交与推送前必须经用户确认**；确认后 commit 并 push，保持远程与本地同步。
+- 提交与推送： commit 并 push，保持远程与本地同步。
 - 不提交 .gitignore 覆盖的产物（见红线）。
 
 ## 常见任务自检（动手前过一眼）

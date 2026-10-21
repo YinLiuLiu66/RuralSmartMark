@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { useWorld } from '../stores/world'
 import ClockBar from '../panels/ClockBar'
+import PricingCard from '../components/PricingCard'
 import DetailCard from '../three/DetailCard'
 import WorldScene from '../three/WorldScene'
 import FpsBadge from '../three/FpsBadge'
@@ -39,6 +40,8 @@ export default function Sandbox() {
         </header>
 
         <ClockBar />
+
+        <PricingCard />
 
         <DetailCard
           kind={selected?.kind ?? null}

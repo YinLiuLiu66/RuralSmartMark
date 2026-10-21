@@ -1,6 +1,6 @@
 # 01 · 架构设计
 
-> 状态：✅ 主干定稿 — M1–M5 落地后目录结构与运行方式已同步实测形态
+> 状态：✅ 主干定稿 — M1–M6 落地后目录结构与运行方式已同步实测形态
 > 更新时间：2026-10-21
 
 ## 1. 总体架构
@@ -44,9 +44,10 @@ backend/src/ruralsmartmark/
 ├── db.py                            # async engine + session
 ├── models/                          # SQLAlchemy 2.0 ORM 实体（见 03 文档）✅ 已建
 │   ├── base.py / runtime.py / business.py / auth.py
-├── routes/                          # 路由层（auth/sim/world/agents/trace，新资源按文件加）
-│   └── trace.py                     # 公开溯源接口 /api/trace/{code}（M5，#30）
-├── schemas/                         # Pydantic 请求/响应模型（M4 agents.py / M5 trace.py）
+├── routes/                          # 路由层（auth/sim/world/agents/trace/pricing，新资源按文件加）
+│   ├── trace.py                     # 公开溯源接口 /api/trace/{code}（M5，#30）
+│   └── pricing.py                   # 公开溢价对照 /api/pricing/benchmarks（M6，#31）
+├── schemas/                         # Pydantic 请求/响应（M4 agents / M5 trace / M6 pricing）
 ├── agents/                          # ⭐ M4：手写 LLM 编排（decisions #6）
 │   ├── llm.py          # OpenAI 兼容封装（AsyncOpenAI；空 key 走 mock）
 │   ├── prompts.py      # 故事/文案 Prompt 集中管理
@@ -76,17 +77,18 @@ frontend/src/
 ├── api/                # 按资源拆模块
 │   ├── client.ts       # fetch 封装 + ApiError（M3 快照/控制，M4 登录态）
 │   ├── agents.ts       # Agent 任务 REST（M4）
+│   ├── pricing.ts      # 公开溢价对照 REST（M6）
 │   ├── trace.ts        # 公开溯源 REST + 固定演示码（M5）
 │   ├── types.ts        # 快照/WS/Agent/溯源类型 ✅
 │   └── ws.ts           # /ws/world WS 客户端 + 自动重连 ✅ 已建
 ├── stores/             # Zustand：实体状态、选中对象、模拟时钟
 │   ├── world.ts        # 沙盘实时态：快照打底 + WS 增量合并 ✅ 已建
 │   └── auth.ts         # 登录态 token/role/username（M4）
-├── components/         # TopNav / LoginDialog / ArtifactEditor（M4）/ TraceQrCard（M5）
+├── components/         # TopNav / LoginDialog / ArtifactEditor（M4）/ TraceQrCard（M5）/ PricingCard（M6）
 ├── panels/             # 模板化详情卡
 │   └── ClockBar.tsx    # 模拟时钟控制条 ✅ 已建（站点/车辆/托盘卡在 three/DetailCard.tsx）
 ├── routes/             # react-router（M4 起启用，decisions #24）
-│   ├── Sandbox.tsx     # ⭐ 主页面：3D 沙盘 + 环绕看板 + 详情卡（M3 单页迁入）
+│   ├── Sandbox.tsx     # ⭐ 主页面：3D 沙盘 + 环绕看板 + 详情卡 + 溢价卡（M3 迁入 / M6 扩展）
 │   ├── AgentWorkbench.tsx # Agent 任务列表 + 产出物审阅/润色（M4）
 │   └── Trace.tsx       # /t/:code 扫码 H5 + Trace.css（M5）
 └── three/              # R3F：Scene / entities/*（站点、冷链车、托盘）✅ M3 已建

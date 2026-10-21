@@ -1,6 +1,6 @@
 # 03 · 数据模型与接口约定
 
-> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 亮出快照/控制/WS，M4 增加 Agent 任务与产出物接口，M5 增加公开溯源接口
+> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 亮出快照/控制/WS，M4 增加 Agent 任务与产出物接口，M5 增加公开溯源接口，M6 增加公开溢价对照接口
 > 更新时间：2026-10-21
 
 ## 1. 核心实体（约 12 张表）
@@ -28,7 +28,7 @@
 | `agent_task` | Agent 任务 | agent_type, status, product_sku_id, created_by |
 | `agent_artifact` | Agent 产出物 | task_id, kind(story/copy/design), content, asset_url（图片资产挂静态目录，Agent 2 用）, status(draft/polished/final) |
 | `trace_code` | 一物一码 | code（8 位 Base32 大写随机码，无歧义字符，URL 安全）, pallet_id（唯一锚点）, activated_at |
-| `price_benchmark` | 溢价对照 | sku_id, channel, bulk_price（该渠道散装行情价）, brand_price（礼盒成交价）, premium_rate |
+| `price_benchmark` | 溢价对照 | sku_id, channel, bulk_price（该渠道散装行情价）, brand_price（礼盒成交价）, premium_rate；M6 三档演示测算（decisions #31） |
 
 **关系要点**：
 
@@ -65,6 +65,7 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | PATCH | `/api/agent-artifacts/{id}` | 编辑 / 润色 / 定稿（M4，decisions #25）✅ |
 | GET | `/api/agent-artifacts/{id}` | 单产出物 ✅ |
 | GET | `/api/trace/{code}` | 扫码溯源（公开，无需鉴权）：产品/批次 + 最新 final 品牌故事 + `trace_event` 时间线（M5，decisions #30）✅ |
+| GET | `/api/pricing/benchmarks` | 溢价对照（公开，无需鉴权）：三档渠道散装价 vs 礼盒价 + 溢价率（M6，decisions #31，演示测算）✅ |
 
 ### 3.2 规划（随开发补充）
 
@@ -72,7 +73,6 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | --- | --- | --- |
 | GET | `/api/sites` / `/api/vehicles` / ... | 运行时实体查询（按需加；当前快照接口已覆盖） |
 | GET | `/api/shipments/{id}` | 运单详情（含 stepper + 事件时间线） |
-| GET | `/api/pricing/benchmarks` | 溢价对照数据 |
 
 ### 3.3 WebSocket 事件类型
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from decimal import Decimal
 from functools import partial
 from typing import Any
 
@@ -23,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ruralsmartmark.models import (
     Cooperative,
     Pallet,
+    PriceBenchmark,
     ProductSku,
     Shipment,
     Site,
@@ -71,6 +73,13 @@ MAX_CARGO = 8  # 单程装载上限
 # M5 演示样张（decisions #30）：固定码 + 完整时间线，每次 reset 重建
 DEMO_TRACE_CODE = "MJDEMO22"
 DEMO_BATCH_NO = "MJ-DEMO-001"
+
+# M6 演示测算（decisions #31）：渠道 → 散装行情价（元/斤），礼盒价取 SKU 定价
+PRICE_BULK_DEFS: tuple[tuple[str, str], ...] = (
+    ("批发市场", "36.00"),
+    ("电商散装", "58.00"),
+    ("礼盒直营", "72.00"),
+)
 
 TEMP_BASE = 3.8
 TEMP_JITTER = 0.6
@@ -192,7 +201,43 @@ async def build_initial_world(session: AsyncSession) -> WorldRefs:
         )
     await session.flush()
     await _seed_demo_trace(session, refs)
+    await _seed_demo_pricing(session, refs)
     return refs
+
+
+async def _seed_demo_pricing(session: AsyncSession, refs: WorldRefs) -> None:
+    """M6 演示测算（decisions #31）：三档散装行情 vs 礼盒定价。
+
+    price_benchmark 不随 clear_world 清空；这里按 (sku, channel) 幂等更新。
+    """
+    sku = await session.get(ProductSku, refs.sku["麻江蓝莓文创礼盒"])
+    if sku is None:
+        return
+
+    brand = Decimal(str(sku.box_price)).quantize(Decimal("0.01"))
+    for channel, bulk_text in PRICE_BULK_DEFS:
+        bulk = Decimal(bulk_text)
+        premium = ((brand - bulk) / bulk).quantize(Decimal("0.0001"))
+        existing = await session.scalar(
+            select(PriceBenchmark).where(
+                PriceBenchmark.sku_id == sku.id,
+                PriceBenchmark.channel == channel,
+            )
+        )
+        if existing is None:
+            session.add(
+                PriceBenchmark(
+                    sku_id=sku.id,
+                    channel=channel,
+                    bulk_price=bulk,
+                    brand_price=brand,
+                    premium_rate=premium,
+                )
+            )
+        else:
+            existing.bulk_price = bulk
+            existing.brand_price = brand
+            existing.premium_rate = premium
 
 
 async def _seed_demo_trace(session: AsyncSession, refs: WorldRefs) -> None:

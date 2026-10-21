@@ -8,6 +8,7 @@ from ruralsmartmark.config import settings
 from ruralsmartmark.routes import (
     agents_router,
     auth_router,
+    pricing_router,
     sim_router,
     trace_router,
     world_router,
@@ -44,6 +45,7 @@ app.include_router(sim_router)
 app.include_router(world_router)
 app.include_router(agents_router)
 app.include_router(trace_router)
+app.include_router(pricing_router)
 
 
 @app.get("/api/health", tags=["system"])

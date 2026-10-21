@@ -161,3 +161,19 @@ export interface TraceResponse {
   story: TraceStory | null
   timeline: TraceEvent[]
 }
+
+// ---- 溢价对照（M6，decisions #31）----
+
+export interface PriceBenchmark {
+  channel: string
+  bulk_price: number
+  brand_price: number
+  premium_rate: number
+}
+
+export interface PricingResponse {
+  sku_id: number
+  sku_name: string
+  note: string
+  items: PriceBenchmark[]
+}

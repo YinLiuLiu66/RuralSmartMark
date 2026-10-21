@@ -41,6 +41,7 @@ RuralSmartMark/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/client.ts # 请求封装
+│   │   ├── components/PricingCard.tsx # 沙盘右下溢价对照卡（M6）
 │   │   ├── routes/Trace.tsx # 溯源 H5 /t/:code（M5）
 │   │   ├── three/        # 3D 沙盘（M0 探针，报告见 docs/05-probe-r3f.md）
 │   │   ├── App.tsx
@@ -98,6 +99,8 @@ pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` �
 溯源演示页：<http://localhost:5173/t/MJDEMO22>（固定演示码 `MJDEMO22`，后端启动/reset 会重建完整时间线）。
 手机扫码：用 `pnpm dev --host` 启动，并在电脑浏览器用局域网地址打开工作台，点“溯源二维码”。
 
+沙盘右下角有可折叠的“溢价对照”卡：三档散装行情 vs 礼盒价，数据为演示测算（decisions #31）。
+
 ## 常用命令
 
 | 位置 | 命令 | 说明 |
@@ -118,5 +121,6 @@ pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` �
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查 |
 | GET | `/api/trace/{code}` | 公开溯源数据（M5，无需鉴权；固定演示码 `MJDEMO22`） |
+| GET | `/api/pricing/benchmarks` | 公开溢价对照（M6，无需鉴权；演示测算） |
 
 业务接口统一挂在 `/api` 前缀下，方便前端代理和反向代理规则收敛。

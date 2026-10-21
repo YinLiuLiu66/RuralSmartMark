@@ -152,6 +152,12 @@
 **验证方法**：`GET /api/trace/MJDEMO22` 返回完整时间线与最终故事；`GET /api/trace/UNKNOWN` 404；`pytest` / `ruff` / `pnpm typecheck` / `pnpm lint` / `pnpm build` 全绿；浏览器桌面 + 390px 手机视口实测。
 **拍板时间**：2026-10-21
 
+### #31 · M6 溢价对照（演示测算 + 轻量 SVG/CSS）
+**结论**：`price_benchmark` 用三档演示测算（批发市场 / 电商散装 / 礼盒直营），散装价为演示值，礼盒价取 SKU 定价 128 元，溢价率按 `(brand - bulk) / bulk` 计算并在页面明确标注“演示测算”。不引入 ECharts：沙盘右下角做一张可折叠的纯 CSS/SVG 对照卡；M6 不做 Agent 4 的 LLM 文案（留 M7）。
+**理由**：素材包没有价格数据，真实行情季节波动大且公开数据未必对得上演示批次；一张图用 ECharts 过重；演示可靠性优先，数字可核对且口径透明。
+**验证方法**：`GET /api/pricing/benchmarks` 返回三档且溢价率与公式一致；`pytest` / `ruff` / `pnpm typecheck` / `pnpm lint` / `pnpm build` 全绿；浏览器沙盘右下卡展开/收起与数值实测。
+**拍板时间**：2026-10-21
+
 ---
 
 ## ❓ 待定
