@@ -101,4 +101,29 @@ export type WorldEvent =
   | EventEnvelope<SimClock> // tick.info
   | EventEnvelope<EntityUpdatedData> // entity.updated
   | EventEnvelope<ShipmentProgressedData> // shipment.progressed
-  | EventEnvelope<Record<string, never>> // world.reset
+  | EventEnvelope<Record<string, unknown>> // world.reset / agent.*（M4）
+
+// ---- Agent 任务与产出物（03 §3.2，M4）----
+
+export type AgentStatus = 'pending' | 'running' | 'done' | 'failed'
+export type ArtifactStatus = 'draft' | 'polished' | 'final'
+
+export interface AgentArtifact {
+  id: number
+  kind: 'story' | 'copy' | 'design'
+  content: string | null
+  asset_url: string | null
+  status: ArtifactStatus
+  updated_at: string
+}
+
+export interface AgentTask {
+  id: number
+  agent_type: 'story' | 'copy'
+  status: AgentStatus
+  product_sku_id: number | null
+  created_by: string
+  created_at: string
+  updated_at: string
+  artifacts: AgentArtifact[]
+}

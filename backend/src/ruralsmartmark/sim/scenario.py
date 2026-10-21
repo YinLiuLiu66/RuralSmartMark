@@ -1,8 +1,8 @@
 """剧本（scenario）：初始世界生成 + 循环运转的叙事链路。
 
 链路（站点坐标复用 M0 探针，M3 沙盘零漂移）：
-  高山蓝莓农场 --一程·时间驱动--> 县集货仓 --二程·事件驱动--> 城市前置仓
-  --三程·越库直发--> 消费端礼盒门店
+  龙山镇蓝莓基地 --一程·时间驱动--> 县冷链集货仓 --二程·事件驱动--> 凯里前置仓
+  --三程·越库直发--> 凯里门店
 
 双写铁律（decisions #15，05 §4 铁律①）：每次状态转移 = 实体表现势回写
 + trace_event 追加一行（模拟时间存 payload.sim_ts，本表无时间列）。
@@ -37,22 +37,22 @@ from ruralsmartmark.sim.state_machines import shipment_next
 
 # 站点与站 key 一一对应；坐标取 M0 探针 probeData.ts 同款
 SITE_DEFS: tuple[tuple[str, str, float, float], ...] = (
-    ("高山蓝莓农场 · 产地", "origin_hub", -7.0, -1.5),
-    ("县集货仓 · 分拣包装", "origin_hub", 0.0, 1.8),
-    ("城市前置仓", "forward_warehouse", 7.0, -1.2),
-    ("消费端 · 礼盒门店", "market", 13.0, 1.2),
+    ("龙山镇蓝莓基地 · 产地", "origin_hub", -7.0, -1.5),
+    ("麻江县冷链集货仓 · 分拣包装", "origin_hub", 0.0, 1.8),
+    ("凯里前置仓", "forward_warehouse", 7.0, -1.2),
+    ("凯里门店 · 礼盒专区", "market", 13.0, 1.2),
 )
 SITE_KEYS: tuple[str, ...] = ("farm", "hub", "depot", "market")
 
 SKU_DEFS: tuple[tuple[str, float], ...] = (
-    ("云岭蓝莓文创礼盒", 128.00),
-    ("高山蓝莓家庭装", 68.00),
+    ("麻江蓝莓文创礼盒", 128.00),
+    ("麻江蓝莓家庭装", 68.00),
 )
 
 # (vkey, 车牌, 常驻站)：truck1 只跑一程；truck2 跑二程 + 三程
 VEHICLE_DEFS: tuple[tuple[str, str, str], ...] = (
-    ("truck1", "冷链·云岭001", "farm"),
-    ("truck2", "冷链·云岭002", "hub"),
+    ("truck1", "冷链·麻江001", "farm"),
+    ("truck2", "冷链·麻江002", "hub"),
 )
 
 WORKER_DEFS: tuple[tuple[str, str], ...] = (
@@ -136,7 +136,9 @@ async def build_initial_world(session: AsyncSession) -> WorldRefs:
         refs.sku[name] = sku.id
 
     coop = Cooperative(
-        name="云岭山地果业合作社", contact="云岭县农业农村局对接", region="云岭县"
+        name="麻江县蓝丰蓝莓合作社",
+        contact="麻江县农业农村局对接",
+        region="贵州省黔东南州麻江县",
     )
     session.add(coop)
     await session.flush()
@@ -291,7 +293,7 @@ class WorldScript:
                 pallet,
                 "harvested",
                 site_id=self.refs.site["farm"],
-                note="清晨采摘装托 · 高山蓝莓基地 3 号田",
+                note="清晨采摘装托 · 龙山镇蓝莓基地 3 号田",
             )
         await self._set_workers(session, "farm", "sorting")
 

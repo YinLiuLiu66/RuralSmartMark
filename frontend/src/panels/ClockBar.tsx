@@ -1,10 +1,10 @@
 // 模拟时钟控制条（decisions #17）：时钟显示 + operator 专属控制按钮。
-// JWT 经 client.saveToken 存 localStorage；未登录只显示时钟，不显示登录表单
-// （登录 UI 随 M4 工作台一起做）。
+// 登录态走 stores/auth（M4 工作台共用），未登录只显示时钟。
 
 import { useState } from 'react'
 
 import { simControl } from '../api/client'
+import { useAuth } from '../stores/auth'
 import { useWorld } from '../stores/world'
 
 const SPEED_OPTIONS = [1, 2, 4, 8]
@@ -13,7 +13,9 @@ export default function ClockBar() {
   const clock = useWorld((s) => s.clock)
   const reload = useWorld((s) => s.reload)
   const [error, setError] = useState<string | null>(null)
-  const [hasToken] = useState(() => localStorage.getItem('rsm_jwt') != null)
+  const token = useAuth((s) => s.token)
+  const role = useAuth((s) => s.role)
+  const hasToken = Boolean(token) && role === 'operator'
 
   const run = async (action: string, speed?: number) => {
     setError(null)

@@ -77,6 +77,7 @@ uv sync
 cp .env.example .env       # 填写 OPENAI_API_KEY 等
 uv run alembic upgrade head           # 建 14 张表
 uv run python -m ruralsmartmark.seed  # 种演示账号 operator/coop
+uv run python -m ruralsmartmark.agents.pregenerate  # 可选：预生成故事/文案（断网演示）
 uv run ruralsmartmark      # http://127.0.0.1:8000
 ```
 
@@ -87,7 +88,7 @@ uv run ruralsmartmark      # http://127.0.0.1:8000
 ```bash
 cd frontend
 pnpm install
-pnpm dev                  # http://localhost:5173
+pnpm dev                  # http://localhost:5173（`/` 沙盘，`/workbench` Agent 工作台）
 ```
 
 前端通过 `vite.config.ts` 中的代理把 `/api/*` 转发到 `http://127.0.0.1:8000`，

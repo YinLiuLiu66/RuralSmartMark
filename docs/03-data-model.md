@@ -1,7 +1,7 @@
 # 03 · 数据模型与接口约定
 
-> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 已亮出快照 / 控制 / WS 三接口
-> 更新时间：2026-10-16
+> 状态：✅ 主干定稿 — 实体与字段已按 decisions #15–#19 收口；M2 亮出快照/控制/WS，M4 增加 Agent 任务与产出物接口
+> 更新时间：2026-10-20
 
 ## 1. 核心实体（约 12 张表）
 
@@ -59,6 +59,11 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | POST | `/api/sim/control` | 模拟时钟控制 pause/resume/speed/reset，限运营方（M2，decisions #17）✅ |
 | GET | `/api/world/snapshot` | 沙盘全量快照：时钟 + 站点/车辆/工人/托盘/运单现势 + 在途路线（M2）✅ |
 | WS | `/ws/world` | 增量事件流：tick.info / entity.updated / shipment.progressed / world.reset（M2，不鉴权）✅ |
+| POST | `/api/agent-tasks` | 发起 Agent 任务（story/copy），后台生成（M4，decisions #26）✅ |
+| GET | `/api/agent-tasks` | 任务列表（工作台用）✅ |
+| GET | `/api/agent-tasks/{id}` | 单任务详情 ✅ |
+| PATCH | `/api/agent-artifacts/{id}` | 编辑 / 润色 / 定稿（M4，decisions #25）✅ |
+| GET | `/api/agent-artifacts/{id}` | 单产出物 ✅ |
 
 ### 3.2 规划（随开发补充）
 
@@ -66,9 +71,6 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 | --- | --- | --- |
 | GET | `/api/sites` / `/api/vehicles` / ... | 运行时实体查询（按需加；当前快照接口已覆盖） |
 | GET | `/api/shipments/{id}` | 运单详情（含 stepper + 事件时间线） |
-| POST | `/api/agent-tasks` | 发起 Agent 任务（story/copy/...） |
-| GET | `/api/agent-tasks` | 任务列表（工作台用） |
-| PATCH | `/api/agent-artifacts/{id}` | 人工润色产出物 |
 | GET | `/api/trace/{code}` | 扫码溯源数据（公开接口，无需鉴权） |
 | GET | `/api/pricing/benchmarks` | 溢价对照数据 |
 
@@ -78,8 +80,8 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 （车辆 / 工人 / 托盘现势变化）、`shipment.progressed`（运单沿五步推进）、
 `world.reset`（重置通知，客户端收到后重拉快照）。
 
-规划（M4+）：`agent.task_updated`（Agent 任务状态/进度）、`agent.artifact_ready`
-（Agent 产出物就绪）、`scheduler.proposal`（Agent 5 的调度建议）。
+已实现（M4）：`agent.task_updated`（任务状态变化，data 为完整任务）、
+`agent.artifact_ready`（产出物就绪）。规划：`scheduler.proposal`（Agent 5 的调度建议）。
 
 > 增量事件封套统一为 `{type, sim_time, data}`；全量快照走
 > `GET /api/world/snapshot`，WS 不推快照（decisions #17）；推送不区分角色（#19）。
@@ -88,8 +90,8 @@ Order Confirmed → Picked → Loaded → In Transit → Delivered
 
 | 角色 | 权限 |
 | --- | --- |
-| 运营方 | sim 时钟控制、产出物润色定稿、全部查询 |
-| 合作社 | 发起 Agent 任务、编辑自己草稿、全部查询 |
+| 运营方 | sim 时钟控制、Agent 任务发起、产出物编辑/润色/定稿、全部查询（#25） |
+| 合作社 | 发起 Agent 任务、编辑自己草稿、全部查询（#25） |
 | 公开 | `GET /api/trace/{code}`（无需鉴权） |
 
 ## 5. 待定问题

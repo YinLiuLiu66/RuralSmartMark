@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     openai_base_url: str | None = Field(
         default=None, validation_alias="OPENAI_BASE_URL"
     )
-    # 默认值锁定演示用文本模型（decisions #22），换模型只改 .env
+    # 默认值锁定演示用文本模型（decisions #23），换模型只改 .env
     openai_model: str = Field(
         default="deepseek-ai/DeepSeek-V3.1-Terminus", validation_alias="OPENAI_MODEL"
     )

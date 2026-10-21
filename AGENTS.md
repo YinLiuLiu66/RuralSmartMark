@@ -32,6 +32,7 @@
   `uv sync` → 依赖安装（别手动建 venv）
   `uv run alembic upgrade head` → 建表/迁移（M1 起有效；downgrade base 可回滚重放）
   `uv run python -m ruralsmartmark.seed` → 种演示双账号 operator/coop（幂等）
+  `uv run python -m ruralsmartmark.agents.pregenerate` → 预生成故事/文案定稿入库（幂等，#11）
   `uv run ruralsmartmark` → 起服务，端口 8000
   `uv run pytest` → 全测试；单函数：`uv run pytest tests/test_health.py::test_health`
   `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化
@@ -52,7 +53,9 @@ backend/
   src/ruralsmartmark/db.py          # async engine + sessionmaker 单例 + get_session 依赖
   src/ruralsmartmark/auth.py        # JWT 双角色（get_current_user / require_role）
   src/ruralsmartmark/models/        # 14 张表 ORM（runtime/business/auth 三文件，__init__ 汇总）
-  src/ruralsmartmark/routes/        # APIRouter 模块（auth / sim / world）
+  src/ruralsmartmark/routes/        # APIRouter 模块（auth / sim / world / agents）
+  src/ruralsmartmark/schemas/       # Pydantic 请求/响应（agents.py，M4）
+  src/ruralsmartmark/agents/        # M4 LLM 编排：llm（AsyncOpenAI）/ prompts / context（DB 事实）/ materials（麻江素材）/ pregenerate
   src/ruralsmartmark/sim/           # M2 模拟引擎：clock（虚拟时钟）/ engine（主循环）/ state_machines / scenario（剧本：初始世界 + 双写）
   src/ruralsmartmark/ws/            # ws/bus.py：EventBus 全体广播（不区分角色，decisions #19）
   src/ruralsmartmark/seed.py        # 演示数据 seed（python -m ruralsmartmark.seed）
@@ -60,19 +63,25 @@ backend/
   tests/conftest.py                 # 测试夹具：独立测试库 _test + NullPool（跨循环必需）
   tests/test_auth.py                # 401/403/200 全路径
   tests/test_sim.py                 # M2 验收：控制/快照/WS + 一完整周期双写推进
+  tests/test_agents.py              # M4 验收：mock 模型下的发起/三态流转/权限
   pyproject.toml                    # 依赖 + ruff + pytest 配置
 frontend/
-  src/api/client.ts                 # fetch 封装 + ApiError + snapshot/simControl 接口
-  src/api/types.ts                  # 世界快照与 WS 事件封套类型（与 docs/03 §3 对齐）
+  src/api/client.ts                 # fetch 封装 + ApiError + 快照/时钟/登录接口
+  src/api/agents.ts                 # Agent 任务 REST（TQ 使用）
+  src/api/types.ts                  # 世界快照、WS 事件封套、Agent 任务类型（对齐 docs/03 §3）
   src/api/ws.ts                     # WS 客户端（相对 URL 推导 + 指数退避重连）
   src/stores/world.ts               # Zustand 沙盘实时态：快照打底 + WS 增量合并
+  src/stores/auth.ts                # Zustand 登录态（token/role/username）
   src/panels/ClockBar.tsx           # 模拟时钟控制条（operator 按钮，decisions #17）
+  src/components/                   # TopNav / LoginDialog / ArtifactEditor（M4）
+  src/routes/Sandbox.tsx            # 沙盘页 `/`（M3 单页迁入）
+  src/routes/AgentWorkbench.tsx     # Agent 工作台 `/workbench`（M4）
   src/three/WorldScene.tsx          # 正式 3D 场景（吃 M2 快照/WS 数据）
   src/three/SiteMeshes.tsx          # 站点网格（库存映射高度，可点选）
   src/three/VehicleMesh.tsx         # 车辆网格（在途插值/停靠，可点选）
   src/three/DetailCard.tsx          # 详情卡（站点/车辆/运单 stepper）
   src/three/FpsBadge.tsx            # rAF 帧率徽章
-  src/App.tsx / App.css             # 沙盘主页壳（含 stepper 等样式）
+  src/App.tsx / App.css             # 路由壳（TopNav + / 与 /workbench）+ 全局样式
   vite.config.ts                    # /api 与 /ws（ws:true）→ 127.0.0.1:8000 开发代理
 docs/
   decisions.md                      # 决策权威：拍板条目唯一真源
@@ -81,7 +90,7 @@ docs/
   05-probe-r3f.md                   # M0 探针报告（3D 路线结论 + 踩坑，M3 依赖）
 ```
 
-尚未创建、创建前勿假设存在：backend 的 agents/ / schemas/，frontend 的 routes/ 等
+尚未创建、创建前勿假设存在：frontend 的 routes/Trace（M5）、后端 trace/pricing 路由等
 （规划见 docs/01-architecture.md）。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 

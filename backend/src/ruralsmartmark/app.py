@@ -5,7 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ruralsmartmark.auth import User, get_current_user
 from ruralsmartmark.config import settings
-from ruralsmartmark.routes import auth_router, sim_router, world_router
+from ruralsmartmark.routes import (
+    agents_router,
+    auth_router,
+    sim_router,
+    world_router,
+)
 from ruralsmartmark.sim.engine import engine as sim_engine
 
 
@@ -36,6 +41,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(sim_router)
 app.include_router(world_router)
+app.include_router(agents_router)
 
 
 @app.get("/api/health", tags=["system"])

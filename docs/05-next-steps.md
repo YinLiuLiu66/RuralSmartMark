@@ -1,21 +1,21 @@
 # 05 · 下一步任务清单
 
-> 状态：✅ 当前有效 — M1/M2/M3 已完成，M4（Agent 1/3 + 工作台）待启动
-> 更新时间：2026-10-20
+> 状态：🟢 M4 已完成（2026-10-21 浏览器动线验收通过），下一步 M5
+> 更新时间：2026-10-21
 > 用法：完成一项就在「当前进度」打勾；决策变化必须先改 [decisions.md](decisions.md) 再改这里
 > 素人上手顺序：本章 → [decisions.md](decisions.md) → 环境搭建（下节）→ M1
 
-## 0. 当前进度（截至 2026-10-16）
+## 0. 当前进度（截至 2026-10-21）
 
 - [x] 前后端分离骨架（FastAPI / React 脚手架，`/api/health` 双端联通）
-- [x] 设计文档 00–04 全部定稿，决策 #1–#19 全部落章（无待定阻塞项）
+- [x] 设计文档 00–04 全部定稿，决策 #1–#29 全部落章（无待定阻塞项）
 - [x] AGENTS.md 就位（AI 协作规范）
 - [x] **M0 R3F 探针**（✅ 已完成，报告见 [05-probe-r3f.md](05-probe-r3f.md)：路线可行，M3 按 5 天排）
 - [x] **M1 数据地基**（✅ 已完成 2026-10-16：compose 单 db 服务 + 14 表 ORM（13 业务表 + user） + Alembic 首版迁移（含 vector 扩展） + JWT 双角色；pytest 10/10 绿）
 - [x] **M2 sim 引擎**（✅ 已完成 2026-10-16：虚拟时钟 + 剧本双写 + 控制/快照/WS，任务细则见 §4）
 - [x] **M3 3D 沙盘**（✅ 已完成 2026-10-16：快照+WS 数据链路 / 场景正式化 / 钟控条，细则见 §5）
-- [ ] **M4 Agent 1/3** ← 下一个要做的
-- [ ] M5 及以后（见 §6）
+- [x] **M4 Agent 1/3**（✅ 已完成 2026-10-21：Agent 1/3 + 独立工作台 + 麻江真实县域；浏览器动线验收通过；#24–#29，细则见 §6）
+- [ ] M5 及以后（见 §7）
 
 **MVP 验收动线**（做完 M1–M6 即达成）：
 沙盘可看可点 → Agent 1/3 产出真内容 → 人工润色可改 → 扫码可溯源 → 沙盘页内嵌溢价对照图。
@@ -210,26 +210,62 @@ uv run ruralsmartmark && pnpm dev                            # 双端起来
 `target: ws://127.0.0.1:8000`），否则 WS 走不通表现为"时钟冻结、快照正常"；
 WS 客户端 URL 用 `new URL(path, location.href)` 相对推导，勿手拼 host（代理链路下会构造出坏路径）。
 
-## 6. 再往后（简报，细则到点再写）
+## 6. M4 · Agent 1/3（✅ 已完成 2026-10-21）
 
-1. **M4 · Agent 1/3**：`agents/llm.py` OpenAI 兼容封装（文本模型已定 `deepseek-ai/DeepSeek-V3.1-Terminus`，走 SiliconFlow，decisions #23），
-   故事/文案两个 Agent + 工作台润色闭环（artifact 三态：draft→polished→final）
-2. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
-3. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
-4. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
+> 依据：decisions #23（模型）/ #24（独立工作台）/ #25（operator 全权）/ #26（REST+WS，不做 SSE）/
+> #27（固定素材 + DB 事实注入）/ #28（真实县域：贵州麻江县·蓝莓）/ #29（文案事实边界）
+> 验收动线：登录 operator → 工作台发起故事任务 → 生成中 → 产出 draft → 编辑 → polished → final；
+> 断网时命中预生成入库内容（#11）。
+
+### M4-a LLM 封装 + 素材包
+- [x] `agents/llm.py`：AsyncOpenAI 封装（读 `OPENAI_*`；空 key 走 mock，测试不联网；超时/错误映射）
+- [x] `agents/materials/majiang.json`：麻江县·蓝莓的产业事实（附出处）+ 农户口述 + 苗族传说
+- [x] `agents/context.py`：从 DB 取合作社/站点/冷链温度/运输时长，拼 3–5 个事实进 Prompt
+- [x] `agents/prompts.py`：故事（Agent 1）/ 文案（Agent 3）Prompt 集中管理
+
+### M4-b 任务 API + 后台执行
+- [x] `schemas/agents.py`：任务/产出物的请求响应模型
+- [x] `routes/agents.py`：`POST /api/agent-tasks`、`GET /api/agent-tasks`、`PATCH /api/agent-artifacts/{id}`
+- [x] 后台任务：pending→running→done/failed；先落库再广播 `agent.task_updated` / `agent.artifact_ready`
+- [x] 权限：operator 全权；coop 可发起、只能改自己草稿（#25）
+
+### M4-c 工作台（独立页面）
+- [x] 引入 `react-router-dom` + TanStack Query（#8/#24）；`/` 沙盘、`/workbench` 工作台、顶部导航
+- [x] 登录弹窗（演示双账号 operator/coop，JWT 存 `rsm_jwt`）
+- [x] 任务列表 / 发起任务 / 产出物编辑 / draft→polished→final 流转
+- [x] WS 事件只做 TQ 缓存失效（#26）
+
+### M4-d 预生成与验收
+- [x] 真实模型生成故事 + 文案并落库（`python -m ruralsmartmark.agents.pregenerate`，断网兜底 #11）
+- [x] `pytest` 23 passed / `ruff check` 零告警 / `pnpm typecheck` `lint` `build` 通过
+- [x] 浏览器实测完整动线（2026-10-21：未登录 → operator 登录 → 生成中 → 初稿 → 编辑保存 → 润色 → 定稿；coop 登录 → 只读他人草稿、仅能保存自己草稿；失败态徽章与文案；沙盘导航切换）
+
+**M4 施工记录**：任务执行用 FastAPI `BackgroundTasks`（TestClient 会等后台跑完，测试可直接断言终态；
+真实请求先返回 pending，再由 WS 推 done）；故事实测约 21 秒/475 字、文案 545 字，均含 DB 注入的冷链温度与站点；
+前端新增依赖 `react-router-dom@6.30` + `@tanstack/react-query@5`；`/workbench` 由 Vite history fallback 承载。
+**2026-10-21 验收修复**：① 沙盘 `.app-shell` 改 `padding-top` 抵消导航高度，消除 56px 文档溢出导致的标题/时钟被遮挡；
+② 合作社查看他人草稿改为只读（前端按 `created_by` 判定，后端 403 仍兜底）；③ 401 自动登出并提示"登录已过期"；
+④ 生成提示改为约 20 秒；⑤ 按 #29 收紧 Prompt 并重生成定稿（故事 #6 482 字、文案 #7 479 字），旧定稿降为 draft 保留历史。
+
+## 7. 再往后（简报，细则到点再写）
+
+1. **M5 · 溯源 H5**：`/t/:code` 公开页，时间线读 `trace_event`，文案复用 Agent 1 定稿
+2. **M6 · 溢价**：price_benchmark 落数 + 沙盘页内嵌对照图
+3. **M7 · 冲刺**：独立看板 / Agent 2 / Agent 5 / 温度曲线 / 答辩剧本 / 演示视频
 
 分工建议（4 人以上时）：3D 线（M3）/ 后端线（M1+M2）/ Agent 线（M4）/
 溯源+溢价线（M5+M6）可并行，M1/M2 完成前 3D 线用 M0 探针的假数据先行。
 
-## 7. 未验证假设（开工即验证）
+## 8. 未验证假设（开工即验证）
 
 - [ ] Docker Desktop 在目标演示机可用且内存充足（PG 起得来）
 - [x] OpenAI 兼容端点与 key 可用（2026-10-20 实测 SiliconFlow：`/v1/models` 200 且含目标 id，`/v1/chat/completions` 200 返回中文）
-- [ ] 中文故事/文案质量达标（M4 用真实 Prompt 试跑判定；`deepseek-ai/DeepSeek-V3.1-Terminus` 直出正文、支持流式，单次约 9 秒，见 decisions #23）
+- [x] 中文故事/文案质量达标（2026-10-20 实测：故事 475 字/21.7 秒、文案 545 字，含真实冷链温度与站点；见 #23）
+- [x] 长文案（300–500 字）耗时实测约 20–22 秒（2026-10-21 浏览器动线：任务 #4/#5，含生成中态）
 - [ ] SiliconFlow 生图网关可注册、模型可用；定价/限流与账号额度、水印关闭（X-Enable-Watermark: 0）在后台核验（Agent 2 启动前置检查，decisions #13）
 - [ ] uv / pnpm 在团队各机器安装无障碍
 
-## 8. 红线复查（开工前最后过一眼）
+## 9. 红线复查（开工前最后过一眼）
 
 不引 LangChain / Celery / Redis / 向量库；PG 数据卷路径 `/var/lib/postgresql`；
 `.env` 不入库；`dist/` 不入库不手改；界面文案中文；docs 与 decisions.md 冲突时
