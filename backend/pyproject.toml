@@ -1,7 +1,7 @@
 [project]
 name = "ruralsmartmark"
 version = "0.2.0"
-description = "乡土印记 v2：县域农产品的 AI 品牌流水线"
+description = "智农云链 v2：基于多智能体协同的县域农产品品牌数字化重构系统"
 requires-python = ">=3.13"
 dependencies = [
     "aiosqlite>=0.20.0",

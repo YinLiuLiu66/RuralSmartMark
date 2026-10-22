@@ -372,7 +372,7 @@ export default function Trace() {
               className="inline-flex items-center gap-1.5 text-[11px] text-paper/65 underline-offset-4 hover:underline"
             >
               <ArrowLeft size={14} />
-              乡土印记
+              智农云链
             </Link>
             <span className="rounded-full border border-paper/20 px-2.5 py-1 text-[10px] tracking-wide text-paper/70">
               {trace.fixed_demo ? "固定演示批次" : "演示溯源"}

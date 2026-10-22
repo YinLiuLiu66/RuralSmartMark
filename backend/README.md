@@ -1,4 +1,4 @@
-# 乡土印记 v2 · backend
+# 智农云链 v2 · backend
 
 FastAPI + SQLAlchemy 2.0 + SQLite。无需 Docker/Postgres。
 

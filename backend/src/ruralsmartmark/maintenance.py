@@ -7,7 +7,7 @@ from .services.image_cache import cleanup_image_cache
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="乡土印记本地维护命令")
+    parser = argparse.ArgumentParser(description="智农云链本地维护命令")
     parser.add_argument("command", choices=["image-cache"])
     parser.add_argument("--max-age-days", type=int, default=30)
     parser.add_argument("--max-mb", type=int, default=512)

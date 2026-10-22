@@ -192,7 +192,7 @@ def build_label_svg(
   <rect width="500" height="1000" fill="{primary}"/>
   <circle cx="410" cy="120" r="150" fill="{kraft}" opacity="0.28"/>
   <circle cx="80" cy="930" r="190" fill="{leaf}" opacity="0.22"/>
-  <text x="58" y="96" font-family="{_FONT_NAME}" font-size="38" fill="{paper}">乡土印记</text>
+  <text x="58" y="96" font-family="{_FONT_NAME}" font-size="38" fill="{paper}">智农云链</text>
   <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">{safe(display["brand"])} · 演示品牌</text>
   <text x="52" y="520" font-family="{_FONT_NAME}" font-size="310" fill="{paper}">{safe(display["hero"])}</text>
   <text x="58" y="600" font-family="{_SANS_NAME}" font-size="24" fill="{paper}" opacity="0.9">{safe(display["tagline"])}</text>
@@ -347,7 +347,7 @@ def _render_label_image(
     sans_20 = _font(20)
     sans_24 = _font(24)
 
-    draw.text((58, 54), "乡土印记", font=serif_title, fill=paper)
+    draw.text((58, 54), "智农云链", font=serif_title, fill=paper)
     draw.text((58, 112), f"{display['brand']} · 演示品牌", font=sans_20, fill=paper)
     draw.text((52, 210), display["hero"], font=serif_big, fill=paper)
     draw.text((58, 570), display["tagline"], font=sans_24, fill=paper)

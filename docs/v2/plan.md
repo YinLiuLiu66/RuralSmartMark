@@ -1,6 +1,7 @@
-# 乡土印记 v2 · 重写方案
+# 智农云链 v2 · 重写方案
 
-> 状态：方案已确认，待实施  
+> 正式名：《“智农云链”——基于多智能体协同的县域农产品品牌数字化重构系统》  
+> 状态：已实施（Phase 0–5，2026-10-22）  
 > 日期：2026-10-21  
 > 首个案例：昭通丑苹果（云南省昭通市昭阳区）  
 > 范围：单案例深做 + 可复制架构  
@@ -74,7 +75,7 @@
 
 ### 沙盘布局
 
-- 顶栏：Logo「乡土印记」、产品/批次切换、流水线状态 pill、主按钮「运行流水线」、通知、设置。
+- 顶栏：Logo「智农云链」、产品/批次切换、流水线状态 pill、主按钮「运行流水线」、通知、设置。
 - 左侧：4–5 张 KPI 卡（品牌溢价率、故事定稿、包装方案、内容素材、扫码次数）。
 - 中央：等距 3D 场景（果园、故事馆、包装工坊、内容工坊、云仓/门店、道路、卡车、批次托盘）。
 - 右侧：上下文详情卡（站点/批次/门店/卡车）。
@@ -374,7 +375,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#66（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#67（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -472,4 +473,5 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 性能：headless Chromium 1280×720 固定演示批次 60 秒 58.3fps，JSHeap 44.5MB→42.4MB；640×360 显示“3D 沙盘需要桌面端”且无横向溢出。
 - 一键启动：根 `Makefile` 的 `dev/lan/test/e2e/perf`；`make lan` 自动检测局域网 IP、Vite 监听 `0.0.0.0`、后端 `PUBLIC_BASE_URL` 与固定演示二维码指向局域网，并自动 reset；默认 `make dev` 仍只绑 127.0.0.1。runbook `docs/v2/runbook.md` 覆盖启动、手机扫码、演示动线、验收、新增档案与排障。
 - 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计；`make lan` 在 `172.20.10.13` 下 LAN 首页/H5/二维码均 200，二维码 payload 指向局域网。
+- 命名收口（#67）：正式名《“智农云链”——基于多智能体协同的县域农产品品牌数字化重构系统》；界面、包装系统署名、Agent 系统提示、README/文档统一为“智农云链”；昭通案例、乌蒙丑果、山风守园人不变。
 - 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、手机真机扫码、包装厂书面报价/食品接触合规。

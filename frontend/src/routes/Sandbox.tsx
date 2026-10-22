@@ -310,7 +310,7 @@ export default function Sandbox() {
     <>
       <div className="desktop-only min-h-dvh items-center justify-center bg-paper p-6 text-center">
         <div className="max-w-sm">
-          <div className="font-display text-2xl text-ink">乡土印记</div>
+          <div className="font-display text-2xl text-ink">智农云链</div>
           <p className="mt-3 text-sm leading-7 text-ink-muted">
             3D 沙盘需要桌面端（≥1024px）。手机请扫描包装上的二维码，打开溯源页。
           </p>
@@ -320,8 +320,8 @@ export default function Sandbox() {
       <div className="shell">
         <header className="flex items-center gap-4 border-b border-line bg-surface/85 px-5 backdrop-blur">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-xl tracking-wide text-ink">乡土印记</span>
-            <span className="text-[11px] text-ink-muted">v2 · 昭通丑苹果</span>
+            <span className="font-display text-xl tracking-wide text-ink">智农云链</span>
+            <span className="text-[11px] text-ink-muted">多智能体 · 昭通丑苹果</span>
           </div>
 
           <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted">

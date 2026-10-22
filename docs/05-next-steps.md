@@ -116,7 +116,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 来源补证：农业部公告第1478号/AGI2010-07-00370 入 GI-01；80–85mm 补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，无书面报价
 - [x] 生图失败视觉兜底（包装工位）与缓存清理命令（30 天/512MB，支持 dry-run）
 - [x] 局域网扫码入口：`make lan` 自动取 IP、Vite 监听 0.0.0.0、后端 `PUBLIC_BASE_URL` 与二维码指向局域网，reset 后可用；真机扫描仍需同一 Wi-Fi 实测
-- [x] 文档收口：decisions #61–#66、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
+- [x] 文档收口：decisions #61–#67、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
 - [x] 字段级审核表单：Phase 5 确认不做，保留 JSON 编辑器（#58/#63）
 - [x] Docker：确认不做，继续 uv + pnpm 本地进程（#63）
 - [x] 演示脚本与彩排：见 `docs/v2/runbook.md` §4

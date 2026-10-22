@@ -60,7 +60,7 @@ def build_system_prompt(product: ProductProfile) -> str:
     brand_rule = _spec(product, "brand_rule", _DEFAULT_BRAND_RULE)
     demo_rule = _spec(product, "demo_claim_rule", _DEFAULT_DEMO_RULE)
     gi_rule = _spec(product, "gi_claim_rule", _DEFAULT_GI_RULE)
-    return f"""你是「乡土印记」县域农产品品牌流水线里的专业 Agent。
+    return f"""你是「智农云链」县域农产品品牌数字化重构系统里的专业 Agent。
 你的工作对象是{context}。
 {brand_rule}
 

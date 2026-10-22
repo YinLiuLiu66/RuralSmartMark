@@ -16,7 +16,7 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="乡土印记 v2", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="智农云链 v2", version="0.2.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
