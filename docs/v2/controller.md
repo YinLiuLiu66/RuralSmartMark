@@ -54,14 +54,14 @@
 ```env
 CONTROLLER_REQUEST_LIMIT=10
 CONTROLLER_TOOL_CALLS_LIMIT=12
-RESEARCH_REQUEST_LIMIT=8
-RESEARCH_TOOL_CALLS_LIMIT=10
+RESEARCH_REQUEST_LIMIT=10
+RESEARCH_TOOL_CALLS_LIMIT=16
 ```
 
 - `request_limit` 计模型轮数；`tool_calls_limit` 计工具执行次数。
 - 搜索一次返回最多 5 条；抓取一次最多 4 页；批量算一次工具。
 - 超限返回当前草案与“继续”，不丢数据。
-- 这些是延迟/费用/防循环保护，不是业务常数。实测 4/8 对 PydanticAI 的“工具调用 + 最终结果”不够，调到 10/12；仍可配置，超限返回中间结果。
+- 这些是延迟/费用/防循环保护，不是业务常数。实测 4/8 对 PydanticAI 的“工具调用 + 最终结果”不够；控制器调到 10/12，研究 Agent 调到 10/16，并对搜索 3 次/抓取 4 页做显式封顶；仍可配置，超限返回中间结果。
 
 ## 5. 数据模型
 

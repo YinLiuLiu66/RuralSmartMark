@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 6 代码侧已完成（2026-10-22）；真实 Firecrawl/外部补证待做
+> 状态：🟢 Phase 6 已完成（2026-10-22，真实 Firecrawl 已验）；外部实物补证待做
 > 更新时间：2026-10-22
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
@@ -124,7 +124,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 
 **Phase 5 验收**：`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 与 `RSM_REAL_LLM=1` 真实四站均通过；`ZTDEMO26` 与 156% 溢价回归不变。
 
-## 5.1 Phase 6 · 多产品 + 总控（代码侧已完成）
+## 5.1 Phase 6 · 多产品 + 总控（已完成）
 
 - [x] 知识库唯一约束改为 `(product_id, doc_key)`；两个产品可复用 `ORIGIN-01`
 - [x] 产品下拉 + 批次按产品过滤；批次码前缀读 `specs.batch_prefix`
@@ -134,7 +134,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] Firecrawl Provider + 逐字引用校验；无 key 提示贴资料
 - [x] 右栏总控抽屉 + `/controller` 独立页；9 条 Playwright
 - [x] 后端 52 passed + 2 skipped；迁移在全新 SQLite 通过
-- [ ] 真实 Firecrawl 搜索（需要 `FIRECRAWL_API_KEY`）
+- [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓草案（本机 key；1 条来源、价格缺失转追问）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 
 ## 6. 未验证假设（开工即验证）
@@ -162,7 +162,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - 故事/内容里的区域事实已尽量引用知识库，但 LLM 仍可能写未引用的概括（FactGuard 对未引用数字只给 warning）；审核时看引用与预警。
 - IP 对话只做了关键词/规则 + LLM 后置校验；没有多轮上下文管理、没有真人客服兜底。
 - 第二产品真实 LLM 只跑了一次（四站无 fallback），未做多批次稳定性；提示词已档案化。
-- 总控真实 Firecrawl 搜索尚未验证（本机无 `FIRECRAWL_API_KEY`）；研究 Agent 的 mock 搜索已验，真实 key 需补一次小样本。
+- 真实 Firecrawl 搜索/抓页已验；调研草案只拿到 1 条来源，价格/包装仍会转追问，需用户补资料。
 - 总控 PydanticAI 工具循环实测比原计划多轮，默认限额调到 10 请求/12 工具；仍需真实调研观察费用与稳定性。
 - 多产品 UI 已做，但不做多产品并列 3D；产品知识库/批次互相独立。
 - 手机真机扫码、包装厂书面报价/食品接触合规、真实盒型/刀版仍未补齐；80–85mm 挂牌价与 GI 公告号已补，成交价仍待跟。

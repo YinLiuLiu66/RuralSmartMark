@@ -9,6 +9,14 @@
 - 面向人的界面与文案一律中文；代码注释不写“怎么调/做什么”类废话。
 - 架构取舍先落 `docs/decisions.md`（v2 从 #32 起）；冲突以最新条目为准。
 
+## 复用优先（动手前必做）
+
+- 新功能先查：现有代码/组件 → 标准库/已装依赖 → 成熟开源项目/官方 SDK；确认没有合适方案再自己写。
+- 不重复造轮子：Agent 循环/工具调用/重试、搜索抓取、聊天 UI、状态机等优先复用；当前已选 PydanticAI、Firecrawl、现有 `orchestrator.py` 与 H5 聊天样式。
+- 引入新依赖前先说明“现有方案为什么不够”，并只装进本项目环境（后端 `uv add` → `backend/.venv`；前端 `pnpm add`），禁止全局安装。
+- 复用外部代码/资产要确认许可证，并在 `docs/v2/plan.md` 或 `docs/decisions.md` 记录来源；框架与现有架构冲突时，只写最小适配层，不推倒状态机。
+- 如果最终决定自写，必须留下“已比较过哪些现成方案、为什么不采用”的一句话，避免重复踩坑。
+
 ## 当前阶段（2026-10-22）
 
 - **Phase 0 已完成**：开发分支在 `main`；SQLite 9 张表 + Alembic；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；React 19 + R3F 9 + Tailwind 4 骨架。
@@ -17,9 +25,9 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成（代码侧）**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）。后端 52 passed + 2 skipped，Playwright 9 条。Firecrawl 真实搜索尚未验证（本机没有 `FIRECRAWL_API_KEY`）。
-- **下一步交付/补证**：配置 `FIRECRAWL_API_KEY` 后跑真实搜索小样本；手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
-- **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规、真实 Firecrawl 搜索验证（缺 key）。别假设它们存在。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）。后端 52 passed + 2 skipped，Playwright 9 条。Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **下一步交付/补证**：手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
+- **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -31,7 +39,7 @@
   `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
   `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
   图像：`IMAGE_MODEL=Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`），`IMAGE_SIZE` 空=按调用尺寸自动选 512×512/1024×576/768×1024，`IMAGE_BASE_URL` 空=复用 `OPENAI_BASE_URL`，`IMAGE_TIMEOUT_SECONDS=120`。
-  总控调研：`SEARCH_PROVIDER=firecrawl`、`FIRECRAWL_API_KEY`（空则提示贴资料）、`SEARCH_MAX_RESULTS=5`、`SEARCH_MAX_SCRAPES=4`、`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`、`RESEARCH_REQUEST_LIMIT=8`、`RESEARCH_TOOL_CALLS_LIMIT=10`、`RESEARCH_MAX_TOKENS=8192`。
+  总控调研：`SEARCH_PROVIDER=firecrawl`、`FIRECRAWL_API_KEY`（空则提示贴资料）、`SEARCH_MAX_RESULTS=5`、`SEARCH_MAX_SCRAPES=4`、`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`、`RESEARCH_REQUEST_LIMIT=10`、`RESEARCH_TOOL_CALLS_LIMIT=16`、`RESEARCH_MAX_TOKENS=8192`。
 - 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。
 - 包装字体 `backend/src/ruralsmartmark/assets/fonts/` 内置 Noto Serif/Sans SC（OFL，约 40MB）；PNG 不再依赖系统字体。
   运行期包装 PNG 与 IP 插画在 `backend/data/artifacts/`；生图缓存 `backend/data/image-cache/`（均 gitignore）。

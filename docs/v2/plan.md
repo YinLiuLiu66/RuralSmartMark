@@ -478,12 +478,13 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ---
 
-## 20. Phase 6 实施记录（已完成代码侧，2026-10-22）
+## 20. Phase 6 实施记录（已完成，2026-10-22）
 
 - 多产品：`GET /api/batches?product_id=`；批次码前缀读 `specs.batch_prefix`；产品下拉 + 批次过滤；H5 标题/旅程从 `specs.trace_headline`/`product.name` 读取；`knowledge_doc` 唯一约束改为 `(product_id, doc_key)`，两个产品可复用 `ORIGIN-01`。
 - 总控：新增 `controller_session`/`controller_message`；`POST /api/controller/sessions`、`messages`、`confirm`；PydanticAI `OpenAIChatModel`（Chat Completions）承载工具循环；动作白名单 + 危险动作确认卡；`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`。
-- 调研：Firecrawl `search`/`scrape` Provider；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料；真实 Firecrawl 尚未验证（缺 key）。
+- 调研：Firecrawl `search`/`scrape` Provider；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料。真实 Firecrawl 搜索/抓页与麻江蓝莓草案已验证。
 - 回退：清空下游 JSON、删除下游 Artifact/插画、run 标记 failed、回到目标站重跑；历史 run 保留。
 - 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；草案卡/确认卡/消息记录。
 - 验证：后端 52 passed + 2 skipped；Playwright 9 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
-- 未完成：真实 Firecrawl 搜索验证（需要 `FIRECRAWL_API_KEY`）；真实手机扫码、包装厂书面报价、真实盒型/刀版。
+- 真实 Firecrawl：`RSM_REAL_SEARCH=1` 搜索/抓页测试通过；麻江蓝莓真实调研草案拿到 1 条来源（搜狐地理标志报道），价格/包装/品牌转为追问，未编造。
+- 未完成：真实手机扫码、包装厂书面报价、真实盒型/刀版。

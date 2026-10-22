@@ -120,6 +120,8 @@ async def run_research(
             "只能引用抓取正文里逐字出现的句子；不要编年份、认证、产量、人物或价格。"
             "每个 doc 的 content 必须是从某一页抓取正文复制的原句/原段，source_url 必须对应那页。"
             "缺失的品牌/IP、包装规格、三档价格写进 questions，不要硬凑。"
+            "最多搜索 2 次；抓取只调用 1–2 次 scrape_sources，一次传 2–4 个 URL，不要逐页调用。"
+            "抓取上限或搜索上限提示出现后，立即根据已有正文输出 JSON，不再调用工具。"
             "最后只输出一个 JSON 对象（不要 Markdown 代码围栏），结构必须符合给定 Schema。"
         ),
     )
@@ -127,6 +129,8 @@ async def run_research(
     @agent.tool
     async def search_web(ctx: RunContext[ResearchDeps], query: str) -> list[dict]:
         """Search the web for candidate sources."""
+        if len(ctx.deps.search_queries) >= 3:
+            return [{"error": "搜索次数已达上限，请直接根据已有来源输出 JSON 草案。"}]
         hits = await ctx.deps.search.search(
             query, limit=ctx.deps.settings.search_max_results
         )
@@ -140,7 +144,11 @@ async def run_research(
     async def scrape_sources(ctx: RunContext[ResearchDeps], urls: list[str]) -> list[dict]:
         """Fetch up to four pages as Markdown and return excerpts."""
         remaining = ctx.deps.settings.search_max_scrapes - len(ctx.deps.scraped)
-        selected = [url for url in urls if url not in ctx.deps.scraped][: max(0, remaining)]
+        if remaining <= 0:
+            return [{"error": "抓取页数已达上限，请直接根据已有正文输出 JSON 草案。"}]
+        selected = [url for url in urls if url not in ctx.deps.scraped][:remaining]
+        if not selected:
+            return [{"error": "没有新的 URL 可抓取，请直接输出 JSON 草案。"}]
         results: list[dict] = []
         for url in selected:
             try:
@@ -165,8 +173,9 @@ async def run_research(
 已知字段：
 {known_text or "（无）"}
 
-请先搜索，再抓取 2–4 个最可靠来源，最后只输出一个 JSON 对象。
+请先搜索 1–2 次，再一次抓取 2–4 个最可靠来源，最后只输出一个 JSON 对象。
 来源优先：政府/协会/主流媒体 > 电商挂牌页；每条事实单独成 doc，source_date 用页面日期或 {_TODAY}。
+不要逐页调用抓取工具；达到搜索/抓取上限后直接输出草案。
 
 输出 JSON Schema：
 {json.dumps(ResearchDraft.model_json_schema(), ensure_ascii=False)}"""

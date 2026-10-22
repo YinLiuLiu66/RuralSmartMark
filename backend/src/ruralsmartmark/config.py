@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     search_timeout_seconds: float = 60.0
     controller_request_limit: int = 10
     controller_tool_calls_limit: int = 12
-    research_request_limit: int = 8
-    research_tool_calls_limit: int = 10
+    research_request_limit: int = 10
+    research_tool_calls_limit: int = 16
     research_max_tokens: int = 8192
     public_base_url: str = "http://127.0.0.1:5173"
     auto_approve: bool = False
