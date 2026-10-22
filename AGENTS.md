@@ -9,13 +9,14 @@
 - 面向人的界面与文案一律中文；代码注释不写“怎么调/做什么”类废话。
 - 架构取舍先落 `docs/decisions.md`（v2 从 #32 起）；冲突以最新条目为准。
 
-## 当前阶段（2026-10-21）
+## 当前阶段（2026-10-22）
 
-- **Phase 0 已完成**：开发分支已从 `rewrite/v2` 切回 `main`（旧分支已删除）；旧 v1 后端/前端/文档/Postgres 数据已移出工作树；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
-- **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次沿站点移动、审核后自动启动下一站。
-- **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI、知识库 API。
-- **下一步 Phase 3**：沙盘联动（包装贴图/广告牌/二维码）+ 公开溯源 API/H5 + IP 对话。
-- **尚未实现**：公开溯源 API/IP 对话、3D 包装贴图、真实图像 Provider、字段级审核表单（当前 JSON 编辑器）、扫码统计落库。别假设它们存在。
+- **Phase 0 已完成**：开发分支在 `main`；SQLite 9 张表 + Alembic；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；React 19 + R3F 9 + Tailwind 4 骨架。
+- **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次移动。
+- **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI。
+- **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
+- **下一步 Phase 4**：真实图像 Provider、包装变体、空态/错误态/性能与代码分割。
+- **尚未实现**：真实图像 Provider、字段级审核表单（当前 JSON 编辑器）、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格与包装厂真实报价、地理标志公告原文。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -31,8 +32,8 @@
 - `uv run pytest` **不需要 PG**；测试用临时 SQLite；单函数一样跑。
 - 前端没有测试框架；只有 `pnpm typecheck` / `pnpm lint` / `pnpm build` 兜底；别假设有 vitest/jest。
 - 3D 只在桌面端（≥1024px）；手机只走 `/trace/:code`。3D 构建方式对齐 WareTrack：
-  代码拼 Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + CanvasTexture；不引 GLB/写实资产。
-- 固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26`；seed 幂等；`POST /api/demo/reset` 重建批次。
+  代码拼 Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + Texture；广告牌/二维码用 Html 覆盖层；不引 GLB/写实资产。
+- 固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26`；`seed/demo_batch.json` 存真实 V4.1 内容快照，seed/reset 时写入四章产出、4 条 approved run/artifact 和确定性定价；reset 后 H5 仍有完整内容。
 - 前端 Vite 代理 `/api` → `http://127.0.0.1:8000`。
 
 ## 技能包同步（每个 Agent 开工必做）
@@ -71,30 +72,32 @@ backend/
   src/ruralsmartmark/
     main.py config.py db.py deps.py models.py schemas.py
     routes/ health.py products.py batches.py demo.py pipeline.py
-           knowledge.py artifacts.py        # 知识库清单 + 包装文件下载
+           knowledge.py artifacts.py trace.py   # 知识库 / 包装文件 / 公开溯源
     agents/ base.py schemas.py prompts.py engine.py runtime.py mock.py orchestrator.py
     providers/ llm.py image.py      # Provider 接口 + Mock
     services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
+             trace.py trace_chat.py # 公开溯源聚合 + IP 对话边界
     assets/fonts/                  # 内置 Noto Serif/Sans + OFL
-    seed/ __init__.py __main__.py   # 幂等 seed（含知识库 Markdown）
+    seed/ __init__.py __main__.py demo_batch.json  # 幂等 seed + 固定演示快照
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
          test_knowledge.py test_fact_guard.py test_pricing.py test_engine.py
-         test_llm.py test_packaging.py
+         test_llm.py test_packaging.py test_trace.py
 data/knowledge/zhaotong/*.md        # 事实源；已入库
 frontend/
   src/api/client.ts                 # fetch 封装 + Product/Batch/Knowledge 类型
   src/api/pipeline.ts               # workspace/run/approve/reject + guard 类型
+  src/api/trace.ts                  # 公开溯源 / 扫码 / 对话类型与 API
   src/agents.ts                     # Agent 元数据、状态映射、下一站/审核站
   src/stores/world.ts               # Zustand：批次/选中批次
   src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/busy
-  src/three/Scene.tsx               # 等距正交场景（果园/四站点/批次移动/站点状态）
+  src/three/Scene.tsx               # 等距场景（包装贴图/广告牌/二维码/路径/卡车）
   src/three/stations.ts             # 四站点元数据
   src/components/StationCard.tsx    # 工位卡（预览/引用/FactGuard/包装图）
   src/components/ReviewDialog.tsx   # 原生 dialog 审核（JSON + 引用/预警/包装预览）
-  src/routes/Sandbox.tsx            # 桌面沙盘 `/` + SSE + 审核动线
-  src/routes/Trace.tsx              # 移动溯源骨架 `/trace/:code`（Phase 3 接 API）
+  src/routes/Sandbox.tsx            # 桌面沙盘 `/` + SSE + 审核动线 + 扫码计数
+  src/routes/Trace.tsx              # 公开溯源 H5 `/trace/:code`（390px）
   src/styles/global.css             # Tailwind v4 @theme + 山野编辑部 token
   vite.config.ts package.json
 docs/
@@ -106,7 +109,7 @@ docs/
 .agent/skills/                      # 可复用技能包
 ```
 
-尚未创建、创建前勿假设存在：公开溯源 API/IP 对话、3D 包装贴图、真实图像 Provider、扫码统计写入、字段级审核表单。
+尚未创建、创建前勿假设存在：真实图像 Provider、字段级审核表单、Playwright、第二产品档案夹具、真实供应商/公告来源。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
 ## 文档维护职责（必读必做）

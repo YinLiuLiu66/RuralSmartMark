@@ -65,7 +65,7 @@ async def test_schema_retry_then_success(session, tmp_path):
     assert result.attempts == 2
     assert result.model == "fake-model"
     assert result.tokens == 24
-    assert result.output["ip_name"] == "乌蒙丑丑"
+    assert result.output["ip_name"] == "山风守园人"
     assert result.guard.passed
 
 
@@ -93,6 +93,27 @@ async def test_fact_guard_retry_then_success(session, tmp_path):
     assert "有机" not in result.output["story_long"]
 
 
+async def test_guard_failure_reason_keeps_rule(session, tmp_path):
+    product, batch, benchmarks, docs = await _context(session)
+    valid = await _valid_story(product, batch, docs, benchmarks)
+    unsafe = json.dumps(
+        {**valid, "story_long": valid["story_long"] + "这是有机认证苹果。"},
+        ensure_ascii=False,
+    )
+    fake = FakeLLM([unsafe, unsafe])
+    runtime = AgentRuntime(
+        settings=get_settings(),
+        llm=fake,
+        artifact_dir=tmp_path / "artifacts",
+        allow_mock_fallback=True,
+    )
+
+    result = await generate_output(session, runtime, AgentName.STORY, product, batch)
+
+    assert result.demo is True
+    assert "COMP-02" in (result.fallback_reason or "")
+
+
 async def test_invalid_output_falls_back_to_mock(session, tmp_path):
     product, batch, _benchmarks, _docs = await _context(session)
     fake = FakeLLM(['{"ip_name": "太短"}', '{"ip_name": "仍然太短"}'])
@@ -108,7 +129,7 @@ async def test_invalid_output_falls_back_to_mock(session, tmp_path):
     assert result.demo is True
     assert result.model == "mock"
     assert result.fallback_reason
-    assert result.output["ip_name"] == "乌蒙丑丑"
+    assert result.output["ip_name"] == "山风守园人"
     assert result.guard.passed
 
 

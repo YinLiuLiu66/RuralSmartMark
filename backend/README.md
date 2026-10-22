@@ -28,9 +28,11 @@ uv run ruff format .
 - `GET /api/batches/{id}` / `GET /api/batches/by-code/{code}`
 - `GET /api/batches/{id}/workspace`；`POST /api/batches/{id}/pipeline/start`
 - `POST /api/batches/{id}/agents/{agent}/run|approve|reject`
-- `GET /api/batches/{id}/agents/packaging/preview`（SVG）
+- `GET /api/batches/{id}/agents/packaging/preview`（服务端 PNG）
 - `GET /api/artifacts/{id}/file`（审核后的 PNG）
 - `GET /api/batches/{id}/events`（SSE）
-- `POST /api/demo/reset`
+- `GET /api/trace/{code}` / `packaging.png` / `qr.png`
+- `GET|POST /api/trace/{code}/scan`；`POST /api/trace/{code}/chat`
+- `POST /api/demo/reset`（重建固定演示批次并保留完整内容）
 
-知识库在仓库根 `data/knowledge/zhaotong/*.md`，seed 时写入 `knowledge_doc`。真实 LLM 可空 key 走 mock；`LLM_FALLBACK_TO_MOCK` / `LLM_TIMEOUT_SECONDS` / `LLM_THINKING_BUDGET` / `LLM_MAX_TOKENS` 见 `.env.example`；默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。SQLite 文件默认在 `backend/data/app.db`（已 gitignore）。`docs/v2/plan.md` 是当前方案。
+知识库在仓库根 `data/knowledge/zhaotong/*.md`，seed 时写入 `knowledge_doc`；`seed/demo_batch.json` 是固定演示批次的真实 V4.1 内容快照，reset 后由 seed 写入四章产出、4 条 approved run/artifact 和确定性定价。真实 LLM 可空 key 走 mock；`LLM_FALLBACK_TO_MOCK` / `LLM_TIMEOUT_SECONDS` / `LLM_THINKING_BUDGET` / `LLM_MAX_TOKENS` 见 `.env.example`；默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。SQLite 文件默认在 `backend/data/app.db`（已 gitignore）。`docs/v2/plan.md` 是当前方案。

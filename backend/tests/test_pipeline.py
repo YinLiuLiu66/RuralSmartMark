@@ -20,7 +20,7 @@ async def test_pipeline_end_to_end(session, client):
     assert started.status_code == 200
     workspace = started.json()
     assert workspace["batch"]["state"] == "story_review"
-    assert workspace["batch"]["story_json"]["ip_name"] == "乌蒙丑丑"
+    assert workspace["batch"]["story_json"]["ip_name"] == "山风守园人"
     assert workspace["runs"][0]["agent"] == "story"
     assert workspace["runs"][0]["status"] == "waiting_review"
     assert workspace["runs"][0]["model"] == "mock"

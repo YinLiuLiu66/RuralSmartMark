@@ -1,6 +1,6 @@
-import { Html, OrbitControls, RoundedBox, useCursor } from "@react-three/drei";
+import { Html, OrbitControls, RoundedBox, useCursor, useTexture } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 import type { StationStatus } from "../agents";
@@ -31,6 +31,15 @@ const BATCH_POSITIONS: Record<string, Vec3> = {
   trace: [14, 0, 7.8],
 };
 
+const STATION_ORDER = Object.keys(BATCH_POSITIONS);
+
+const BATCH_PATH = new THREE.CatmullRomCurve3(
+  Object.values(BATCH_POSITIONS).map((point) => new THREE.Vector3(...point)),
+  false,
+  "catmullrom",
+  0.32,
+);
+
 const BATCH_LABEL: Record<string, string> = {
   intake: "原料",
   story: "故事 IP",
@@ -39,6 +48,15 @@ const BATCH_LABEL: Record<string, string> = {
   pricing: "定价",
   trace: "溯源",
 };
+
+function KraftBox() {
+  return (
+    <mesh position={[0, 0.74, 0]} castShadow>
+      <boxGeometry args={[1.45, 0.98, 1.15]} />
+      <meshStandardMaterial color="#C9A46A" />
+    </mesh>
+  );
+}
 
 function Tree({ position }: { position: Vec3 }) {
   return (
@@ -147,32 +165,55 @@ function StationBuilding({
   );
 }
 
+function TexturedGiftBox({ imageUrl }: { imageUrl: string }) {
+  const texture = useTexture(imageUrl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+
+  return (
+    <mesh position={[0, 0.74, 0]} castShadow>
+      <boxGeometry args={[1.45, 0.98, 1.15]} />
+      <meshStandardMaterial attach="material-0" color="#C9A46A" />
+      <meshStandardMaterial attach="material-1" color="#C9A46A" />
+      <meshStandardMaterial attach="material-2" color="#C9A46A" />
+      <meshStandardMaterial attach="material-3" color="#C9A46A" />
+      <meshStandardMaterial attach="material-4" map={texture} toneMapped={false} />
+      <meshStandardMaterial attach="material-5" map={texture} toneMapped={false} />
+    </mesh>
+  );
+}
+
 function BatchPallet({
   code,
   station,
+  packagingImageUrl,
   onClick,
 }: {
   code: string;
   station: string;
+  packagingImageUrl: string | null;
   onClick?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
   const initialized = useRef(false);
-  const target = BATCH_POSITIONS[station] ?? BATCH_POSITIONS.intake;
-  const targetVec = useMemo(() => new THREE.Vector3(...target), [target]);
+  const targetIndex = Math.max(0, STATION_ORDER.indexOf(station));
+  const targetT = targetIndex / (STATION_ORDER.length - 1);
+  const progress = useRef(targetT);
   const label = BATCH_LABEL[station] ?? "原料";
   useCursor(hovered);
 
   useEffect(() => {
     if (!initialized.current && groupRef.current) {
-      groupRef.current.position.set(...target);
+      groupRef.current.position.copy(BATCH_PATH.getPointAt(targetT));
       initialized.current = true;
     }
-  }, [target]);
+  }, [targetT]);
 
   useFrame((_, delta) => {
-    groupRef.current?.position.lerp(targetVec, 1 - Math.exp(-delta * 6));
+    progress.current = THREE.MathUtils.damp(progress.current, targetT, 2.6, delta);
+    const point = BATCH_PATH.getPointAt(THREE.MathUtils.clamp(progress.current, 0, 1));
+    groupRef.current?.position.copy(point);
   });
 
   return (
@@ -188,26 +229,147 @@ function BatchPallet({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      <mesh position={[0, 0.12, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.4, 0.24, 1.0]} />
+      <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.8, 0.26, 1.3]} />
         <meshStandardMaterial color="#C9A46A" />
       </mesh>
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <boxGeometry args={[1.0, 0.7, 0.8]} />
-        <meshStandardMaterial color={station === "intake" ? "#E7D8BF" : "#C9A46A"} />
+      {packagingImageUrl ? (
+        <Suspense fallback={<KraftBox />}>
+          <TexturedGiftBox imageUrl={packagingImageUrl} />
+        </Suspense>
+      ) : (
+        <mesh position={[0, 0.7, 0]} castShadow>
+          <boxGeometry args={[1.35, 0.9, 1.05]} />
+          <meshStandardMaterial color="#E7D8BF" />
+        </mesh>
+      )}
+      {!packagingImageUrl && (
+        <Html position={[0, 1.55, 0]} center style={{ pointerEvents: "none" }}>
+          <div className="whitespace-nowrap rounded-full border border-apple/30 bg-apple-weak px-3 py-1 text-[11px] font-medium text-apple shadow-card">
+            {code} · {label}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+function Billboard({
+  title,
+  ready,
+  onSelect,
+}: {
+  title: string;
+  ready: boolean;
+  onSelect?: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  useCursor(hovered);
+
+  return (
+    <group
+      position={[-3, 0, 16]}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect?.();
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={() => setHovered(false)}
+    >
+      <mesh position={[0, 0.05, 0]} receiveShadow>
+        <boxGeometry args={[1.7, 0.1, 1.0]} />
+        <meshStandardMaterial color="#8A8578" />
       </mesh>
-      <Html position={[0, 1.25, 0]} center style={{ pointerEvents: "none" }}>
-        <div className="whitespace-nowrap rounded-full border border-apple/30 bg-apple-weak px-3 py-1 text-[11px] font-medium text-apple shadow-card">
-          {code} · {label}
+      {[-0.52, 0.52].map((x) => (
+        <mesh key={x} position={[x, 1.55, 0]} castShadow>
+          <cylinderGeometry args={[0.05, 0.06, 3.1, 8]} />
+          <meshStandardMaterial color="#5F655F" />
+        </mesh>
+      ))}
+      <Html position={[0, 2.8, 0.2]} center style={{ pointerEvents: "none", width: "200px" }}>
+        <div className="rounded-sm border border-line bg-surface/95 px-3 py-2.5 shadow-card">
+          <div className="text-[9px] uppercase tracking-[0.18em] text-apple">
+            内容工坊 · 小红书封面
+          </div>
+          <div className="mt-1.5 font-display text-lg leading-snug text-ink">{title}</div>
+          <div className="mt-1 text-[9px] text-ink-faint">
+            {ready ? "来自内容 Agent 的标题" : "等待内容工坊产出"}
+          </div>
         </div>
       </Html>
     </group>
   );
 }
 
-function Truck() {
+function QrSign({ traceCode, onOpen }: { traceCode: string; onOpen?: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  useCursor(hovered);
+
   return (
-    <group position={[10, 0, 7.4]}>
+    <group
+      position={[19.5, 0, 5]}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen?.();
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={() => setHovered(false)}
+    >
+      <mesh position={[0, 0.05, 0]} receiveShadow>
+        <boxGeometry args={[1.7, 0.1, 1.0]} />
+        <meshStandardMaterial color="#8A8578" />
+      </mesh>
+      <mesh position={[0, 1.55, 0]} castShadow>
+        <boxGeometry args={[1.9, 3.0, 0.12]} />
+        <meshStandardMaterial color="#FFFDF8" />
+      </mesh>
+      <Html position={[0, 2.0, 0.2]} center style={{ pointerEvents: "auto" }}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen?.();
+          }}
+          aria-label="打开溯源页"
+          title="打开溯源页"
+          className="cursor-pointer rounded-sm border border-line bg-white p-1.5 shadow-card"
+        >
+          <img
+            src={`/api/trace/${traceCode}/qr.png`}
+            alt={`溯源码 ${traceCode}`}
+            className="block"
+            style={{ width: 84, height: 84, maxWidth: "none" }}
+          />
+        </button>
+      </Html>
+      <Html position={[0, 0.65, 0.2]} center style={{ pointerEvents: "none" }}>
+        <div className="whitespace-nowrap rounded-full border border-line bg-surface/95 px-2.5 py-1 text-[10px] text-ink-muted shadow-card">
+          扫码看溯源
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function Truck({ moving }: { moving: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const target = useMemo(
+    () => new THREE.Vector3(moving ? 19 : 10, 0, moving ? 10 : 7.4),
+    [moving],
+  );
+
+  useFrame((_, delta) => {
+    groupRef.current?.position.lerp(target, 1 - Math.exp(-delta * 2.2));
+  });
+
+  return (
+    <group ref={groupRef} position={[10, 0, 7.4]}>
       <mesh position={[0, 0.55, 0]} castShadow>
         <boxGeometry args={[2.2, 1.0, 1.1]} />
         <meshStandardMaterial color="#FFFDF8" />
@@ -251,14 +413,24 @@ function SceneContent({
   batchCode,
   batchStation,
   stationStatuses,
+  packagingImageUrl,
+  marketingTitle,
+  traceCode,
+  traced,
   onSelectBatch,
   onSelectStation,
+  onOpenTrace,
 }: {
   batchCode: string;
   batchStation: string;
   stationStatuses: Record<string, StationStatus>;
+  packagingImageUrl: string | null;
+  marketingTitle: string | null;
+  traceCode: string | null;
+  traced: boolean;
   onSelectBatch?: () => void;
   onSelectStation?: (stationId: string) => void;
+  onOpenTrace?: () => void;
 }) {
   const [ready, setReady] = useState(false);
 
@@ -272,8 +444,19 @@ function SceneContent({
   return (
     <>
       <Stations statuses={stationStatuses} onSelect={onSelectStation} />
-      <BatchPallet code={batchCode} station={batchStation} onClick={onSelectBatch} />
-      <Truck />
+      <Billboard
+        title={marketingTitle ?? "内容工坊"}
+        ready={Boolean(marketingTitle)}
+        onSelect={() => onSelectStation?.("marketing")}
+      />
+      <BatchPallet
+        code={batchCode}
+        station={batchStation}
+        packagingImageUrl={packagingImageUrl}
+        onClick={onSelectBatch}
+      />
+      <Truck moving={traced} />
+      {traceCode && <QrSign traceCode={traceCode} onOpen={onOpenTrace} />}
     </>
   );
 }
@@ -282,14 +465,24 @@ export function Scene({
   batchCode,
   batchStation,
   stationStatuses,
+  packagingImageUrl = null,
+  marketingTitle = null,
+  traceCode = null,
+  traced = false,
   onSelectBatch,
   onSelectStation,
+  onOpenTrace,
 }: {
   batchCode: string;
   batchStation: string;
   stationStatuses: Record<string, StationStatus>;
+  packagingImageUrl?: string | null;
+  marketingTitle?: string | null;
+  traceCode?: string | null;
+  traced?: boolean;
   onSelectBatch?: () => void;
   onSelectStation?: (stationId: string) => void;
+  onOpenTrace?: () => void;
 }) {
   return (
     <Canvas
@@ -344,8 +537,13 @@ export function Scene({
         batchCode={batchCode}
         batchStation={batchStation}
         stationStatuses={stationStatuses}
+        packagingImageUrl={packagingImageUrl}
+        marketingTitle={marketingTitle}
+        traceCode={traceCode}
+        traced={traced}
         onSelectBatch={onSelectBatch}
         onSelectStation={onSelectStation}
+        onOpenTrace={onOpenTrace}
       />
 
       <OrbitControls

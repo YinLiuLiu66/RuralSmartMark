@@ -39,7 +39,10 @@ _BANNED_RULES: list[tuple[str, re.Pattern[str], Severity, str]] = [
     ),
     (
         "COMP-06",
-        re.compile(r"地理标志授权|授权使用地理标志|政府指定|官方认证|官方推荐"),
+        re.compile(
+            r"已获(?:得)?地理标志授权|获得地理标志授权|地理标志授权产品|"
+            r"授权使用地理标志|政府指定|官方认证|官方推荐|官方授权"
+        ),
         "error",
         "不得暗示官方授权或背书",
     ),
@@ -119,6 +122,24 @@ def _normalize(text: str) -> str:
 def _negated(text: str, start: int) -> bool:
     prefix = text[max(0, start - 8) : start]
     return any(marker in prefix for marker in ("不", "非", "无", "未", "没有", "不含"))
+
+
+def find_banned_claim(text: str, *, include_warnings: bool = False) -> GuardIssue | None:
+    """Return the first unsafe claim in free text, e.g. a chat reply."""
+    for rule, pattern, severity, message in _BANNED_RULES:
+        if severity == "warning" and not include_warnings:
+            continue
+        for match in pattern.finditer(text):
+            if _negated(text, match.start()):
+                continue
+            return GuardIssue(
+                rule=rule,
+                field="<text>",
+                message=f"{message}：{match.group(0)}",
+                severity=severity,
+                suggestion="改写为可验证、有限定的表述",
+            )
+    return None
 
 
 def _walk_strings(value: Any, path: str = "") -> list[tuple[str, str]]:
@@ -216,26 +237,28 @@ def check_output(
     allowed.update(docs_number_tokens(cited_docs or docs))
 
     for field_path, text in _walk_strings(data):
-        for rule, pattern, severity, message in _BANNED_RULES:
-            for match in pattern.finditer(text):
-                if _negated(text, match.start()):
-                    continue
-                result.add(
-                    rule,
-                    field_path,
-                    f"{message}：{match.group(0)}",
-                    severity,
-                    "改写为可验证、有限定的表述",
-                )
+        # 客服问答的 q 是提问，不是对外宣称；只校验回答和正文。
+        if not field_path.endswith(".q"):
+            for rule, pattern, severity, message in _BANNED_RULES:
+                for match in pattern.finditer(text):
+                    if _negated(text, match.start()):
+                        continue
+                    result.add(
+                        rule,
+                        field_path,
+                        f"{message}：{match.group(0)}",
+                        severity,
+                        "改写为可验证、有限定的表述",
+                    )
 
-        if ("不套袋" in text or "不打蜡" in text) and "DEMO-01" not in cited_ids:
-            result.add(
-                "DEMO-02",
-                field_path,
-                "“不套袋/不打蜡”是演示合作社设定，但产出没有引用 DEMO-01",
-                "error",
-                "引用 DEMO-01 并标注演示，或删除这句话",
-            )
+            if ("不套袋" in text or "不打蜡" in text) and "DEMO-01" not in cited_ids:
+                result.add(
+                    "DEMO-02",
+                    field_path,
+                    "“不套袋/不打蜡”是演示合作社设定，但产出没有引用 DEMO-01",
+                    "error",
+                    "引用 DEMO-01 并标注演示，或删除这句话",
+                )
 
         if field_path.endswith("formula"):
             continue

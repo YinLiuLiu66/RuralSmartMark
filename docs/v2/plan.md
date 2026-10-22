@@ -175,7 +175,7 @@
 - 相机：拖拽平移、滚轮/双指缩放、旋转按钮 45°、复位缓动；默认等距 45°。
 - 灯光：HemisphereLight + DirectionalLight（软阴影）+ 环境光；阴影贴图 1024；DPR 上限 2。
 - 性能：目标 60fps @1280×720；树木/箱子 instancing；不在每帧 setState；事件驱动动画。
-- 资产：全部程序化几何（Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + CanvasTexture），对齐 WareTrack 的构建方式；v2 不引 GLB/写实资产管线，也不搬 WareTrack 的模型/贴图。
+- 资产：全部程序化几何（Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + Texture），对齐 WareTrack 的构建方式；广告牌/二维码用 Html 覆盖层保证中文与二维码清晰；v2 不引 GLB/写实资产管线，也不搬 WareTrack 的模型/贴图。
 - 代码复用：相机、raycast、标签定位等模式可参考/复用 WareTrack 的实现；在 `docs/v2/references.md` 标注出处。
 
 ---
@@ -260,13 +260,14 @@ AGENTS.md README.md
 - `POST /api/batches/{id}/agents/{agent}/approve`（body: edited output）
 - `POST /api/batches/{id}/agents/{agent}/reject`（body: note）
 - `GET /api/batches/{id}/events`（SSE）
-- `GET /api/trace/{code}`、`POST /api/trace/{code}/chat`、`POST /api/trace/{code}/scan`
+- `GET /api/trace/{code}`、`GET /api/trace/{code}/packaging.png`、`GET /api/trace/{code}/qr.png`
+- `GET|POST /api/trace/{code}/scan`、`POST /api/trace/{code}/chat`（公开只读 + 对话边界）
 - `GET /api/benchmarks?product_id=`
 - `POST /api/demo/reset`、`GET /api/health`
 
 ### SSE 事件
 
-Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.failed`、`artifact.ready`；`sse-starlette` ping 保活。`agent.log`、`pricing.updated`、`trace.scanned` 待 Phase 3。事件带 `id`；前端重连后重新拉 workspace 快照。
+Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.failed`、`artifact.ready`；Phase 3 增加 `trace.scanned`（带 `scan_count`）。`sse-starlette` ping 保活；`agent.log`、`pricing.updated` 仍未做。事件带 `id`；前端重连后重新拉 workspace 快照。
 
 ---
 
@@ -311,13 +312,15 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 **验收**：每个 Agent 产出通过 schema；引用可点；违规 claim 被拦截；pytest 覆盖三态流转。
 
-**实现口径**：10 篇知识库 Markdown；Pydantic 输出模型 + 重试 1 次 + mock 降级；FactGuard 逐字引用/违禁词/数字预警；定价确定性计算器 + 服务端重算；内置 Noto 字体 + 服务端 PNG 预览；审核 UI 保留 JSON 编辑器并加引用/预警/包装预览（字段级表单留 Phase 3，见 decisions #51）。
+**实现口径**：10 篇知识库 Markdown；Pydantic 输出模型 + 重试 1 次 + mock 降级；FactGuard 逐字引用/违禁词/数字预警；定价确定性计算器 + 服务端重算；内置 Noto 字体 + 服务端 PNG 预览；审核 UI 保留 JSON 编辑器并加引用/预警/包装预览（字段级表单仍未做，见 decisions #51/#58）。
 
 ### Phase 3 · 沙盘联动
 
 批次路径/站点状态/包装贴图/广告牌/二维码全部接真实状态；KPI 与 SSE；溯源 H5 + IP 对话；产出物 Tab；手机框预览。
 
 **验收**：真实流水线走完后，沙盘与 H5 内容一致；390px 手机视口可用。
+
+**实现口径**：公开 `GET /api/trace/{code}` 聚合批次/产品/四章产出/引用/价格/时间线/扫码数；`packaging.png` 与 `qr.png` 服务端生成；`scan` 写 `scan_event` 并广播 `trace.scanned`；`chat` 只使用已批准内容与引用证据，医疗/认证/保证类问题先模板拒答，LLM 回复再过 FactGuard 与数字白名单，失败降级模板。固定演示批次 `ZT-DEMO-001` 在 seed 时写入 `seed/demo_batch.json`（真实 V4.1 内容）+ 确定性定价 + 4 条 approved run/artifact，reset 后 H5 仍有完整内容。3D 礼盒正/背面贴包装 PNG，广告牌显示小红书标题，二维码立牌可点击打开 H5，批次沿 CatmullRom 路径移动，traced 后卡车驶出。
 
 ### Phase 4 · 图像与视觉打磨
 
@@ -367,7 +370,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#51（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#58（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md；architecture/agents/data/runbook/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -422,4 +425,18 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 包装：`services/packaging.py` 用内置 Noto Serif/Sans 生成 1600×1000 PNG；固定品牌色角色避免模型色板顺序破坏版式；预览接口返回服务端 PNG；二维码指向 `/trace/{trace_code}`；审核通过后落盘，定价后重渲染为最终码。
 - 前端：工位卡显示故事/包装/内容/定价专用预览、引用 chips、FactGuard 预警、模型/tokens；审核弹窗复用引用/预警/包装预览；新增 `/api/knowledge` 与 `/api/artifacts/{id}/file`。
 - 验证：29 后端测试、ruff、typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 走到 `traced`（`ZT0002`，156% 演示溢价）；营销 Agent 首次 90s 超时降级，提高到 180s 后成功。切换 V4.1-Flash 后重新验证故事（5161 tokens）与包装（11223 tokens），均无 fallback；旧 `traced` 批次未重跑。
-- 未做：公开溯源 API/IP 对话、3D 贴图/广告牌联动、真实图像 Provider、字段级审核表单、扫码统计落库。
+- Phase 2 结束时未做：公开溯源 API/IP 对话、3D 贴图/广告牌联动、真实图像 Provider、字段级审核表单、扫码统计落库；其中公开溯源/H5/3D/扫码已在 Phase 3 补齐。
+
+---
+
+## 17. Phase 3 实施记录（2026-10-22）
+
+- 公开溯源 API：`GET /api/trace/{code}`（大小写不敏感、未知码 404）聚合批次/产品/故事/包装/内容/价格/引用/时间线/扫码数；`packaging.png`、`qr.png` 服务端生成；`GET|POST /api/trace/{code}/scan` 写 `scan_event` 并广播 `trace.scanned`。
+- H5：`/trace/:code` 390px 首屏（品牌/IP/包装图）、四 Agent 审核章、故事与 8 条引用、包装文案、旅程/审核时间线、价格卡（档位/溢价/公式/成本）、小红书内容卡、IP 对话、扫码计数；320px 无横向溢出；404/网络错误/骨架态。
+- 对话边界：医疗/认证/保证类问题先模板拒答；LLM 只拿到已批准内容与引用证据；回复再过 FactGuard 与数字白名单，失败降级模板；`chat_message` 落库。
+- 固定演示快照：`seed/demo_batch.json` 存真实 V4.1 的 story/packaging/marketing；seed 时为 `ZT-DEMO-001` 生成确定性定价、4 条 approved `AgentRun`/`Artifact`，`ZTDEMO26` reset 后仍有完整内容（runs 4 / artifacts 4）。
+- 冻结品牌/IP：`specs.brand_name=乌蒙丑果`、`specs.ip_name=山风守园人`；系统提示与 mock 同步。
+- FactGuard 修订：客服 `q` 字段不作为宣称；COMP-06 只拦“已获/获得/授权产品/官方认证”等宣称；降级原因带具体规则。
+- 3D：礼盒正/背面贴包装 PNG，侧面/顶面牛皮纸；内容工坊广告牌显示小红书标题；云仓二维码立牌可点击打开 H5；批次沿 CatmullRom 路径移动；traced 后卡车驶出；左栏扫码数从 API 初始化并随 SSE 更新。
+- 验证：39 后端测试、ruff、typecheck/lint/build 全绿（bundle 约 1.27MB，Phase 4 拆包）；V4.1-Flash 批次 `ZT-2026-005` 真实四站到 `ZT0006`，故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback；reset 后 `ZTDEMO26` 200；H5 390×844/320px 与沙盘 1280×720 截图检查；二维码按钮打开新标签。
+- 仍未做：字段级审核表单、真实图像 Provider、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格/包装厂报价/地理标志公告原文。

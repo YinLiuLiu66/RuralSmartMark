@@ -120,7 +120,7 @@ def calculate_pricing(
     )
 
     trace_url = f"{public_base_url.rstrip('/')}/trace/{trace_code or batch.code}"
-    ip_name = (story or {}).get("ip_name") or "乌蒙丑丑"
+    ip_name = (story or {}).get("ip_name") or "山风守园人"
     persona_greeting = (
         f"你好呀，我是{ip_name}。这颗苹果从乌蒙山出发，"
         "身上有太阳晒出的斑点，也有这一批合作社的分级和装箱记录。"

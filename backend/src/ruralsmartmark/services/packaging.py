@@ -72,7 +72,7 @@ def _trace_url(batch: Batch, public_base_url: str) -> str:
     return f"{public_base_url.rstrip('/')}/trace/{batch.trace_code or batch.code}"
 
 
-def _qr_png(url: str, box_size: int = 12) -> bytes:
+def render_qr_png(url: str, box_size: int = 12) -> bytes:
     qr = qrcode.QRCode(box_size=box_size, border=2)
     qr.add_data(url)
     qr.make(fit=True)
@@ -83,7 +83,7 @@ def _qr_png(url: str, box_size: int = 12) -> bytes:
 
 
 def _qr_data_uri(url: str) -> str:
-    return "data:image/png;base64," + base64.b64encode(_qr_png(url, box_size=8)).decode()
+    return "data:image/png;base64," + base64.b64encode(render_qr_png(url, box_size=8)).decode()
 
 
 def _wrap(text: str, width: int) -> list[str]:
@@ -343,7 +343,9 @@ def _render_label_image(
         min_size=18,
     )
 
-    qr = Image.open(BytesIO(_qr_png(trace_url, box_size=10))).convert("RGB").resize((214, 214))
+    qr = (
+        Image.open(BytesIO(render_qr_png(trace_url, box_size=10))).convert("RGB").resize((214, 214))
+    )
     draw.rounded_rectangle([1240, 690, 1490, 940], radius=16, fill="white", outline=kraft, width=3)
     image.paste(qr, (1258, 708))
     draw.text((1365, 950), "扫码看这箱苹果的旅程", font=sans_20, fill="#6B6F66", anchor="ma")

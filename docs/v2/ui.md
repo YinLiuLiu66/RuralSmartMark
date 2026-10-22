@@ -183,14 +183,17 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - `StationCard`：Agent 名/角色、状态、当前任务、输入摘要、产出预览、主操作（运行/通过）、次操作（重跑/查看日志）。
 - `ReviewDialog`：标题写明站点和批次；可编辑字段；底部主按钮“通过并进入下一站”，次按钮“驳回/稍后”；Esc/遮罩关闭；破坏性操作不默认聚焦。
 - `ArtifactTabs`：故事 / 包装 / 内容 / 定价 / 溯源；每个 tab 显示状态点；不把 5 个 tab 做成 5 张卡。
-- `PhonePreview`：溯源 H5 的 390px 手机框；用于“模拟扫码”，不是第二个沙盘。
+- `PhonePreview`：未单独做 390px 手机框；3D 二维码按钮直接打开 H5 新标签（decisions #55）。
 
-### 溯源 H5
+### 溯源 H5（Phase 3 已实现）
 
-`TraceHero`、`StorySection`、`Timeline`、`PriceCard`、`ChatPanel`、`ScanBadge`。
+`TraceHero`、`StorySection`、`Timeline`、`PriceCard`、`ChatPanel`、`ScanBadge`（实现位于 `src/routes/Trace.tsx` 的局部组件）。
 
-- 移动优先 390px；首屏是产品/包装/品牌名 + IP 问候；第二屏故事；第三屏时间线；第四屏价格/扫码；聊天是辅助，不遮主内容。
-- 输入框 16px 防 iOS 缩放；`100dvh`；安全区 padding；无横向滚动。
+- 移动优先 390px（max-width 430，320px 压测）；首屏是品牌/IP/批次 + 包装图 + IP 问候；随后是四 Agent 审核章、故事与引用折叠、包装文案、旅程/审核时间线、价格卡（档位/溢价/公式/成本）、小红书内容卡、IP 对话、扫码计数。
+- 价格卡以礼盒价和溢价为 lead value；三档价格并排，公式/成本放原生 `<details>`；所有价格标“演示测算”。
+- 对话：FAQ 推荐问题、用户/助手气泡、失败重试；输入框 16px 防 iOS 缩放；composer 在对话区内 `sticky bottom-0`，不遮前面内容；安全区 padding。
+- 状态：首屏骨架、未知码（含 `ZTDEMO26` 入口）、网络错误重试；无横向滚动。
+- 3D 联动：礼盒正/背面贴包装 PNG；内容工坊广告牌显示小红书标题；云仓二维码立牌点击打开本页；扫码数通过 `trace.scanned` 回到沙盘左栏。
 
 ## 5. 状态矩阵
 
@@ -203,17 +206,17 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 | 审核 dialog | — | — | 保存失败保留输入 | 长文案可滚动，按钮固定底部 |
 | 溯源 H5 | 首屏骨架 | 码不存在 + 返回 | 数据失败 + 重试 | 320px、长故事、长批次码 |
 
-## 6. 七类丑自检（实现前）
+## 6. 七类丑自检（实现后）
 
 | 测试 | 本项目的检查点 | 状态 |
 |---|---|---|
-| 1 Uncanny | 数字右对齐/tabular；主操作在预期位置；审核 dialog 主按钮在底部；关闭在右上；重置确认写出批次名 | 设计已定 |
-| 2 Unexpected | 金额/价格用直接输入，不用 stepper；站点/批次用 peer 卡；审核用 dialog；运行按钮 100ms 内有 pressed/spinner | 设计已定 |
-| 3 Detached | 原生 `<dialog>`/`<select>`；一个图标家族（lucide）；Skeleton 匹配区域；focus trap/Esc/遮罩关闭 | 设计已定 |
-| 4 Fragile | 压测：最长合作社名、长批次码、12 位金额、0/1/500 条产出、三行错误、320px H5、200% zoom；`min-width:0`、clamp、稳定行高 | 实现时压测 |
-| 5 Unorganized | 一个 lead value + 4 个支持指标；不出现 5 张等权卡；日志/设置折叠；叙事顺序固定 | 设计已定 |
-| 6 Inconsistent | token 先行；一个 Button/Input/Dialog/Card；同义操作同名；两个 radius；4/8 spacing；一个图标家族 | 设计已定 |
-| 7 Plain ugly | 两个饱和色上限；无渐变/玻璃拟态；对比度已算；三档字号/屏；一个阴影方向；180ms 动效；真实内容/中性占位 | 设计已定 |
+| 1 Uncanny | 数字右对齐/tabular；主操作在预期位置；审核 dialog 主按钮在底部；关闭在右上；重置确认写出批次名 | pass（价格/扫码数 tabular；发送按钮在输入框右侧） |
+| 2 Unexpected | 金额/价格用直接输入，不用 stepper；站点/批次用 peer 卡；审核用 dialog；运行按钮 100ms 内有 pressed/spinner | fixed（二维码被 Tailwind preflight 压成 14px，改 `maxWidth:none`；广告牌改用 Html 保证中文清晰） |
+| 3 Detached | 原生 `<dialog>`/`<select>`；一个图标家族（lucide）；Skeleton 匹配区域；focus trap/Esc/遮罩关闭 | pass（原生 select/details/dialog；lucide 单一图标家族） |
+| 4 Fragile | 压测：最长合作社名、长批次码、12 位金额、0/1/500 条产出、三行错误、320px H5、200% zoom；`min-width:0`、clamp、稳定行高 | 320px/长故事/8 条引用/长标题 pass；200% zoom 未测（known-gap） |
+| 5 Unorganized | 一个 lead value + 4 个支持指标；不出现 5 张等权卡；日志/设置折叠；叙事顺序固定 | pass（价格卡 lead value；故事/包装/时间线/价格顺序固定） |
+| 6 Inconsistent | token 先行；一个 Button/Input/Dialog/Card；同义操作同名；两个 radius；4/8 spacing；一个图标家族 | pass（复用全局 token 与 lucide） |
+| 7 Plain ugly | 两个饱和色上限；无渐变/玻璃拟态；对比度已算；三档字号/屏；一个阴影方向；180ms 动效；真实内容/中性占位 | pass（纸感/墨绿/苹果红；无装饰渐变） |
 
 ## 7. 实现后的视觉验收
 
@@ -229,10 +232,10 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 原生 `<dialog>` 优先；Radix 只用于 Tabs/Tooltip 这类无原生等价物的交互，不引入第二套 Dialog。
 - 图标用 lucide-react；不混用 emoji/手绘系统图标。
 - 不做暗色模式；不做移动端沙盘；溯源 H5 独立路由。
-- 3D 构建方式对齐 WareTrack：代码拼 Box/Cylinder/Cone/Sphere/Plane 等低多边形几何体，MeshStandardMaterial + CanvasTexture 生成标签/二维码；不引 GLTFLoader/外部模型；镜头正交等距、软光、暖色。
+- 3D 构建方式对齐 WareTrack：代码拼 Box/Cylinder/Cone/Sphere/Plane 等低多边形几何体，MeshStandardMaterial + Texture 贴包装图；广告牌/二维码用 Html 覆盖层保证中文和二维码清晰；不引 GLTFLoader/外部模型；镜头正交等距、软光、暖色。
 - PNG 用内置 Noto Serif/Sans；SVG 用系统字体栈；不依赖 Google Fonts CDN。
 
-## 9. 实现状态（Phase 1 / Phase 2，2026-10-21）
+## 9. 实现状态（Phase 1 / Phase 2 / Phase 3，2026-10-22）
 
 ### Phase 1
 
@@ -244,13 +247,16 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 工位卡新增专用预览：故事（IP/短故事/标签）、包装（服务端 PNG + 正面/侧面/盒型）、内容（小红书/抖音钩子）、定价（溢价 + 价格梯 + 公式折叠）。
 - 引用 chips：`doc_id · 标题` 外链到 `source_url`；`credibility=demo` 的条目显示“演示”，不可当事实背书；无外链的演示条目以 span + title 展示 quote。
 - FactGuard 预警：琥珀色列出 rule/field/message；错误态红色；审核 dialog 顶部复用同一信息。
-- 审核 dialog 保留 JSON 编辑器，增加引用/预警/包装预览；数字字段提示“服务端按定价计算器重算”。字段级表单留 Phase 3（decisions #51）。
+- 审核 dialog 保留 JSON 编辑器，增加引用/预警/包装预览；数字字段提示“服务端按定价计算器重算”。字段级表单仍未做（decisions #58）。
 - API 请求加 `cache: no-store`，避免审核后仍显示旧产出；Vite dev 固定 `127.0.0.1`，与 README/代理一致。
 - 视觉验收：1280×720 真实 `traced` 批次；包装卡图片、引用外链、预警列表、审核弹窗均可见；无横向溢出。
 
-### 仍未落地
+### Phase 3
 
-- 各 Agent 字段级专用表单、溯源 H5 内容/API、3D 包装贴图、真实图像生成；Phase 3–4 补。
-- 3D 建筑/树木简化；bundle 约 1.24MB，Phase 4 拆包。
-- 包装 PNG 已内置 Noto 字体；SVG 仍依赖查看端字体，只作导出用途。
+- 溯源 H5：390px 单列、430px 上限；首屏包装图 + IP 问候；四 Agent 审核章；故事 + 8 条引用折叠；包装四面文案；旅程 + 审核时间线；价格卡（礼盒价/溢价/三档/公式/成本）；小红书内容卡；IP 对话 + FAQ 推荐问题；扫码计数；骨架/404/错误重试。
+- 3D：礼盒正/背面贴已通过包装 PNG；内容工坊广告牌显示小红书标题；云仓二维码按钮打开 H5；批次沿 CatmullRom 路径移动；traced 后卡车驶出；左栏扫码数通过 `GET /trace/{code}/scan` 初始化并随 SSE 更新。
+- 固定演示快照：`ZTDEMO26` reset 后仍有 4 条 approved 产出与完整 H5；扫码/对话可用。
+- 视觉验收：390×844 首屏/价格/对话截图；320px 无横向溢出；1280×720 沙盘固定演示批次截图；二维码按钮打开新标签。
+- 修复：二维码被 Tailwind preflight 的 `max-width:100%` 压成 14px，改为 `maxWidth:none`；广告牌中文在 CanvasTexture 远端不可读，改用 Html 卡片；StrictMode 下提前释放纹理导致礼盒贴图空白，改用 `useTexture` + Suspense。
+- 已知缺口：各 Agent 字段级表单、真实图像 Provider、Playwright、200% zoom、长时 60fps/内存压测；bundle 约 1.27MB，Phase 4 拆包；包装 PNG 已内置 Noto 字体，SVG 仍依赖查看端字体，只作导出用途。
 

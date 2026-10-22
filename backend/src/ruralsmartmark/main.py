@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import init_db
-from .routes import artifacts, batches, demo, health, knowledge, pipeline, products
+from .routes import artifacts, batches, demo, health, knowledge, pipeline, products, trace
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router, prefix="/api", tags=["pipeline"])
     app.include_router(artifacts.router, prefix="/api", tags=["artifacts"])
     app.include_router(demo.router, prefix="/api", tags=["demo"])
+    app.include_router(trace.router, prefix="/api", tags=["trace"])
     return app
 
 

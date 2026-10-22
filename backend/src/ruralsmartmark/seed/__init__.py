@@ -1,8 +1,17 @@
 """Demo seed for the first case (Zhaotong ugly apple)."""
 
+from __future__ import annotations
+
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..agents.base import AgentName
+from ..agents.engine import _guard_allowed_numbers
+from ..config import get_settings
 from ..models import (
     AgentRun,
     Artifact,
@@ -12,7 +21,9 @@ from ..models import (
     ProductProfile,
     ScanEvent,
 )
-from ..services.knowledge import upsert_knowledge_docs
+from ..services.fact_guard import check_output
+from ..services.knowledge import list_knowledge_docs, upsert_knowledge_docs
+from ..services.pricing import calculate_pricing
 
 PRODUCT_SLUG = "zhaotong-ugly-apple"
 DEMO_BATCH_CODE = "ZT-DEMO-001"
@@ -20,13 +31,15 @@ DEMO_TRACE_CODE = "ZTDEMO26"
 PRICE_SOURCE = "https://www.cnhnb.com/p/pingguo/"
 
 PRODUCT_SPECS = {
+    "brand_name": "乌蒙丑果",
+    "ip_name": "山风守园人",
     "origin": "云南省昭通市昭阳区",
     "fruit_size": "80-85mm",
     "pack": "5kg / 12 枚礼盒",
     "sugar": "可溶性固形物≥15.0%（地理标志登记资料）",
     "harvest": "晚熟红富士，秋季采摘",
     "altitude": "高海拔（具体数值待核验）",
-    "positioning": "虚构合作社子品牌；区域事实可查，品牌与人物为演示合成",
+    "positioning": "虚构合作社子品牌「乌蒙丑果」与 IP「山风守园人」；区域事实可查，品牌与人物为演示合成",
 }
 
 PRODUCT_PALETTE = {
@@ -65,6 +78,8 @@ BENCHMARKS = [
         "note": "128 元/5kg，演示目标价，不是公开成交价",
     },
 ]
+
+DEMO_SNAPSHOT_FILE = Path(__file__).with_name("demo_batch.json")
 
 BATCHES = [
     {
@@ -130,11 +145,105 @@ async def _seed_batches(session: AsyncSession, product_id: int, *, reset: bool) 
             session.add(Batch(product_id=product_id, **item))
 
 
-async def seed_demo(session: AsyncSession, *, reset: bool = False) -> dict[str, int]:
+async def _seed_demo_snapshot(
+    session: AsyncSession,
+    product: ProductProfile,
+    *,
+    public_base_url: str,
+) -> None:
+    demo = await session.scalar(select(Batch).where(Batch.code == DEMO_BATCH_CODE))
+    if demo is None or demo.story_json is not None:
+        return
+
+    snapshot = json.loads(DEMO_SNAPSHOT_FILE.read_text(encoding="utf-8"))
+    story = snapshot["story"]
+    packaging = snapshot["packaging"]
+    marketing = snapshot["marketing"]
+
+    docs = await list_knowledge_docs(session, product.id)
+    benchmarks = list(
+        (
+            await session.execute(
+                select(Benchmark).where(Benchmark.product_id == product.id).order_by(Benchmark.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    pricing = calculate_pricing(
+        product,
+        demo,
+        packaging,
+        benchmarks,
+        docs,
+        public_base_url=public_base_url,
+        story=story,
+        trace_code=DEMO_TRACE_CODE,
+    )
+
+    demo.story_json = story
+    demo.packaging_json = packaging
+    demo.marketing_json = marketing
+    demo.pricing_json = pricing
+    demo.state = "traced"
+    demo.current_station = "trace"
+    demo.trace_code = DEMO_TRACE_CODE
+    await session.flush()
+
+    now = datetime.now(UTC)
+    for agent, data in (
+        (AgentName.STORY, story),
+        (AgentName.PACKAGING, packaging),
+        (AgentName.MARKETING, marketing),
+        (AgentName.PRICING, pricing),
+    ):
+        guard = check_output(
+            data,
+            docs,
+            allowed_numbers=_guard_allowed_numbers(agent, product, demo, docs, data),
+        )
+        run = AgentRun(
+            batch_id=demo.id,
+            agent=agent.value,
+            status="approved",
+            input_json={"provider": "seed-snapshot"},
+            output_json=data,
+            guard_json=guard.as_dict(),
+            model="seed-snapshot",
+            tokens=0,
+            started_at=now,
+            finished_at=now,
+        )
+        session.add(run)
+        await session.flush()
+        session.add(
+            Artifact(
+                batch_id=demo.id,
+                agent_run_id=run.id,
+                kind=agent.value,
+                content_json=data,
+                file_path=None,
+                approved_at=now,
+            )
+        )
+
+
+async def seed_demo(
+    session: AsyncSession,
+    *,
+    reset: bool = False,
+    public_base_url: str | None = None,
+) -> dict[str, int]:
     """Idempotent seed; reset clears batches and their children but keeps product/docs/benchmarks."""
     product = await _upsert_product(session)
     await _seed_knowledge(session, product)
     await _seed_benchmarks(session, product.id)
     await _seed_batches(session, product.id, reset=reset)
+    await session.flush()
+    await _seed_demo_snapshot(
+        session,
+        product,
+        public_base_url=public_base_url or get_settings().public_base_url,
+    )
     await session.commit()
     return {"products": 1, "batches": len(BATCHES)}

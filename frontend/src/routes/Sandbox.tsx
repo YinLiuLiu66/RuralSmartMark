@@ -24,6 +24,7 @@ import {
   type StationStatus,
 } from "../agents";
 import { api, type KnowledgeDoc, type Product } from "../api/client";
+import { traceApi } from "../api/trace";
 import ReviewDialog from "../components/ReviewDialog";
 import StationCard from "../components/StationCard";
 import { usePipelineStore } from "../stores/pipeline";
@@ -75,6 +76,7 @@ export default function Sandbox() {
   const [knowledge, setKnowledge] = useState<Record<string, KnowledgeDoc>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [scanCount, setScanCount] = useState(0);
 
   const { batches, selectedBatchId, setBatches, selectBatch } = useWorldStore();
   const {
@@ -126,11 +128,14 @@ export default function Sandbox() {
     source.onerror = () => setSse("reconnecting");
     source.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data) as { type?: string };
+        const payload = JSON.parse(event.data) as { type?: string; scan_count?: number };
         if (payload.type === "connected") {
           setSse("live");
           void refresh(selectedBatchId, true);
           return;
+        }
+        if (payload.type === "trace.scanned" && typeof payload.scan_count === "number") {
+          setScanCount(payload.scan_count);
         }
         void refresh(selectedBatchId, true);
       } catch {
@@ -157,6 +162,39 @@ export default function Sandbox() {
   const canReview = Boolean(review && reviewRun);
   const reviewMeta = review ? AGENT_BY_KEY[review] : null;
   const selectedMeta = selectedAgent ? AGENT_BY_KEY[selectedAgent] : null;
+  const traceCode = currentBatch?.trace_code ?? null;
+  const traced = currentBatch?.state === "traced";
+  const packagingImageUrl =
+    currentBatch && workspace?.batch.packaging_json
+      ? traceCode
+        ? `/api/trace/${traceCode}/packaging.png`
+        : `/api/batches/${currentBatch.id}/agents/packaging/preview?v=${encodeURIComponent(
+            currentBatch.updated_at,
+          )}`
+      : null;
+  const marketingJson = workspace?.batch.marketing_json as
+    | { xiaohongshu?: { title?: string } }
+    | null;
+  const marketingTitle = marketingJson?.xiaohongshu?.title ?? null;
+
+  useEffect(() => {
+    if (!traceCode) {
+      setScanCount(0);
+      return;
+    }
+    let cancelled = false;
+    traceApi
+      .scanCount(traceCode)
+      .then((result) => {
+        if (!cancelled) setScanCount(result.scan_count);
+      })
+      .catch(() => {
+        if (!cancelled) setScanCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [traceCode]);
 
   const stationStatuses = useMemo(() => {
     const result: Record<string, StationStatus> = {};
@@ -228,6 +266,11 @@ export default function Sandbox() {
   function handleSelectStation(stationId: string) {
     const agent = AGENTS.find((item) => item.stationId === stationId);
     if (agent) selectAgent(agent.key);
+  }
+
+  function handleOpenTrace() {
+    if (!traceCode) return;
+    window.open(`/trace/${traceCode}`, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -347,12 +390,16 @@ export default function Sandbox() {
                 value={`${contentCount} 条`}
                 icon={<Megaphone size={14} />}
               />
-              <Metric label="扫码" value="0" icon={<QrCode size={14} />} />
+              <Metric
+                label="扫码（累计）"
+                value={`${scanCount} 次`}
+                icon={<QrCode size={14} />}
+              />
             </div>
 
             <div className="mt-4 rounded-card border border-dashed border-line p-3 text-[11px] leading-relaxed text-ink-muted">
-              Phase 2 已接入真实 Agent、知识库引用、FactGuard 与包装合成。图像 Provider
-              与公开溯源 API 在 Phase 3–4 接入。
+              Phase 3 已接入公开溯源 H5、扫码统计与 3D
+              包装贴图/广告牌/二维码。真实图像 Provider 在 Phase 4 接入。
             </div>
           </aside>
 
@@ -361,10 +408,15 @@ export default function Sandbox() {
               batchCode={currentBatch?.code ?? "ZT-2026-001"}
               batchStation={currentBatch?.current_station ?? "intake"}
               stationStatuses={stationStatuses}
+              packagingImageUrl={packagingImageUrl}
+              marketingTitle={marketingTitle}
+              traceCode={traceCode}
+              traced={traced}
               onSelectBatch={() => {
                 if (currentBatch) selectBatch(currentBatch.id);
               }}
               onSelectStation={handleSelectStation}
+              onOpenTrace={handleOpenTrace}
             />
             <div className="pointer-events-none absolute left-5 top-5">
               <div className="rounded-full border border-line bg-surface/90 px-3 py-1 text-[11px] text-ink-muted shadow-card">
@@ -518,10 +570,10 @@ export default function Sandbox() {
                 );
               })}
               <Link
-                to={`/trace/${currentBatch?.trace_code ?? "ZTDEMO26"}`}
+                to={`/trace/${traceCode ?? "ZTDEMO26"}`}
                 className="rounded-full border border-line px-3 py-1.5 text-[11px] text-ink-muted"
               >
-                溯源
+                {traceCode ? "溯源" : "演示溯源"}
               </Link>
             </div>
           </div>

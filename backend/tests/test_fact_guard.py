@@ -18,7 +18,7 @@ async def _docs(session):
 def _payload(docs, *, quote: str | None = None, text: str = "秋天来了，苹果慢慢长甜。"):
     doc = next(item for item in docs if item.doc_key == "ENV-02")
     return {
-        "ip_name": "乌蒙丑丑",
+        "ip_name": "山风守园人",
         "story_long": text,
         "cultural_evidence": [
             {
@@ -74,6 +74,32 @@ async def test_unsourced_number_is_warning(session):
     result = check_output(_payload(docs, text="果园海拔 2345 米，昼夜温差 15℃。"), docs)
     assert result.passed
     assert any(issue.rule == "NUM-01" for issue in result.warnings)
+
+
+async def test_geographic_indication_question_is_not_a_claim(session):
+    docs = await _docs(session)
+    payload = _payload(docs)
+    payload["cs_qa"] = [
+        {
+            "q": "你们有地理标志授权吗？",
+            "a": "没有。我们只把昭通苹果作为产地背景，不冒充区域公用品牌授权。",
+        }
+    ]
+
+    result = check_output(payload, docs)
+    assert result.passed
+
+
+async def test_geographic_indication_claim_is_error(session):
+    docs = await _docs(session)
+    payload = _payload(docs)
+    payload["cs_qa"] = [
+        {"q": "产地是哪里？", "a": "我们已获得地理标志授权，是官方推荐的昭通苹果。"}
+    ]
+
+    result = check_output(payload, docs)
+    assert not result.passed
+    assert any(issue.rule == "COMP-06" for issue in result.errors)
 
 
 async def test_unknown_doc_id_is_error(session):

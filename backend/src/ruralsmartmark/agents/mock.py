@@ -39,9 +39,9 @@ async def run_mock_agent(
 
     if agent == AgentName.STORY:
         return {
-            "ip_name": "乌蒙丑丑",
+            "ip_name": "山风守园人",
             "persona": (
-                "住在乌蒙山腰的丑苹果守护者，说话慢、爱用山里的比喻，不卖惨；"
+                "把乌蒙山风拟人化的守园人，演示合成的角色；说话慢、爱用山里的比喻，不卖惨；"
                 "遇到不确定的事会先问“这是哪块地里的？”。"
             ),
             "story_long": (
@@ -160,7 +160,7 @@ async def run_mock_agent(
         benchmarks,
         docs,
         public_base_url=public_base_url,
-        story={"ip_name": "乌蒙丑丑"},
+        story={"ip_name": "山风守园人"},
         trace_code=batch.trace_code,
     )
     output["demo"] = True

@@ -123,6 +123,12 @@ def _guard_allowed_numbers(
     return allowed
 
 
+def _guard_summary(guard: GuardResult) -> str:
+    issues = guard.errors or guard.warnings
+    parts = [f"{item.rule} {item.field}: {item.message}" for item in issues[:2]]
+    return "；".join(parts)[:280]
+
+
 async def _benchmarks(session: AsyncSession, product_id: int) -> list[Benchmark]:
     result = await session.execute(
         select(Benchmark).where(Benchmark.product_id == product_id).order_by(Benchmark.id)
@@ -358,7 +364,7 @@ async def generate_output(
                 fallback_reason=data.get("fallback_reason"),
             )
 
-        last_error = "事实校验未通过"
+        last_error = f"事实校验未通过（{_guard_summary(guard)}）"
         feedback = (
             "以下问题必须修复；引用要逐字复制知识库，不要新增未核数字：\n"
             + format_guard_for_prompt(guard)

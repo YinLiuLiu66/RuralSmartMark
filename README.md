@@ -4,18 +4,19 @@
 
 首个案例：**昭通丑苹果**（云南省昭通市昭阳区）。区域事实可查；合作社、品牌名与人物为演示合成。
 
-## 当前状态（2026-10-21）
+## 当前状态（2026-10-22）
 
-**Phase 2 已完成**：
+**Phase 3 已完成**：
 
-- 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。
+- 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。品牌「乌蒙丑果」与 IP「山风守园人」已冻结。
 - 10 篇昭通知识库 Markdown；FactGuard 校验逐字引用、违禁认证/功效/保证、数字预警；审核通过前服务端再校验一次。
 - 确定性定价计算器：成本、三档价格、毛利、156% 演示溢价与服务端重算；LLM 只写解释。
-- 包装合成：内置 Noto Serif/Sans（OFL，约 40MB）渲染 PNG，预览接口直接返回服务端 PNG；审核通过后落盘，二维码指向 `/trace/:code`（H5 内容在 Phase 3）。
-- 前端 React 19 + R3F 9 + Tailwind 4：3D 沙盘、工位卡（引用/预警/包装预览）、JSON 审核弹窗、批次沿站点移动、KPI/产出物 Tabs。
-- 后端 29 测试、ruff、前端 typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 跑通到 `traced`；切换后的 V4.1-Flash 已验证故事/包装 Agent，旧 `traced` 批次未用新模型重跑。mock 动线仍可跑。
+- 包装合成：内置 Noto Serif/Sans（OFL，约 40MB）渲染 PNG；3D 礼盒正/背面使用该包装图。
+- 公开溯源：`/trace/:code` 390px H5（故事/包装/价格/时间线/IP 对话）、扫码统计、未知码 404；固定演示码 `ZTDEMO26` 在 reset 后仍有完整内容。
+- 3D 沙盘：包装贴图、内容广告牌、可点击二维码、CatmullRom 批次路径、卡车出库；扫码数随 SSE 更新。
+- 后端 39 测试、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
-**Phase 3 下一步**：3D 包装贴图/广告牌/二维码联动 + 公开溯源 API/H5 + IP 对话。真实图像 Provider、字段级审核表单、扫码统计写入尚未实现。
+**Phase 4 下一步**：真实图像 Provider、包装变体、空态/错误态/性能优化与代码分割。字段级审核表单、Playwright、第二产品档案夹具仍在后面。
 
 ## 快速开始
 
@@ -41,7 +42,7 @@ pnpm dev                  # http://127.0.0.1:5173
 ```
 
 - 桌面沙盘：<http://127.0.0.1:5173/>
-- 溯源骨架：<http://127.0.0.1:5173/trace/ZTDEMO26>
+- 公开溯源 H5：<http://127.0.0.1:5173/trace/ZTDEMO26>
 - API 文档：<http://127.0.0.1:8000/docs>
 
 Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个 Agent 走确定性 mock；有 key 时调用 OpenAI 兼容端点（默认 SiliconFlow DeepSeek-V4.1-Flash），单次超时 180 秒，`thinking_budget=2048`、`max_tokens=4096`，失败会降级为演示稿并在界面标注原因。固定演示批次与溯源码不随 key 变化。
@@ -59,8 +60,9 @@ data/
 frontend/
   src/three/                # R3F 等距场景
   src/components/           # StationCard / ReviewDialog
-  src/routes/               # Sandbox / Trace
-  src/stores/               # Zustand
+    src/routes/               # Sandbox / Trace H5
+    src/api/                  # client / pipeline / trace
+    src/stores/               # Zustand
   src/styles/               # Tailwind v4 + 山野编辑部 token
 docs/
   decisions.md              # 决策（v2 #32 起）
@@ -82,7 +84,7 @@ docs/
 | frontend | `pnpm dev` | 开发服 |
 | frontend | `pnpm typecheck` / `pnpm lint` / `pnpm build` | 前端检查/构建 |
 
-## 接口（Phase 2）
+## 接口（Phase 3）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -101,12 +103,17 @@ docs/
 | GET | `/api/artifacts/{id}/file` | 审核后的包装 PNG |
 | GET | `/api/batches/{id}/events` | SSE 实时事件 |
 | GET | `/api/batches/by-code/{code}` | 按批次码查 |
-| POST | `/api/demo/reset` | 重置演示批次 |
+| GET | `/api/trace/{code}` | 公开溯源数据（故事/包装/价格/时间线/扫码数） |
+| GET | `/api/trace/{code}/packaging.png` | 溯源页包装图 |
+| GET | `/api/trace/{code}/qr.png` | 溯源二维码 |
+| GET/POST | `/api/trace/{code}/scan` | 读取/写入扫码事件 |
+| POST | `/api/trace/{code}/chat` | IP 对话（边界拒答 + 模板兜底） |
+| POST | `/api/demo/reset` | 重置演示批次（固定码内容保留） |
 
 ## 设计方向
 
 - 「山野编辑部」：暖色纸感、衬线标题、低多边形乡村；不是 WMS 冷色控制塔。
-- 3D 构建对齐 WareTrack：代码拼低多边形几何体 + 平面材质 + CanvasTexture；不引 GLB/写实资产。
+- 3D 构建对齐 WareTrack：代码拼低多边形几何体 + 平面材质 + Texture；广告牌/二维码用 Html 覆盖层保证中文与二维码清晰；不引 GLB/写实资产。
 - 桌面看 3D 沙盘，手机只看扫码溯源 H5。
 - 不做游戏化、多产品 UI、登录/权限、真实电商 API、Canva/Midjourney、IoT 温度曲线。
 
