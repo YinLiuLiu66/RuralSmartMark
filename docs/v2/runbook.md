@@ -53,9 +53,10 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 44 tests + ruff；前端 typecheck/lint/build
+make test    # 后端 44 passed + 1 skipped + ruff；前端 typecheck/lint/build
 make e2e     # Playwright 6 条冒烟（桌面 3 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
+cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度
 ```
 
 - 性能基线（2026-10-22，本机 1280×720 headless Chromium）：60 秒 58.3fps，JSHeap 44.5MB→42.4MB。
@@ -71,6 +72,7 @@ make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 3. 准备 3 条基准价（散装批发 / 电商散装 / 品牌礼盒，元/kg）；定价计算器需要 `PRICE-01` 与 `DEMO-01` 两篇文档。
 4. 建 `Batch` 后走四站审核；不需要改 Agent、编排器、定价、包装或 H5 代码。
 5. 参考测试：`backend/tests/test_second_product.py`（断言 `traced`、`MJ` 溯源码、公开 H5、包装 PNG、无昭通/苹果残留）。
+6. 可选真实 LLM 冒烟：`cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py`。2026-10-22 实测 V4.1-Flash 四站约 90 秒，无 fallback；会消耗额度，默认跳过。
 
 ## 7. 故障排查
 
@@ -88,4 +90,5 @@ make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 
 - 固定演示码依赖 seed 快照，不依赖现场 LLM/图像 API；断网也能打开 H5。
 - 价格、成本、溢价均为演示测算；品牌、IP、合作社为演示合成；区域事实引用知识库。
-- 不做字段级审核表单、Docker、真实盒型/刀版、真实供应商报价；详见 [decisions.md](../decisions.md) #58/#63。
+- 地理标志公告号与 80–85mm 公开挂牌价已补；包装厂只有 1000 个起订线索，无书面报价；手机真机扫码、真实盒型/刀版仍未做。
+- 不做字段级审核表单、Docker、真实盒型/刀版、真实供应商报价；详见 [decisions.md](../decisions.md) #58/#63/#64。

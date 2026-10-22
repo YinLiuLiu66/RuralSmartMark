@@ -9,9 +9,11 @@ from .base import AgentName
 
 HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
+# LLM 偶尔补空字段；忽略未知键，已知字段仍按类型/长度/取值校验，避免一次输出抖动就降级 mock。
+
 
 class Citation(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     doc_id: str = Field(min_length=2, max_length=20)
     quote: str = Field(min_length=8, max_length=180)
@@ -19,7 +21,7 @@ class Citation(BaseModel):
 
 
 class StoryOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     ip_name: str = Field(min_length=2, max_length=20)
     persona: str = Field(min_length=10, max_length=240)
@@ -40,7 +42,7 @@ class StoryOutput(BaseModel):
 
 
 class PackagingCopy(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     front: str = Field(min_length=2, max_length=30)
     back: str = Field(min_length=5, max_length=160)
@@ -49,7 +51,7 @@ class PackagingCopy(BaseModel):
 
 
 class PackagingStructure(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     box_type: str = Field(min_length=2, max_length=60)
     dimensions: str = Field(min_length=4, max_length=60)
@@ -57,7 +59,7 @@ class PackagingStructure(BaseModel):
 
 
 class PackagingCost(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     box: float = Field(ge=0, le=100)
     tray: float = Field(ge=0, le=100)
@@ -74,7 +76,7 @@ class PackagingCost(BaseModel):
 
 
 class PackagingOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     concept: str = Field(min_length=4, max_length=80)
     palette: list[str] = Field(min_length=3, max_length=5)
@@ -97,7 +99,7 @@ class PackagingOutput(BaseModel):
 
 
 class Xiaohongshu(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     title: str = Field(min_length=4, max_length=30)
     body: str = Field(min_length=30, max_length=700)
@@ -106,7 +108,7 @@ class Xiaohongshu(BaseModel):
 
 
 class Douyin(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     hook: str = Field(min_length=4, max_length=60)
     script: str = Field(min_length=30, max_length=600)
@@ -114,21 +116,21 @@ class Douyin(BaseModel):
 
 
 class Wechat(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     title: str = Field(min_length=4, max_length=30)
     body: str = Field(min_length=30, max_length=700)
 
 
 class QA(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     q: str = Field(min_length=2, max_length=60)
     a: str = Field(min_length=2, max_length=240)
 
 
 class KolBrief(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     profile: str = Field(min_length=2, max_length=80)
     rationale: str = Field(min_length=5, max_length=200)
@@ -137,7 +139,7 @@ class KolBrief(BaseModel):
 
 
 class MarketingOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     xiaohongshu: Xiaohongshu
     douyin: Douyin
@@ -150,7 +152,7 @@ class MarketingOutput(BaseModel):
 
 
 class PriceTier(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     channel: str = Field(min_length=2, max_length=30)
     pack: str = Field(min_length=2, max_length=40)
@@ -161,14 +163,14 @@ class PriceTier(BaseModel):
 
 
 class TraceEvent(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     step: str = Field(min_length=2, max_length=20)
     note: str = Field(min_length=2, max_length=120)
 
 
 class PricingOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     price_ladder: list[PriceTier] = Field(min_length=3, max_length=5)
     premium_pct: float = Field(ge=-100, le=2000)
@@ -187,7 +189,7 @@ class PricingOutput(BaseModel):
 
 
 class PricingNarrative(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     rationale: str = Field(min_length=30, max_length=600)
     persona_greeting: str = Field(min_length=5, max_length=160)

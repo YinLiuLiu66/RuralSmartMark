@@ -11,10 +11,11 @@ uv run python -m ruralsmartmark.seed
 uv run ruralsmartmark         # http://127.0.0.1:8000
 ```
 
-测试与检查（44 条，含第二产品夹具）：
+测试与检查（44 条常跑 + 1 条可选真实 LLM 冒烟）：
 
 ```bash
 uv run pytest
+RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py   # 可选，会消耗额度
 uv run ruff check .
 uv run ruff format .
 ```
@@ -40,4 +41,4 @@ uv run ruff format .
 
 图像：`providers/image.py` 调 SiliconFlow `POST /v1/images/generations`，默认 `IMAGE_MODEL=Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`）；`IMAGE_SIZE` 空时按 512×512 / 1024×576 / 768×1024 自动选择；生成结果缓存到 `backend/data/image-cache/`（已 gitignore）。包装审核通过后生成 `illustration` artifact，失败只记录错误，不阻塞审核。SQLite 文件默认在 `backend/data/app.db`（已 gitignore）。
 
-第二产品只做测试夹具：`tests/fixtures/majiang/` + `tests/test_second_product.py`，不 seed、不进 UI。提示词、mock 文案、定价标签、包装品牌字、溯源码前缀均从 `ProductProfile.specs` 读取。`docs/v2/plan.md` 是当前方案，`docs/v2/runbook.md` 是启动与演示操作。
+第二产品只做测试夹具：`tests/fixtures/majiang/` + `tests/test_second_product.py`，不 seed、不进 UI。提示词、mock 文案、定价标签、包装品牌字、溯源码前缀均从 `ProductProfile.specs` 读取；`RSM_REAL_LLM=1` 时 `tests/test_second_product_real.py` 用真实 V4.1-Flash 跑四站，默认跳过以免扣费。`docs/v2/plan.md` 是当前方案，`docs/v2/runbook.md` 是启动与演示操作。

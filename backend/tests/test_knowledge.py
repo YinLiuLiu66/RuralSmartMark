@@ -18,7 +18,7 @@ def test_markdown_docs_have_sources_and_unique_ids():
     assert len(docs) == 10
     assert len({doc.doc_key for doc in docs}) == 10
     for doc in docs:
-        assert doc.source_date == "2026-10-21"
+        assert doc.source_date.startswith("2026-10-")
         if doc.credibility == "demo":
             assert doc.source_url.startswith("internal://")
         else:

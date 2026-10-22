@@ -182,3 +182,9 @@
 **理由**：当前审核 UI 已覆盖引用、预警、包装预览与 JSON 编辑，竞赛现场可用；Docker 与项目“无外部服务依赖、SQLite 本地跑”的取舍冲突，收益低。把时间留给可重复验收与第二档案证据。
 **验证**：`make -n dev` 正确展开；`make test`/`make e2e`/`make perf` 可执行；缺口已同步 `docs/05-next-steps.md`。
 **拍板时间**：2026-10-22
+
+### #64 · LLM 输出忽略未知字段
+**结论**：`agents/schemas.py` 的输出模型从 `extra="forbid"` 改为 `extra="ignore"`；LLM 多写的未知键直接丢弃，必填字段、类型、长度、成本等式等已知约束仍严格校验。
+**理由**：真实 V4.1-Flash 在第二产品营销输出里多写了一个 `wechat.title_note: null`，导致 Schema 校验失败并整站降级 mock；一次空字段抖动不该让审核卡住。忽略未知字段比放宽已知字段校验更可控。
+**验证**：`RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` 通过：四站 `model != mock`、无 fallback、`MJ` 溯源码、输出无昭通/苹果残留；常规 `uv run pytest` 44 passed + 1 skipped（真实 LLM 测试默认跳过）。
+**拍板时间**：2026-10-22

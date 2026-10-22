@@ -14,7 +14,7 @@
 - [x] **Phase 0/1**：沙盘骨架、四 Agent 状态机、审核/驳回/重跑、SSE、工位卡、批次移动
 - [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 内置字体包装 PNG + 引用/预警/预览 UI
 - [x] **Phase 3**：公开溯源 API + 390px H5 + 扫码统计 + IP 对话边界 + 固定演示快照 + 3D 包装贴图/广告牌/二维码/CatmullRom/卡车
-- [x] 后端测试 44 条 + `ruff check` 零告警
+- [x] 后端测试 44 条常跑 + 1 条默认跳过的真实 LLM 冒烟 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback）；随后 reset 为固定演示数据
 - [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run、5 条 artifact（含插画）、`ZTDEMO26` H5、扫码/对话
@@ -108,16 +108,18 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 
 - [x] Playwright 冒烟：桌面 3 条（固定演示批次、包装变体/插画、3D 二维码打开 H5）+ 移动 3 条（390px H5/扫码、320px 无溢出、未知码/超长码 404）
 - [x] `POST /api/demo/reset` 幂等：重复 reset 不产生重复 run/artifact；扫码后 reset 归零；固定码 `ZTDEMO26` 不变
-- [x] 第二产品档案夹具：麻江蓝莓，只建数据；mock 四站跑到 `traced`，`MJ` 溯源码，公开 H5/包装 PNG 可用，输出无昭通/苹果残留
+- [x] 第二产品档案夹具：麻江蓝莓，只建数据；mock 四站与真实 V4.1-Flash 四站都跑到 `traced`，`MJ` 溯源码，公开 H5/包装 PNG 可用，真实运行无 fallback、输出无昭通/苹果残留
+- [x] LLM 未知字段忽略（#64）：真实营销输出多一个 `wechat.title_note: null` 不再整站降级；已知字段仍严格校验
 - [x] 档案化输出：系统提示、Agent brief、mock 文案、定价标签/欢迎语/FAQ、包装品牌字、溯源码前缀均从 `ProductProfile.specs` 读取
 - [x] 长时性能：60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无溢出
 - [x] 一键启动：根 `Makefile` 的 `make dev/test/e2e/perf`；Playwright `webServer` 自动拉起未启动的服务
-- [x] 文档收口：decisions #61–#63、`docs/v2/runbook.md`、AGENTS/README/plan/ui
+- [x] 来源补证：农业部公告第1478号/AGI2010-07-00370 入 GI-01；80–85mm 补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，无书面报价
+- [x] 文档收口：decisions #61–#64、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
 - [x] 字段级审核表单：Phase 5 确认不做，保留 JSON 编辑器（#58/#63）
 - [x] Docker：确认不做，继续 uv + pnpm 本地进程（#63）
 - [x] 演示脚本与彩排：见 `docs/v2/runbook.md` §4
 
-**Phase 5 验收**：`pnpm test:e2e` 6 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 44 tests、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 通过；`ZTDEMO26` 与 156% 溢价回归不变。
+**Phase 5 验收**：`pnpm test:e2e` 6 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 44 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 与 `RSM_REAL_LLM=1` 真实四站均通过；`ZTDEMO26` 与 156% 溢价回归不变。
 
 ## 6. 未验证假设（开工即验证）
 
@@ -130,10 +132,10 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 3D 场景长时 60fps：headless Chromium 1280×720 采样 60 秒 58.3fps，堆内存不增长
 - [ ] 手机真机扫码（当前只验了 390px 视口与 Playwright 移动模拟）
 - [x] 200% 等效视口：640×360 回退桌面提示且无横向溢出；H5 320px/超长码已压测
-- [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站，不改核心代码
-- [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算）
-- [ ] 80–85mm 精选果的同规格、同渠道价格（至少 3 家）
-- [ ] 地理标志公告原文/公告号（当前用协会页 + 云南日报/昭通新闻网）
+- [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站与真实 V4.1-Flash 四站，不改核心代码
+- [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算；只找到 1000 个起订线索）
+- [x] 80–85mm 精选果公开挂牌价：惠农网 4 个页面（5斤 25/36/40 元，10斤 6.2 元/斤）；成交价/同渠道长期价仍待跟
+- [x] 地理标志公告原文/公告号：农业部公告第1478号，AGI2010-07-00370（商务部政策法规库转录）
 
 ## 7. 已知缺口（Phase 5 结束时的诚实清单）
 
@@ -142,8 +144,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - 定价 156% 与包装成本 5.7 元/盒是演示测算；页面已标“演示测算”。
 - 故事/内容里的区域事实已尽量引用知识库，但 LLM 仍可能写未引用的概括（FactGuard 对未引用数字只给 warning）；审核时看引用与预警。
 - IP 对话只做了关键词/规则 + LLM 后置校验；没有多轮上下文管理、没有真人客服兜底。
-- 第二产品夹具只验证 mock 流水线；真实 LLM 换档案仍未实跑，提示词已档案化。
-- 手机真机扫码、真实包装厂报价、80–85mm 三家同规格价格、地理标志公告原文仍未补齐。
+- 第二产品真实 LLM 只跑了一次（四站无 fallback），未做多批次稳定性；提示词已档案化。
+- 手机真机扫码、包装厂书面报价/食品接触合规、真实盒型/刀版仍未补齐；80–85mm 挂牌价与 GI 公告号已补，成交价仍待跟。
 - Docker 不做；现场依赖本机 uv + pnpm + SQLite。
 - 前端已分包：initial index 260KB、Scene 950KB 异步；手机 H5 不下载 three.js。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -156,6 +158,7 @@ cd backend
 uv run alembic upgrade head
 uv run python -m ruralsmartmark.seed
 uv run pytest
+RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py   # 可选，会消耗额度
 uv run ruff check .
 
 # frontend

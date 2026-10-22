@@ -1,3 +1,5 @@
+import os
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -7,7 +9,7 @@ from ruralsmartmark.agents.runtime import AgentRuntime, get_runtime
 from ruralsmartmark.config import get_settings
 from ruralsmartmark.db import Base, build_engine, get_session
 from ruralsmartmark.main import app
-from ruralsmartmark.providers.llm import MockLLMProvider
+from ruralsmartmark.providers.llm import MockLLMProvider, get_llm_provider
 
 
 @pytest_asyncio.fixture
@@ -35,9 +37,11 @@ async def client(engine, tmp_path):
         async with maker() as db_session:
             yield db_session
 
+    settings = get_settings()
+    llm = get_llm_provider(settings) if os.getenv("RSM_REAL_LLM") == "1" else MockLLMProvider()
     runtime = AgentRuntime(
-        settings=get_settings(),
-        llm=MockLLMProvider(),
+        settings=settings,
+        llm=llm,
         artifact_dir=tmp_path / "artifacts",
         allow_mock_fallback=True,
     )
