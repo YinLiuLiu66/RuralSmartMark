@@ -190,7 +190,7 @@
 **拍板时间**：2026-10-22
 
 ### #65 · 生图缓存清理与失败兜底
-**结论**：新增 `services/image_cache.py` 与 `python -m ruralsmartmark.maintenance image-cache`，默认删除 30 天前的 PNG，并把目录压到 512MB 以内（先删最旧文件）；支持 `--dry-run`，不做启动时自动删除。包装工位的插画加载失败或 artifact 带 `error` 时显示「插画这次没有生成 / 包装审核不受影响」的视觉兜底卡，不再只留一行提示；H5 在无插画 URL 时省略插画区，不显示破图。
+**结论**：新增 `services/image_cache.py` 与 `python -m ruralsmartmark.maintenance image-cache`，默认删除 30 天前的 PNG，并把目录压到 512MB 以内（先删最旧文件）；支持 `--dry-run`，不做启动时自动删除。包装工位的插画加载失败或 artifact 带 `error` 时显示「插画这次没有生成 / 包装审核不受影响」的视觉兜底卡，不再只留一行提示；H5 在无插画 URL 或图片加载失败时省略插画区，不显示破图。
 **理由**：生图缓存只增不减会占满本地盘；自动清理可能在演示前误删固定素材，所以做成显式命令。失败兜底要让审核者一眼看出“包装产出仍然有效”，而不是怀疑整站坏了。
 **验证**：`tests/test_image_cache.py` 覆盖过期、超容量、dry-run 三种情况；Playwright 新增“插画生成失败时显示视觉兜底”用例，7 条冒烟全过；`maintenance image-cache --dry-run` 可打印扫描/将删除/保留统计。
 **拍板时间**：2026-10-22

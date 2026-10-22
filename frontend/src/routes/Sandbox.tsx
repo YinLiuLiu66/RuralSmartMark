@@ -431,8 +431,7 @@ export default function Sandbox() {
             </div>
 
             <div className="mt-4 rounded-card border border-dashed border-line p-3 text-[11px] leading-relaxed text-ink-muted">
-              Phase 3 已接入公开溯源 H5、扫码统计与 3D
-              包装贴图/广告牌/二维码。真实图像 Provider 在 Phase 4 接入。
+              四站产出均经人工审核。点站点查看故事、包装、内容与定价；扫码可打开这一批的手机溯源页。
             </div>
           </aside>
 

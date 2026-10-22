@@ -71,6 +71,33 @@ function CopyRow({ label, text, emphasis = false }: { label: string; text: strin
   );
 }
 
+function StoryIllustration({
+  src,
+  alt,
+  caption,
+}: {
+  src: string;
+  alt: string;
+  caption: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <figure className="mt-4 overflow-hidden rounded-card border border-line bg-surface">
+      <img
+        src={src}
+        alt={alt}
+        className="aspect-[3/4] w-full object-cover"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+      <figcaption className="border-t border-line px-4 py-2 text-[10px] text-ink-faint">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
 function EvidenceList({ items }: { items: TraceEvidence[] }) {
   if (items.length === 0) return null;
   return (
@@ -423,17 +450,11 @@ export default function Trace() {
             {trace.story.story_short}
           </blockquote>
           {trace.story.illustration_url && (
-            <figure className="mt-4 overflow-hidden rounded-card border border-line bg-surface">
-              <img
-                src={trace.story.illustration_url}
-                alt={`${trace.story.ip_name} IP 插画`}
-                className="aspect-[3/4] w-full object-cover"
-                loading="lazy"
-              />
-              <figcaption className="border-t border-line px-4 py-2 text-[10px] text-ink-faint">
-                AI 生成演示插画 · {trace.fixed_demo ? "固定快照" : "服务端生成"} · 非真实人物
-              </figcaption>
-            </figure>
+            <StoryIllustration
+              src={trace.story.illustration_url}
+              alt={`${trace.story.ip_name} IP 插画`}
+              caption={`AI 生成演示插画 · ${trace.fixed_demo ? "固定快照" : "服务端生成"} · 非真实人物`}
+            />
           )}
           <p className="mt-4 whitespace-pre-line break-words text-[15px] leading-8 text-ink-muted">
             {trace.story.story_long}
