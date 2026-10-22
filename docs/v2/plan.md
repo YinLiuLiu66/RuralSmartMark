@@ -374,7 +374,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - `docs/v2/`：plan.md / ui.md / sources.md；architecture/agents/data/runbook/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
-- 开发分支 `main`；每个 Phase 完成提交；push 前先向你确认（按你的习惯）。
+- 开发分支 `main`；完成可验证单元自动 commit，任务收口自动 push 到 `origin/main`（2026-10-22 起）；force/历史重写/删除远端分支仍先确认。
 - `.gitignore` 已覆盖 `/data/`、`backend/data/`；不提交生成物/.env。
 
 ---
