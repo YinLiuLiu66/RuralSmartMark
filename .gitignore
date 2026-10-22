@@ -17,8 +17,11 @@
 .zcode/
 .claude/
 
-# ---------- 本地数据 / 生成物（v2 SQLite、未来 artifacts） ----------
-/data/
+# ---------- 本地数据 / 生成物（v2 SQLite、artifacts） ----------
+# 知识库是仓库资产，必须入库；运行期产物留在本机。
+/data/*
+!/data/knowledge/
+!/data/knowledge/**
 backend/data/
 
 # ---------- Python ----------

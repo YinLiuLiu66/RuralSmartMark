@@ -23,7 +23,7 @@ import {
   STATUS_LABEL,
   type StationStatus,
 } from "../agents";
-import { api, type Product } from "../api/client";
+import { api, type KnowledgeDoc, type Product } from "../api/client";
 import ReviewDialog from "../components/ReviewDialog";
 import StationCard from "../components/StationCard";
 import { usePipelineStore } from "../stores/pipeline";
@@ -72,6 +72,7 @@ export default function Sandbox() {
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
   const [sse, setSse] = useState<"connecting" | "live" | "reconnecting">("connecting");
   const [product, setProduct] = useState<Product | null>(null);
+  const [knowledge, setKnowledge] = useState<Record<string, KnowledgeDoc>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -91,12 +92,13 @@ export default function Sandbox() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.health(), api.products(), api.batches()])
-      .then(([healthResult, products, batchList]) => {
+    Promise.all([api.health(), api.products(), api.batches(), api.knowledge()])
+      .then(([healthResult, products, batchList, docs]) => {
         if (cancelled) return;
         setHealth(healthResult.status === "ok" ? "ok" : "error");
         setProduct(products[0] ?? null);
         setBatches(batchList);
+        setKnowledge(Object.fromEntries(docs.map((doc) => [doc.doc_key, doc])));
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
@@ -296,7 +298,7 @@ export default function Sandbox() {
             </button>
             <button
               className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted"
-              title="设置（Phase 1 未接入）"
+              title="设置（暂未接入）"
             >
               <Settings size={16} />
             </button>
@@ -338,7 +340,7 @@ export default function Sandbox() {
             </section>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <Metric label="溢价率" value={premiumText} icon={<BadgePercent size={14} />} />
+              <Metric label="溢价率（演示）" value={premiumText} icon={<BadgePercent size={14} />} />
               <Metric label="故事" value={storyText} icon={<BookOpen size={14} />} />
               <Metric
                 label="内容素材"
@@ -349,8 +351,8 @@ export default function Sandbox() {
             </div>
 
             <div className="mt-4 rounded-card border border-dashed border-line p-3 text-[11px] leading-relaxed text-ink-muted">
-              Phase 1 已接入 mock 流水线与审核门。真实 Agent、包装合成、溯源 API
-              在 Phase 2–3 接入。
+              Phase 2 已接入真实 Agent、知识库引用、FactGuard 与包装合成。图像 Provider
+              与公开溯源 API 在 Phase 3–4 接入。
             </div>
           </aside>
 
@@ -381,6 +383,7 @@ export default function Sandbox() {
               <StationCard
                 agent={selectedMeta}
                 workspace={workspace}
+                knowledge={knowledge}
                 busy={busy}
                 onRun={handleRunAgent}
                 onReview={() => setReviewOpen(true)}
@@ -528,7 +531,10 @@ export default function Sandbox() {
           <ReviewDialog
             open={reviewOpen}
             agent={reviewMeta}
+            batchId={currentBatch?.id ?? null}
             output={reviewRun.output_json}
+            guard={reviewRun.guard_json}
+            knowledge={knowledge}
             busy={busy}
             onClose={() => setReviewOpen(false)}
             onApprove={handleApprove}

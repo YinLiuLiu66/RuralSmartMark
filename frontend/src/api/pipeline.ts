@@ -9,6 +9,21 @@ export interface BatchFull extends Batch {
   pricing_json: Record<string, unknown> | null;
 }
 
+export interface GuardIssue {
+  rule: string;
+  field: string;
+  message: string;
+  severity: "error" | "warning";
+  suggestion: string;
+}
+
+export interface GuardResult {
+  passed: boolean;
+  checked_citations: number;
+  errors: GuardIssue[];
+  warnings: GuardIssue[];
+}
+
 export interface AgentRun {
   id: number;
   batch_id: number;
@@ -16,7 +31,10 @@ export interface AgentRun {
   status: string;
   note: string | null;
   output_json: Record<string, unknown> | null;
+  guard_json: GuardResult | null;
   error: string | null;
+  model: string | null;
+  tokens: number;
   started_at: string | null;
   finished_at: string | null;
 }
@@ -27,6 +45,7 @@ export interface Artifact {
   kind: AgentKey;
   content_json: Record<string, unknown> | null;
   file_path: string | null;
+  file_url: string | null;
   approved_at: string | null;
 }
 
@@ -39,6 +58,7 @@ export interface BatchWorkspace {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...init?.headers,

@@ -1,6 +1,5 @@
 # AGENTS.md
 
-本文件只供 AI Agent 阅读，人类读者请看 README.md。两者内容不重复、不冲突。
 
 ## 项目定位
 
@@ -14,8 +13,9 @@
 
 - **Phase 0 已完成**：`rewrite/v2` 分支；旧 v1 后端/前端/文档/Postgres 数据已移出工作树（`main` 保留历史）；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
 - **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次沿站点移动、审核后自动启动下一站。
-- **下一步 Phase 2**：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。
-- **尚未实现**：真实 Agent、公开溯源 API/IP 对话、包装贴图、真实图像生成、确定性定价计算（当前 mock 156% 仅为演示）。别假设它们存在。
+- **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、包装 SVG 预览 + Pillow PNG、引用/预警/包装预览 UI、知识库 API。
+- **下一步 Phase 3**：沙盘联动（包装贴图/广告牌/二维码）+ 公开溯源 API/H5 + IP 对话。
+- **尚未实现**：公开溯源 API/IP 对话、3D 包装贴图、真实图像 Provider、字段级审核表单（当前 JSON 编辑器）、扫码统计落库。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -23,7 +23,10 @@
   已实测：Python 3.13、uv 0.13、Node 24、pnpm 12。
 - 数据库：**SQLite**，默认 `backend/data/app.db`（已 gitignore）；不需要 Docker/Postgres。
 - `.env`：`backend/.env.example` 复制为 `.env`；`OPENAI_API_KEY` 可空，空则走 Mock；
-  `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false。
+  `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
+  `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
+- 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。
+  运行期包装 PNG 在 `backend/data/artifacts/`（gitignore）。
 - `uv run pytest` **不需要 PG**；测试用临时 SQLite；单函数一样跑。
 - 前端没有测试框架；只有 `pnpm typecheck` / `pnpm lint` / `pnpm build` 兜底；别假设有 vitest/jest。
 - 3D 只在桌面端（≥1024px）；手机只走 `/trace/:code`。3D 构建方式对齐 WareTrack：
@@ -67,25 +70,28 @@ backend/
   src/ruralsmartmark/
     main.py config.py db.py deps.py models.py schemas.py
     routes/ health.py products.py batches.py demo.py pipeline.py
-    agents/ base.py mock.py orchestrator.py   # 状态机 + mock 四 Agent
+           knowledge.py artifacts.py        # 知识库清单 + 包装文件下载
+    agents/ base.py schemas.py prompts.py engine.py runtime.py mock.py orchestrator.py
     providers/ llm.py image.py      # Provider 接口 + Mock
-    services/ events.py workspace.py # SSE 事件总线 + workspace 聚合
-    seed/ __init__.py __main__.py   # 幂等 seed
+    services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
+    seed/ __init__.py __main__.py   # 幂等 seed（含知识库 Markdown）
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
+         test_knowledge.py test_fact_guard.py test_pricing.py test_engine.py
+data/knowledge/zhaotong/*.md        # 事实源；已入库
 frontend/
-  src/api/client.ts                 # fetch 封装 + Product/Batch 类型
-  src/api/pipeline.ts               # workspace/run/approve/reject 类型与 API
+  src/api/client.ts                 # fetch 封装 + Product/Batch/Knowledge 类型
+  src/api/pipeline.ts               # workspace/run/approve/reject + guard 类型
   src/agents.ts                     # Agent 元数据、状态映射、下一站/审核站
   src/stores/world.ts               # Zustand：批次/选中批次
   src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/busy
   src/three/Scene.tsx               # 等距正交场景（果园/四站点/批次移动/站点状态）
   src/three/stations.ts             # 四站点元数据
-  src/components/StationCard.tsx    # 工位卡（运行/审核/重跑/产出预览）
-  src/components/ReviewDialog.tsx   # 原生 dialog 审核（Phase 1 为 JSON 编辑）
+  src/components/StationCard.tsx    # 工位卡（预览/引用/FactGuard/包装图）
+  src/components/ReviewDialog.tsx   # 原生 dialog 审核（JSON + 引用/预警/包装预览）
   src/routes/Sandbox.tsx            # 桌面沙盘 `/` + SSE + 审核动线
-  src/routes/Trace.tsx              # 移动溯源骨架 `/trace/:code`
+  src/routes/Trace.tsx              # 移动溯源骨架 `/trace/:code`（Phase 3 接 API）
   src/styles/global.css             # Tailwind v4 @theme + 山野编辑部 token
   vite.config.ts package.json
 docs/
@@ -97,7 +103,7 @@ docs/
 .agent/skills/                      # 可复用技能包
 ```
 
-尚未创建、创建前勿假设存在：真实 Agent、公开溯源 API/IP 对话、包装合成、定价计算、真实图像 Provider。
+尚未创建、创建前勿假设存在：公开溯源 API/IP 对话、3D 包装贴图、真实图像 Provider、扫码统计写入、字段级审核表单。
 子目录若有专属强约定，另建 `<dir>/AGENTS.md`，根文件只引用不复制。
 
 ## 文档维护职责（必读必做）

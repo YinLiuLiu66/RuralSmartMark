@@ -1,13 +1,22 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import AgentRun, Artifact, Batch, ProductProfile
+from ..models import AgentRun, Artifact, Batch, Benchmark, ProductProfile
 from ..services.events import bus
+from ..services.fact_guard import check_output
+from ..services.knowledge import list_knowledge_docs
+from ..services.packaging import render_label_png
+from ..services.pricing import calculate_pricing
 from .base import AgentName
-from .mock import run_mock_agent
+from .engine import AgentGenerationError, _guard_allowed_numbers, generate_output
+from .runtime import AgentRuntime
+from .schemas import validate_output
 
 AGENT_ORDER = (AgentName.STORY, AgentName.PACKAGING, AgentName.MARKETING, AgentName.PRICING)
 
@@ -52,10 +61,15 @@ async def _latest_run(
     return await session.scalar(query.order_by(AgentRun.id.desc()))
 
 
+def _guard_payload(error: AgentGenerationError) -> dict | None:
+    return error.guard.as_dict() if error.guard else None
+
+
 async def run_agent(
     session: AsyncSession,
     batch: Batch,
     agent: AgentName,
+    runtime: AgentRuntime,
     note: str | None = None,
 ) -> AgentRun:
     review_state = f"{agent.value}_review"
@@ -82,6 +96,7 @@ async def run_agent(
             "batch_code": batch.code,
             "product": product.slug,
             "note": note,
+            "provider": runtime.provider_name,
         },
         note=note,
         started_at=_now(),
@@ -89,43 +104,137 @@ async def run_agent(
     session.add(run)
     await session.commit()
     await session.refresh(run)
-    await bus.publish("agent.started", {"batch_id": batch.id, "agent": agent.value, "run_id": run.id})
+    await bus.publish(
+        "agent.started", {"batch_id": batch.id, "agent": agent.value, "run_id": run.id}
+    )
     await bus.publish("batch.updated", {"batch_id": batch.id, "state": batch.state})
 
     try:
-        output = await run_mock_agent(agent, product, batch)
-    except Exception as exc:  # pragma: no cover - mock never fails, real agents will
+        result = await generate_output(session, runtime, agent, product, batch, note)
+    except AgentGenerationError as exc:
         run.status = "failed"
-        run.error = str(exc)
+        run.error = str(exc)[:2000]
+        run.guard_json = _guard_payload(exc)
+        run.output_json = exc.output
         run.finished_at = _now()
-        batch.state = review_state
+        batch.state = READY_STATE[agent]
         await session.commit()
+        await session.refresh(run)
+        detail = str(exc)
+        if exc.guard and exc.guard.errors:
+            detail = f"{detail}：{exc.guard.errors[0].message}"
         await bus.publish(
             "agent.failed",
-            {"batch_id": batch.id, "agent": agent.value, "run_id": run.id, "error": str(exc)},
+            {"batch_id": batch.id, "agent": agent.value, "run_id": run.id, "error": detail},
         )
-        raise HTTPException(status_code=500, detail="Agent 运行失败") from exc
+        await bus.publish("batch.updated", {"batch_id": batch.id, "state": batch.state})
+        raise HTTPException(status_code=502, detail=detail) from exc
 
     run.status = "waiting_review"
-    run.output_json = output
+    run.output_json = result.output
+    run.guard_json = result.guard.as_dict()
+    run.model = result.model
+    run.tokens = result.tokens
     run.finished_at = _now()
-    setattr(batch, AGENT_FIELD[agent], output)
+    setattr(batch, AGENT_FIELD[agent], result.output)
     batch.state = review_state
     await session.commit()
     await session.refresh(run)
     await session.refresh(batch)
     await bus.publish(
         "agent.completed",
-        {"batch_id": batch.id, "agent": agent.value, "run_id": run.id, "status": run.status},
+        {
+            "batch_id": batch.id,
+            "agent": agent.value,
+            "run_id": run.id,
+            "status": run.status,
+            "demo": result.demo,
+            "warnings": len(result.guard.warnings),
+        },
     )
     await bus.publish("batch.updated", {"batch_id": batch.id, "state": batch.state})
+
+    if runtime.settings.auto_approve:
+        await approve_agent(session, batch, agent, runtime)
+        await session.refresh(run)
     return run
+
+
+async def _validate_review_content(
+    session: AsyncSession,
+    batch: Batch,
+    agent: AgentName,
+    content: dict,
+    *,
+    public_base_url: str,
+    trace_code: str | None = None,
+) -> tuple[dict, dict]:
+    product = await session.get(ProductProfile, batch.product_id)
+    if product is None:
+        raise HTTPException(status_code=409, detail="产品档案缺失")
+    docs = await list_knowledge_docs(session, product.id)
+    try:
+        model = validate_output(agent, content)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"产出不符合 Schema：{str(exc)[:500]}",
+        ) from exc
+
+    data = model.model_dump(mode="json")
+    if agent == AgentName.PRICING:
+        # 人工可以改解释，但价格、成本、毛利必须由服务端重算。
+        result = await session.execute(
+            select(Benchmark).where(Benchmark.product_id == product.id).order_by(Benchmark.id)
+        )
+        benchmarks = list(result.scalars().all())
+        if not batch.packaging_json:
+            raise HTTPException(status_code=409, detail="缺少已通过的包装产出")
+        recalculated = calculate_pricing(
+            product,
+            batch,
+            batch.packaging_json,
+            benchmarks,
+            docs,
+            public_base_url=public_base_url,
+            story=batch.story_json,
+            trace_code=trace_code,
+        )
+        for key in (
+            "price_ladder",
+            "premium_pct",
+            "formula",
+            "cost_breakdown",
+            "qr_payload",
+            "is_demo",
+        ):
+            data[key] = recalculated[key]
+        try:
+            data = validate_output(agent, data).model_dump(mode="json")
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"重算后的定价不符合 Schema：{str(exc)[:500]}",
+            ) from exc
+
+    guard = check_output(
+        data,
+        docs,
+        allowed_numbers=_guard_allowed_numbers(agent, product, batch, docs, data),
+    )
+    if not guard.passed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"事实校验未通过：{guard.errors[0].message}",
+        )
+    return data, guard.as_dict()
 
 
 async def approve_agent(
     session: AsyncSession,
     batch: Batch,
     agent: AgentName,
+    runtime: AgentRuntime,
     output: dict | None = None,
 ) -> Artifact:
     review_state = f"{agent.value}_review"
@@ -140,24 +249,77 @@ async def approve_agent(
     if not isinstance(content, dict):
         raise HTTPException(status_code=422, detail="产出必须是 JSON 对象")
 
+    pending_trace_code = batch.trace_code
+    if agent == AgentName.PRICING and not pending_trace_code:
+        pending_trace_code = f"ZT{batch.id:04d}"
+
+    content, guard = await _validate_review_content(
+        session,
+        batch,
+        agent,
+        content,
+        public_base_url=runtime.settings.public_base_url,
+        trace_code=pending_trace_code,
+    )
+    run.guard_json = guard
+    run.output_json = content
+    run.status = "approved"
+    setattr(batch, AGENT_FIELD[agent], content)
+    batch.state = f"{agent.value}_approved"
+
+    file_path: str | None = None
+    if agent == AgentName.PACKAGING:
+        product = await session.get(ProductProfile, batch.product_id)
+        if product is None:
+            raise HTTPException(status_code=409, detail="产品档案缺失")
+        path = runtime.artifact_dir / f"batch-{batch.id}" / f"packaging-{run.id}.png"
+        try:
+            render_label_png(
+                content,
+                batch,
+                product,
+                path,
+                public_base_url=runtime.settings.public_base_url,
+            )
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"包装图生成失败：{exc}") from exc
+        file_path = str(path)
+
     artifact = Artifact(
         batch_id=batch.id,
         agent_run_id=run.id,
         kind=agent.value,
         content_json=content,
+        file_path=file_path,
         approved_at=_now(),
     )
     session.add(artifact)
-    run.status = "approved"
-    run.output_json = content
-    setattr(batch, AGENT_FIELD[agent], content)
-    batch.state = f"{agent.value}_approved"
 
     if agent == AgentName.PRICING:
-        if not batch.trace_code:
-            batch.trace_code = f"ZT{batch.id:04d}"
+        batch.trace_code = pending_trace_code or batch.trace_code
         batch.state = "traced"
         batch.current_station = "trace"
+        # 定价后溯源码才确定，重渲染包装图，让二维码真正指向该码。
+        packaging_artifact = await session.scalar(
+            select(Artifact)
+            .where(Artifact.batch_id == batch.id, Artifact.kind == "packaging")
+            .order_by(Artifact.id.desc())
+        )
+        product = await session.get(ProductProfile, batch.product_id)
+        if packaging_artifact and batch.packaging_json and product:
+            path = (
+                runtime.artifact_dir
+                / f"batch-{batch.id}"
+                / f"packaging-{packaging_artifact.agent_run_id or packaging_artifact.id}-final.png"
+            )
+            render_label_png(
+                batch.packaging_json,
+                batch,
+                product,
+                path,
+                public_base_url=runtime.settings.public_base_url,
+            )
+            packaging_artifact.file_path = str(path)
 
     await session.commit()
     await session.refresh(artifact)

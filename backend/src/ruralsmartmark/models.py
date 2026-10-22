@@ -7,9 +7,7 @@ from .db import Base
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -56,13 +54,12 @@ class AgentRun(Base):
     __tablename__ = "agent_run"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    batch_id: Mapped[int] = mapped_column(
-        ForeignKey("batch.id", ondelete="CASCADE"), index=True
-    )
+    batch_id: Mapped[int] = mapped_column(ForeignKey("batch.id", ondelete="CASCADE"), index=True)
     agent: Mapped[str] = mapped_column(String(40), index=True)
     status: Mapped[str] = mapped_column(String(40), default="queued", index=True)
     input_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     output_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    guard_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     model: Mapped[str | None] = mapped_column(String(120), nullable=True)
     tokens: Mapped[int] = mapped_column(Integer, default=0)
@@ -75,9 +72,7 @@ class Artifact(Base):
     __tablename__ = "artifact"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    batch_id: Mapped[int] = mapped_column(
-        ForeignKey("batch.id", ondelete="CASCADE"), index=True
-    )
+    batch_id: Mapped[int] = mapped_column(ForeignKey("batch.id", ondelete="CASCADE"), index=True)
     agent_run_id: Mapped[int | None] = mapped_column(
         ForeignKey("agent_run.id", ondelete="SET NULL"), nullable=True
     )
@@ -136,13 +131,9 @@ class ScanEvent(Base):
     __tablename__ = "scan_event"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    batch_id: Mapped[int] = mapped_column(
-        ForeignKey("batch.id", ondelete="CASCADE"), index=True
-    )
+    batch_id: Mapped[int] = mapped_column(ForeignKey("batch.id", ondelete="CASCADE"), index=True)
     trace_code: Mapped[str] = mapped_column(String(40), index=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     channel: Mapped[str] = mapped_column(String(80), default="qr")
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
@@ -151,11 +142,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_message"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    batch_id: Mapped[int] = mapped_column(
-        ForeignKey("batch.id", ondelete="CASCADE"), index=True
-    )
+    batch_id: Mapped[int] = mapped_column(ForeignKey("batch.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

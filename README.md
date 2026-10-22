@@ -6,15 +6,16 @@
 
 ## 当前状态（2026-10-21）
 
-**Phase 1 已完成**：
+**Phase 2 已完成**：
 
-- `rewrite/v2` 分支；旧 v1 代码、设计文档、Postgres 数据移出工作树（`main` 保留历史）。
-- FastAPI + SQLite（9 张表）+ Alembic + 幂等 seed；Mock LLM/Image Provider，无 key 可跑。
-- 四 Agent mock 流水线：故事 → 包装 → 内容 → 定价；人工审核/驳回/重跑 + SSE + workspace。
-- 前端 React 19 + R3F 9 + Tailwind 4：3D 沙盘、工位卡、JSON 审核弹窗、批次沿站点移动、KPI/产出物 Tabs、移动端溯源骨架。
-- 后端 8 测试、ruff、前端 typecheck/lint/build 全绿；浏览器完整 mock 动线通过。
+- 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。
+- 10 篇昭通知识库 Markdown；FactGuard 校验逐字引用、违禁认证/功效/保证、数字预警；审核通过前服务端再校验一次。
+- 确定性定价计算器：成本、三档价格、毛利、156% 演示溢价与服务端重算；LLM 只写解释。
+- 包装合成：同一份文案生成 SVG 预览与 Pillow PNG；审核通过后落盘，二维码指向 `/trace/:code`（H5 内容在 Phase 3）。
+- 前端 React 19 + R3F 9 + Tailwind 4：3D 沙盘、工位卡（引用/预警/包装预览）、JSON 审核弹窗、批次沿站点移动、KPI/产出物 Tabs。
+- 后端 27 测试、ruff、前端 typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 跑通到 `traced`；切换后的 V4.1-Flash 已验证故事/包装 Agent，旧 `traced` 批次未用新模型重跑。mock 动线仍可跑。
 
-**Phase 2 下一步**：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。真实 Agent、公开溯源 API/IP 对话、包装贴图、真实图像生成尚未实现。
+**Phase 3 下一步**：3D 包装贴图/广告牌/二维码联动 + 公开溯源 API/H5 + IP 对话。真实图像 Provider、字段级审核表单、扫码统计写入尚未实现。
 
 ## 快速开始
 
@@ -43,22 +44,25 @@ pnpm dev                  # http://127.0.0.1:5173
 - 溯源骨架：<http://127.0.0.1:5173/trace/ZTDEMO26>
 - API 文档：<http://127.0.0.1:8000/docs>
 
-Vite 已把 `/api` 代理到 `127.0.0.1:8000`。
+Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个 Agent 走确定性 mock；有 key 时调用 OpenAI 兼容端点（默认 SiliconFlow DeepSeek-V4.1-Flash），单次超时 180 秒，`thinking_budget=2048`、`max_tokens=4096`，失败会降级为演示稿并在界面标注原因。固定演示批次与溯源码不随 key 变化。
 
 ## 目录结构
 
 ```
 backend/
-  src/ruralsmartmark/       # FastAPI 应用、ORM、routes、providers、seed
+  src/ruralsmartmark/       # FastAPI、ORM、四 Agent、知识库/FactGuard、定价/包装
   migrations/               # Alembic
-  tests/                    # health / seed / batches
+  tests/                    # health / seed / pipeline / knowledge / guard / pricing / engine
+data/
+  knowledge/zhaotong/       # 10 篇事实源 Markdown（入库）
 frontend/
   src/three/                # R3F 等距场景
+  src/components/           # StationCard / ReviewDialog
   src/routes/               # Sandbox / Trace
   src/stores/               # Zustand
   src/styles/               # Tailwind v4 + 山野编辑部 token
 docs/
-  decisions.md              # 决策（v1 #1–#31 + v2 #32 起）
+  decisions.md              # 决策（v2 #32 起）
   v2/plan.md                # v2 产品/架构方案
   v2/ui.md                  # 前端设计契约
   v2/sources.md             # 昭通事实待核验清单
@@ -77,20 +81,23 @@ docs/
 | frontend | `pnpm dev` | 开发服 |
 | frontend | `pnpm typecheck` / `pnpm lint` / `pnpm build` | 前端检查/构建 |
 
-## 接口（Phase 0）
+## 接口（Phase 2）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查（含 DB） |
 | GET | `/api/products` | 产品档案 |
+| GET | `/api/knowledge` | 知识库清单（引用 chips 用） |
 | GET | `/api/batches` | 批次列表 |
 | POST | `/api/batches` | 新建批次 |
 | GET | `/api/batches/{id}` | 批次详情 |
 | GET | `/api/batches/{id}/workspace` | 批次 + 运行记录 + 产出物 |
 | POST | `/api/batches/{id}/pipeline/start` | 运行下一步 |
 | POST | `/api/batches/{id}/agents/{agent}/run` | 重跑当前 Agent |
-| POST | `/api/batches/{id}/agents/{agent}/approve` | 审核通过 |
+| POST | `/api/batches/{id}/agents/{agent}/approve` | 审核通过（服务端二次 FactGuard/定价重算） |
 | POST | `/api/batches/{id}/agents/{agent}/reject` | 驳回 |
+| GET | `/api/batches/{id}/agents/packaging/preview` | 包装 SVG 预览 |
+| GET | `/api/artifacts/{id}/file` | 审核后的包装 PNG |
 | GET | `/api/batches/{id}/events` | SSE 实时事件 |
 | GET | `/api/batches/by-code/{code}` | 按批次码查 |
 | POST | `/api/demo/reset` | 重置演示批次 |

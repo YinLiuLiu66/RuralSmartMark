@@ -36,9 +36,7 @@ async def get_batch_by_code(code: str, session: SessionDep) -> Batch:
 
 
 @router.get("/batches/{batch_id}/workspace", response_model=BatchWorkspaceOut)
-async def get_batch_workspace(
-    batch_id: int, session: SessionDep
-) -> BatchWorkspaceOut:
+async def get_batch_workspace(batch_id: int, session: SessionDep) -> BatchWorkspaceOut:
     workspace = await load_workspace(session, batch_id)
     if workspace is None:
         raise HTTPException(status_code=404, detail="batch not found")

@@ -59,7 +59,10 @@ class AgentRunOut(BaseModel):
     status: str
     note: str | None = None
     output_json: dict | None = None
+    guard_json: dict | None = None
     error: str | None = None
+    model: str | None = None
+    tokens: int = 0
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -72,6 +75,7 @@ class ArtifactOut(BaseModel):
     kind: str
     content_json: dict | None = None
     file_path: str | None = None
+    file_url: str | None = None
     approved_at: datetime | None = None
 
 
@@ -98,3 +102,14 @@ class ApproveRequest(BaseModel):
 
 class RejectRequest(BaseModel):
     note: str | None = None
+
+
+class KnowledgeDocOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    doc_key: str
+    title: str
+    type: str
+    source_url: str | None = None
+    source_date: str | None = None
+    credibility: str

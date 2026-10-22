@@ -14,9 +14,7 @@ async def load_workspace(session: AsyncSession, batch_id: int) -> BatchWorkspace
     runs = list(
         (
             await session.execute(
-                select(AgentRun)
-                .where(AgentRun.batch_id == batch_id)
-                .order_by(AgentRun.id.desc())
+                select(AgentRun).where(AgentRun.batch_id == batch_id).order_by(AgentRun.id.desc())
             )
         )
         .scalars()
@@ -25,17 +23,22 @@ async def load_workspace(session: AsyncSession, batch_id: int) -> BatchWorkspace
     artifacts = list(
         (
             await session.execute(
-                select(Artifact)
-                .where(Artifact.batch_id == batch_id)
-                .order_by(Artifact.id.desc())
+                select(Artifact).where(Artifact.batch_id == batch_id).order_by(Artifact.id.desc())
             )
         )
         .scalars()
         .all()
     )
 
+    artifact_items = []
+    for artifact in artifacts:
+        item = ArtifactOut.model_validate(artifact)
+        if artifact.file_path:
+            item.file_url = f"/api/artifacts/{artifact.id}/file"
+        artifact_items.append(item)
+
     return BatchWorkspaceOut(
         batch=BatchFullOut.model_validate(batch),
         runs=[AgentRunOut.model_validate(run) for run in runs],
-        artifacts=[ArtifactOut.model_validate(artifact) for artifact in artifacts],
+        artifacts=artifact_items,
     )

@@ -1,13 +1,15 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
 from ..agents.base import AgentName
 from ..agents.orchestrator import approve_agent, next_agent, reject_agent, run_agent
+from ..agents.runtime import RuntimeDep
 from ..deps import SessionDep
-from ..models import Batch
+from ..models import AgentRun, Batch, ProductProfile
 from ..schemas import (
     AgentRunRequest,
     ApproveRequest,
@@ -15,6 +17,7 @@ from ..schemas import (
     RejectRequest,
 )
 from ..services.events import bus
+from ..services.packaging import build_label_svg
 from ..services.workspace import load_workspace
 
 router = APIRouter()
@@ -42,7 +45,9 @@ def _agent_or_422(agent: str) -> AgentName:
 
 
 @router.post("/batches/{batch_id}/pipeline/start", response_model=BatchWorkspaceOut)
-async def start_pipeline(batch_id: int, session: SessionDep) -> BatchWorkspaceOut:
+async def start_pipeline(
+    batch_id: int, session: SessionDep, runtime: RuntimeDep
+) -> BatchWorkspaceOut:
     batch = await _batch_or_404(session, batch_id)
     if batch.state == "traced":
         return await _workspace_or_404(session, batch_id)
@@ -53,7 +58,7 @@ async def start_pipeline(batch_id: int, session: SessionDep) -> BatchWorkspaceOu
     if agent is None:
         raise HTTPException(status_code=409, detail="当前批次没有可运行步骤")
 
-    await run_agent(session, batch, agent)
+    await run_agent(session, batch, agent, runtime)
     return await _workspace_or_404(session, batch_id)
 
 
@@ -63,9 +68,10 @@ async def run_specific_agent(
     agent: str,
     payload: AgentRunRequest,
     session: SessionDep,
+    runtime: RuntimeDep,
 ) -> BatchWorkspaceOut:
     batch = await _batch_or_404(session, batch_id)
-    await run_agent(session, batch, _agent_or_422(agent), payload.note)
+    await run_agent(session, batch, _agent_or_422(agent), runtime, payload.note)
     return await _workspace_or_404(session, batch_id)
 
 
@@ -75,10 +81,41 @@ async def approve_specific_agent(
     agent: str,
     payload: ApproveRequest,
     session: SessionDep,
+    runtime: RuntimeDep,
 ) -> BatchWorkspaceOut:
     batch = await _batch_or_404(session, batch_id)
-    await approve_agent(session, batch, _agent_or_422(agent), payload.output)
+    await approve_agent(session, batch, _agent_or_422(agent), runtime, payload.output)
     return await _workspace_or_404(session, batch_id)
+
+
+@router.get("/batches/{batch_id}/agents/packaging/preview")
+async def packaging_preview(batch_id: int, session: SessionDep, runtime: RuntimeDep) -> Response:
+    batch = await _batch_or_404(session, batch_id)
+    run = await session.scalar(
+        select(AgentRun)
+        .where(
+            AgentRun.batch_id == batch_id,
+            AgentRun.agent == AgentName.PACKAGING.value,
+            AgentRun.output_json.is_not(None),
+        )
+        .order_by(AgentRun.id.desc())
+    )
+    if run is None or not run.output_json:
+        raise HTTPException(status_code=404, detail="还没有包装产出")
+    product = await session.get(ProductProfile, batch.product_id)
+    if product is None:
+        raise HTTPException(status_code=409, detail="产品档案缺失")
+    svg = build_label_svg(
+        run.output_json,
+        batch,
+        product,
+        public_base_url=runtime.settings.public_base_url,
+    )
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/batches/{batch_id}/agents/{agent}/reject", response_model=BatchWorkspaceOut)

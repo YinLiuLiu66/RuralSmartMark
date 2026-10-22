@@ -17,15 +17,15 @@
 
 ### 为什么是昭通丑苹果
 
-1. 故事钩子强："丑"是天然反差；不套袋、不打蜡、自然成熟、冰糖心，都是可讲的具体事实。
+1. 故事钩子强："丑"是天然反差；高海拔、日照长、昼夜温差大、冰糖心（不是每颗都有）是可引用的事实/现象；“不套袋、不打蜡”只作为演示合作社设定，并引用 DEMO-01。
 2. 视觉辨识度高：红果、绿园、牛皮纸礼盒；低多边形场景容易出效果。
-3. 溢价链条清楚：散装 3.5–6.2 元/斤 vs 礼盒 8.7–14.5 元/斤，5kg 礼盒 90–145 元；"地头价 → 礼盒价"的对比直观。
-4. 公开资料足够：国家地理标志、昭阳区核心产区、海拔/糖度/产量/价格都有公开来源，不需要自造世界观。
-5. 叙事空间大：乌蒙山、彝族文化、昭通古城、果农世代种植；IP 人格容易立住。
+3. 溢价链条清楚：演示基线散装 5 元/斤（10 元/kg）vs 品牌礼盒目标 25.6 元/kg；"地头价 → 礼盒价"的对比直观，但必须标“演示测算”。
+4. 公开资料足够：国家地理标志、昭阳区核心产区、品质指标、2024 年产业规模都有可引用来源；具体海拔数字未核到官方原文，改用“高海拔”定性表述。
+5. 叙事空间大：乌蒙山、近百年引种培育；彝族纹样/昭通古城等文化素材在核到与产区的直接关联前不进入故事。
 
 **边界**：昭通苹果是区域公用品牌，已有知名度。项目不冒充区域品牌，而是做一个**虚构合作社的子品牌**（例如"乌蒙丑果"），讲"区域品牌有了，合作社和农户仍按斤卖，AI 帮他们做子品牌和礼盒溢价"。既真实，又不抢区域品牌的功劳。
 
-**数据口径**：公开检索到的初始值——海拔 1800–2500m（核心坝区约 1950m）、可溶性固形物 14–15.7%、散装 3.5–6.2 元/斤、礼盒 8.7–14.5 元/斤、5kg 礼盒约 90–145 元。这些只作为 seed 初始值；实现时逐条补 `source_url + 检索日期`，冲突数据用区间，页面标注"演示测算"。
+**数据口径**：第一轮核验后，知识库采用“高海拔、低纬度、日照长、昼夜温差大”的定性表述（具体海拔数字未核到官方原文，不写 1950m）；品质指标用地理标志登记资料的可溶性固形物≥15.0%、含糖量≥13.0%；2024 年产业数据用云南日报报道。价格与包装成本按演示测算，逐条来源见 `sources.md`；页面标注“演示测算”。
 
 **备选**：麻江蓝莓只做第二个 `ProductProfile` 测试夹具，证明换产品不改核心代码；不做 UI、不做第二套 3D 场景。虚构县不推荐，竞赛需要可查证的真实性。
 
@@ -229,7 +229,7 @@ AGENTS.md README.md
 
 - FastAPI + Pydantic v2 + SQLAlchemy 2.0（async）+ aiosqlite；Alembic 迁移（同步 URL 跑迁移，应用用 async engine）。
 - SSE：`sse-starlette`；单 worker + 内存事件总线（不引 Redis/Celery）。
-- LLM：OpenAI SDK；环境变量 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`；默认 SiliconFlow DeepSeek-V3.1-Terminus（可改）；`MockLLMProvider` 无 key 可用。
+- LLM：OpenAI SDK；环境变量 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`；默认 SiliconFlow DeepSeek-V4.1-Flash（可改），推理预算 `thinking_budget=2048`、最终输出 `max_tokens=4096`；`MockLLMProvider` 无 key 可用。
 - 图像：`ImageProvider` 接口；`SiliconFlowImageProvider`（模型可配，按 v2 Provider 接口重写）+ `MockImageProvider`（Pillow 生成图案/占位）；生成结果下载到本地，按 prompt hash 缓存。
 - 包装合成：SVG 模板 + Pillow/cairosvg；中文字体用 Noto Sans SC/Serif SC（OFL）；输出 2048×1024 贴图 + 印刷示意 PNG。
 - 二维码：`qrcode[pil]`；`PUBLIC_BASE_URL` 生成 `/t/{code}`。
@@ -266,7 +266,7 @@ AGENTS.md README.md
 
 ### SSE 事件
 
-Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.failed`、`artifact.ready`；`sse-starlette` ping 保活。`agent.log`、`pricing.updated`、`trace.scanned` 待 Phase 2–3。事件带 `id`；前端重连后重新拉 workspace 快照。
+Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.failed`、`artifact.ready`；`sse-starlette` ping 保活。`agent.log`、`pricing.updated`、`trace.scanned` 待 Phase 3。事件带 `id`；前端重连后重新拉 workspace 快照。
 
 ---
 
@@ -282,7 +282,7 @@ Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.
 ## 8. 知识库与事实边界
 
 - `data/knowledge/zhaotong/` 10–15 篇 Markdown，frontmatter：`id/title/type/source_url/source_date/credibility`；type = GI / 产区 / 种植 / 文化 / 口述 / 价格 / 包装 / 检测。
-- 检索：20 篇以内全量注入 + BM25 选段；不引向量数据库，保持可解释。
+- 检索：当前 10 篇全量注入（带 doc_id/来源）；规模上来后再加 BM25 选段，不引向量数据库。
 - 口述：写一段"演示合成"的果农口述，明确标注"非真实人物"；只借用无人称语感，不编造姓名/亲历/年限。
 - 价格：每条基准带 URL + 检索日期；页面和 API 都返回 `is_demo=true` 与公式；禁止"保证增收"。
 - 认证：只用"昭通苹果国家地理标志"等可查事实；"有机/绿色食品"未认证不写。
@@ -310,6 +310,8 @@ Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.
 Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化输出校验/重试；人工审核编辑；重跑备注。
 
 **验收**：每个 Agent 产出通过 schema；引用可点；违规 claim 被拦截；pytest 覆盖三态流转。
+
+**实现口径**：10 篇知识库 Markdown；Pydantic 输出模型 + 重试 1 次 + mock 降级；FactGuard 逐字引用/违禁词/数字预警；定价确定性计算器 + 服务端重算；包装 SVG 预览 + Pillow PNG；审核 UI 保留 JSON 编辑器并加引用/预警/包装预览（字段级表单留 Phase 3，见 decisions #51）。
 
 ### Phase 3 · 沙盘联动
 
@@ -365,21 +367,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 追加 v2 段（编号从 #32 起，旧条不删）：
-  - #32 v2 重写范围（单案例 + 可复制架构）
-  - #33 首个案例昭通丑苹果
-  - #34 不做游戏化，做品牌流水线控制台
-  - #35 技术栈 React + R3F + FastAPI + SQLite
-  - #36 3D 场景：通用四站点 + 产品档案驱动
-  - #37 四 Agent 流水线 + 人工审核门
-  - #38 LLM/图像 Provider 抽象 + mock 兜底
-  - #39 SSE 实时事件
-  - #40 知识库 + FactGuard + 演示数据标识
-  - #41 包装合成与 3D 贴图
-  - #42 溯源 H5 + IP 对话
-  - #43 单用户免登录
-  - #44 WareTrack 参考边界
-  - #45 验收标准
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#51（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md；architecture/agents/data/runbook/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -420,5 +408,18 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 四 Agent mock 流水线：story → packaging → marketing → pricing；统一状态机 + `AgentRun`/`Artifact`/workspace。
 - 人工审核/驳回/重跑；SSE 事件总线；前端工位卡、JSON 审核 dialog、批次沿站点移动、审核后自动启动下一站。
 - 验证：`pytest` 8 passed；`ruff` 零告警；`tsc`/`oxlint`/`vite build` 全绿；浏览器 batch 2 `traced`（四产出）与 batch 3 `packaging_review` 实测。
-- 下一步 Phase 2：真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。
+- Phase 1 结束时下一步：Phase 2 真实 Agent + 知识库/FactGuard + 包装合成 + 定价计算。
 
+
+---
+
+## 16. Phase 2 实施记录（2026-10-21）
+
+- 知识库：`data/knowledge/zhaotong/` 10 篇 Markdown（GI/产地/品质/环境/文化/价格/包装/溯源/演示边界），seed 时 upsert 到 `knowledge_doc`；每条非演示事实带 `source_url + source_date`。
+- 真实 Agent：`agents/engine.py` 统一生成器，Pydantic 结构化输出、失败重试 1 次、真实调用失败或无 key 时降级 mock；`AgentRun` 记录 `model/tokens/guard_json`。
+- FactGuard：引用 doc_id 存在 + quote 逐字命中；拦截未认证/功效/保证/官方背书/“个个冰糖心”；数字未在引用文档或产品档案出现时 warning；审核通过前再校验一次。
+- 定价：`services/pricing.py` 计算果价、损耗、分选、冷链、礼盒、平台/营销费、三档价格、毛利与溢价；LLM 只写解释，数字不一致时用模板；审核时服务端重算价格。
+- 包装：`services/packaging.py` 生成 SVG 预览与 1600×1000 PNG；固定品牌色角色避免模型色板顺序破坏版式；二维码指向 `/trace/{trace_code}`；审核通过后落盘，定价后重渲染为最终码。
+- 前端：工位卡显示故事/包装/内容/定价专用预览、引用 chips、FactGuard 预警、模型/tokens；审核弹窗复用引用/预警/包装预览；新增 `/api/knowledge` 与 `/api/artifacts/{id}/file`。
+- 验证：27 后端测试、ruff、typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 走到 `traced`（`ZT0002`，156% 演示溢价）；营销 Agent 首次 90s 超时降级，提高到 180s 后成功。切换 V4.1-Flash 后重新验证故事（5161 tokens）与包装（11223 tokens），均无 fallback；旧 `traced` 批次未重跑。
+- 未做：公开溯源 API/IP 对话、3D 贴图/广告牌联动、真实图像 Provider、字段级审核表单、扫码统计落库。

@@ -11,9 +11,7 @@ router = APIRouter()
 @router.get("/products", response_model=list[ProductOut])
 async def list_products(session: SessionDep) -> list[ProductProfile]:
     result = await session.execute(
-        select(ProductProfile)
-        .where(ProductProfile.is_active.is_(True))
-        .order_by(ProductProfile.id)
+        select(ProductProfile).where(ProductProfile.is_active.is_(True)).order_by(ProductProfile.id)
     )
     return list(result.scalars().all())
 

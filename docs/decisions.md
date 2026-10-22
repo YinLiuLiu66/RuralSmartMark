@@ -84,3 +84,35 @@
 **理由**：先跑通端到端，再接真实模型；workspace 减少前端多次请求；单通道 SSE 简化重连；审核后自动启动让“通过并进入下一站”名副其实。
 **验证**：pytest 8 passed；ruff/typecheck/lint/build 全绿；浏览器 batch 2 `traced` 四产出、batch 3 `packaging_review`。
 **拍板时间**：2026-10-21
+
+### #47 · 真实 Agent 运行时
+**结论**：四个 Agent 共用一套 `AgentRuntime`（LLM Provider + 知识库 + 定价计算器 + 包装合成器）；输出用 Pydantic 模型校验，失败带错误信息重试 1 次；真实模型调用失败且 `LLM_FALLBACK_TO_MOCK=true` 时降级到确定性 mock，并在产出标 `demo=true` 与 `fallback_reason`；否则 run 失败、批次退回“可运行”状态，不进入审核。
+**理由**：演示现场不能因为网络/额度直接断线；同时必须让人能分辨真实生成与降级 mock；失败不伪装成待审核。
+**拍板时间**：2026-10-21
+
+### #48 · 知识库与 FactGuard
+**结论**：`data/knowledge/<product>/*.md` 是唯一事实源，seed 时 upsert 到 `knowledge_doc`；Agent 只能引用知识库里的 `doc_id`，引用 `quote` 必须逐字出现在正文；FactGuard 硬拦截未认证（有机/绿色食品/富硒）、医疗功效、保证增收/卖完、个个冰糖心；数字未在引用文档/产品档案中出现时给 warning 而非硬阻断；`credibility=demo` 的引用标“演示”，不当作事实背书。
+**理由**：竞赛答辩最怕编造；逐字引用可机器校验，warning/error 分层避免因包装尺寸等正常数字误杀。
+**拍板时间**：2026-10-21
+
+### #49 · 包装合成与文件
+**结论**：包装 Agent 输出结构化文案；`services/packaging.py` 用同一份产出生成 SVG 预览与 Pillow PNG 落盘；预览走 `GET /api/batches/{id}/agents/packaging/preview`，审核通过的 PNG 走 `GET /api/artifacts/{id}/file`；Phase 2 不接真实图像 API，3D 贴图在 Phase 3 消费该 PNG。
+**理由**：SVG 可审可改、PNG 供 3D/导出；不引入 cairosvg/浏览器渲染依赖，Pillow 已有。
+**拍板时间**：2026-10-21
+
+### #50 · 确定性定价
+**结论**：Agent 4 先由 `services/pricing.py` 算成本、三档价格、毛利与溢价；LLM 只写 rationale/greeting/FAQ，且 rationale 里的数字必须在允许集合内，否则用确定性模板替换；输出带 `formula` 与 `is_demo=true`。
+**理由**：延续 #42，保证答辩时每个数字都能手算复现；LLM 不碰价格。
+**拍板时间**：2026-10-21
+
+### #51 · Phase 2 审核 UI 边界
+**结论**：Phase 2 保留 JSON 编辑器，增加引用 chips、FactGuard 预警、包装 SVG 预览；字段级专用表单推迟到 Phase 3，等四个 Agent 的 JSON 契约稳定后再做。
+**理由**：真实 Agent 刚接入时字段还会调整，先做专用表单会返工；引用/预警/预览已经覆盖“人做 20% 判断”的关键信息。
+**验证**：故事审核弹窗实测引用可点、预警可见、编辑后通过；服务端二次 FactGuard 与定价重算。
+**拍板时间**：2026-10-21
+
+### #52 · 推理预算与默认模型
+**结论**：默认模型切到 `deepseek-ai/DeepSeek-V4.1-Flash`；通过 SiliconFlow 的 `extra_body.thinking_budget` 限制思维链，默认 2048（可配 128–32768，0 关闭），最终输出 `max_tokens=4096`；`reasoning_content` 仍不进入业务产出，只使用最终 `content`。
+**理由**：V4.1-Flash 是推理模型，长思维链会拉高延迟和 token；2048 足够四类结构化产出，同时把最终 JSON 的预算单独留出。仍不把思维链拼回 Prompt，避免泄漏和解析污染。
+**验证**：真实 API 短请求 1.3s/71 tokens；完整故事 Agent 5161 tokens、376 字无 fallback；包装 Agent 11223 tokens、无 fallback、FactGuard 零错误；界面显示新模型名。
+**拍板时间**：2026-10-22

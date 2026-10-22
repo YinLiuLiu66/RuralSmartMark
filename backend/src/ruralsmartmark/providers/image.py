@@ -9,17 +9,13 @@ from ..config import Settings
 class ImageProvider(Protocol):
     name: str
 
-    async def generate(
-        self, prompt: str, *, width: int = 1024, height: int = 1024
-    ) -> bytes: ...
+    async def generate(self, prompt: str, *, width: int = 1024, height: int = 1024) -> bytes: ...
 
 
 class MockImageProvider:
     name = "mock"
 
-    async def generate(
-        self, prompt: str, *, width: int = 1024, height: int = 1024
-    ) -> bytes:
+    async def generate(self, prompt: str, *, width: int = 1024, height: int = 1024) -> bytes:
         image = Image.new("RGB", (width, height), "#F7F3EA")
         draw = ImageDraw.Draw(image)
         draw.rectangle(
@@ -41,9 +37,7 @@ class SiliconFlowImageProvider:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    async def generate(
-        self, prompt: str, *, width: int = 1024, height: int = 1024
-    ) -> bytes:
+    async def generate(self, prompt: str, *, width: int = 1024, height: int = 1024) -> bytes:
         raise NotImplementedError("SiliconFlow image provider lands in Phase 4")
 
 

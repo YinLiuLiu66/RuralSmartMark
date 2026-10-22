@@ -1,6 +1,7 @@
-import { ArrowLeft, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, Play, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import type { AgentKey, BatchWorkspace } from "../api/pipeline";
+import type { KnowledgeDoc } from "../api/client";
 import {
   agentStatus,
   latestRun,
@@ -11,26 +12,237 @@ import {
   type AgentMeta,
 } from "../agents";
 
-function preview(agent: AgentKey, output: Record<string, unknown> | null): string {
-  if (!output) return "";
+interface Citation {
+  doc_id: string;
+  quote: string;
+  use: string;
+}
 
-  if (agent === "story") {
-    return `${String(output.ip_name ?? "故事")} · ${String(output.story_short ?? "")}`;
-  }
+function citationsOf(output: Record<string, unknown> | null): Citation[] {
+  if (!output) return [];
+  const raw = output.cultural_evidence ?? output.fact_refs;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (item): item is Citation =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      typeof (item as Citation).doc_id === "string",
+  );
+}
+
+function GuardPanel({ run }: { run: ReturnType<typeof latestRun> }) {
+  const issues = [...(run?.guard_json?.warnings ?? []), ...(run?.guard_json?.errors ?? [])];
+  if (issues.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-1.5">
+      {issues.slice(0, 5).map((issue) => (
+        <div
+          key={`${issue.rule}-${issue.field}-${issue.message}`}
+          className={`flex gap-1.5 rounded-control px-2 py-1.5 text-[10.5px] leading-4 ${
+            issue.severity === "error"
+              ? "bg-apple-weak text-danger"
+              : "bg-amber/10 text-amber"
+          }`}
+          title={issue.suggestion}
+        >
+          <TriangleAlert size={12} className="mt-0.5 shrink-0" />
+          <span className="min-w-0">
+            <b className="font-medium">{issue.rule}</b> · {issue.message}
+          </span>
+        </div>
+      ))}
+      {issues.length > 5 && (
+        <p className="text-[10px] text-ink-muted">还有 {issues.length - 5} 条预警，审核时查看完整 JSON。</p>
+      )}
+    </div>
+  );
+}
+
+function Citations({
+  output,
+  knowledge,
+}: {
+  output: Record<string, unknown> | null;
+  knowledge: Record<string, KnowledgeDoc>;
+}) {
+  const items = citationsOf(output);
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        引用证据 · {items.length}
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {items.map((citation, index) => {
+          const doc = knowledge[citation.doc_id];
+          const demo = doc?.credibility === "demo" || citation.doc_id.startsWith("DEMO");
+          const url = doc?.source_url?.startsWith("http") ? doc.source_url : null;
+          const label = `${citation.doc_id}${doc ? ` · ${doc.title}` : ""}`;
+          const className =
+            "inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-paper px-2 py-0.5 text-[10px] text-ink-muted";
+          return url ? (
+            <a
+              key={`${citation.doc_id}-${index}`}
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className={`${className} hover:border-apple/40 hover:text-apple`}
+              title={citation.quote}
+            >
+              <span className="truncate">{label}</span>
+              <ExternalLink size={10} className="shrink-0" />
+              {demo && <span className="shrink-0 text-amber">演示</span>}
+            </a>
+          ) : (
+            <span key={`${citation.doc_id}-${index}`} className={className} title={citation.quote}>
+              <span className="truncate">{label}</span>
+              {demo && <span className="shrink-0 text-amber">演示</span>}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StoryPreview({ output }: { output: Record<string, unknown> }) {
+  const taglines = Array.isArray(output.taglines) ? output.taglines : [];
+  return (
+    <div>
+      <div className="font-display text-xl text-ink">{String(output.ip_name ?? "故事")}</div>
+      <p className="mt-1 text-xs text-apple">{String(output.story_short ?? "")}</p>
+      <p className="mt-2 line-clamp-4 text-[11px] leading-5 text-ink-muted">
+        {String(output.story_long ?? "")}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1">
+        {taglines.slice(0, 3).map((tagline) => (
+          <span key={String(tagline)} className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-ink-muted">
+            {String(tagline)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PackagingPreview({
+  batchId,
+  runId,
+  output,
+}: {
+  batchId: number;
+  runId: number | null;
+  output: Record<string, unknown>;
+}) {
+  const copy = (output.packaging_copy ?? {}) as Record<string, unknown>;
+  const structure = (output.structure ?? {}) as Record<string, unknown>;
+  return (
+    <div>
+      <div className="overflow-hidden rounded-control border border-line bg-surface-2">
+        <img
+          key={runId ?? 0}
+          src={`/api/batches/${batchId}/agents/packaging/preview?run=${runId ?? 0}`}
+          alt="包装示意预览"
+          className="aspect-[8/5] w-full object-cover"
+        />
+      </div>
+      <p className="mt-2 text-[10.5px] text-ink-muted">SVG 示意 · 审核通过后落 PNG</p>
+      <div className="mt-2 text-xs font-medium text-ink">{String(output.concept ?? "")}</div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10.5px] text-ink-muted">
+        <span>正面：{String(copy.front ?? "—")}</span>
+        <span>侧面：{String(copy.side ?? "—")}</span>
+        <span className="col-span-2">盒型：{String(structure.box_type ?? "—")}</span>
+      </div>
+    </div>
+  );
+}
+
+function MarketingPreview({ output }: { output: Record<string, unknown> }) {
+  const xhs = (output.xiaohongshu ?? {}) as Record<string, unknown>;
+  const douyin = (output.douyin ?? {}) as Record<string, unknown>;
+  const tags = Array.isArray(xhs.tags) ? xhs.tags : [];
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-ink-muted">小红书</div>
+      <div className="mt-1 text-sm font-medium text-ink">{String(xhs.title ?? "—")}</div>
+      <p className="mt-1 line-clamp-3 text-[11px] leading-5 text-ink-muted">
+        {String(xhs.body ?? "")}
+      </p>
+      <div className="mt-1.5 flex flex-wrap gap-1">
+        {tags.slice(0, 4).map((tag) => (
+          <span key={String(tag)} className="rounded-full bg-leaf-weak px-2 py-0.5 text-[10px] text-leaf">
+            {String(tag)}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 border-t border-line pt-2 text-[10px] uppercase tracking-[0.18em] text-ink-muted">
+        抖音钩子
+      </div>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-ink-muted">
+        {String(douyin.hook ?? "—")}
+      </p>
+    </div>
+  );
+}
+
+function PricingPreview({ output }: { output: Record<string, unknown> }) {
+  const ladder = Array.isArray(output.price_ladder) ? output.price_ladder : [];
+  const formula = String(output.formula ?? "");
+  return (
+    <div>
+      <div className="flex items-end gap-2">
+        <span className="font-display text-3xl leading-none text-ink">
+          {String(output.premium_pct ?? "—")}%
+        </span>
+        <span className="pb-1 text-[10px] text-ink-muted">相对散装基线</span>
+        <span className="mb-0.5 ml-auto rounded-full bg-amber/10 px-2 py-0.5 text-[10px] text-amber">
+          演示测算
+        </span>
+      </div>
+      <div className="mt-2 space-y-1">
+        {ladder.map((tier) => {
+          const row = tier as Record<string, unknown>;
+          return (
+            <div key={String(row.channel)} className="flex items-baseline justify-between gap-2 text-[11px]">
+              <span className="truncate text-ink-muted">{String(row.channel)}</span>
+              <span className="shrink-0 font-medium tabular-nums text-ink">
+                ¥{String(row.price_total)} / {String(row.pack)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <details className="mt-2 text-[10px] text-ink-muted">
+        <summary className="cursor-pointer">溢价公式</summary>
+        <p className="mt-1 break-words leading-4">{formula}</p>
+      </details>
+    </div>
+  );
+}
+
+function OutputPreview({
+  agent,
+  batchId,
+  runId,
+  output,
+}: {
+  agent: AgentKey;
+  batchId: number;
+  runId: number | null;
+  output: Record<string, unknown>;
+}) {
+  if (agent === "story") return <StoryPreview output={output} />;
   if (agent === "packaging") {
-    return String(output.concept ?? "包装方案已生成");
+    return <PackagingPreview batchId={batchId} runId={runId} output={output} />;
   }
-  if (agent === "marketing") {
-    const xiaohongshu = output.xiaohongshu as { title?: string } | undefined;
-    return xiaohongshu?.title ?? "内容已生成";
-  }
-  const premium = output.premium_pct;
-  return typeof premium === "number" ? `建议溢价 ${premium}%` : "定价已生成";
+  if (agent === "marketing") return <MarketingPreview output={output} />;
+  return <PricingPreview output={output} />;
 }
 
 export default function StationCard({
   agent,
   workspace,
+  knowledge,
   busy,
   onRun,
   onReview,
@@ -38,6 +250,7 @@ export default function StationCard({
 }: {
   agent: AgentMeta;
   workspace: BatchWorkspace;
+  knowledge: Record<string, KnowledgeDoc>;
   busy: boolean;
   onRun: () => void;
   onReview: () => void;
@@ -50,10 +263,11 @@ export default function StationCard({
     nextAgent(workspace.batch.state) === agent.key ||
     workspace.batch.state === `${agent.key}_review`;
   const reviewable = status === "review" && run?.status === "waiting_review";
+  const isDemo = output?.demo === true;
 
   return (
     <section className="card p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <button
           onClick={onClose}
           className="flex items-center gap-1 text-[11px] text-ink-muted hover:text-ink"
@@ -74,10 +288,20 @@ export default function StationCard({
           style={{ backgroundColor: agent.color }}
         />
         <h2 className="font-display text-xl text-ink">{agent.name}</h2>
+        {isDemo && (
+          <span className="rounded-full bg-amber/10 px-2 py-0.5 text-[10px] text-amber">
+            演示稿
+          </span>
+        )}
       </div>
 
       {run?.note && (
         <p className="mt-2 text-[11px] text-ink-muted">重跑备注：{run.note}</p>
+      )}
+      {output && Boolean(output.fallback_reason) && (
+        <p className="mt-2 rounded-control bg-amber/10 px-2 py-1.5 text-[10.5px] leading-4 text-amber">
+          {String(output.fallback_reason)}
+        </p>
       )}
       {run?.error && (
         <p className="mt-2 rounded-control bg-apple-weak px-2 py-1.5 text-[11px] text-danger">
@@ -85,12 +309,30 @@ export default function StationCard({
         </p>
       )}
 
-      <div className="mt-4 rounded-control bg-paper p-3 text-xs leading-relaxed text-ink-muted">
-        {output ? preview(agent.key, output) : "还没有产出。运行后在这里预览，审核时可编辑 JSON。"}
+      <div className="mt-3 rounded-control bg-paper p-3 text-xs leading-relaxed text-ink-muted">
+        {output ? (
+          <OutputPreview
+            agent={agent.key}
+            batchId={workspace.batch.id}
+            runId={run?.id ?? null}
+            output={output}
+          />
+        ) : (
+          "还没有产出。运行后在这里预览；审核时可编辑 JSON。"
+        )}
       </div>
 
+      {output && <Citations output={output} knowledge={knowledge} />}
+      <GuardPanel run={run} />
+
+      {run?.model && (
+        <p className="mt-2 text-[10px] text-ink-muted">
+          {run.model === "mock" ? "演示生成" : `模型 ${run.model}`} · {run.tokens} tokens
+        </p>
+      )}
+
       {output && (
-        <details className="mt-3 text-[11px] text-ink-muted">
+        <details className="mt-2 text-[11px] text-ink-muted">
           <summary className="cursor-pointer">查看原始 JSON</summary>
           <pre className="mt-2 max-h-40 overflow-auto rounded-control bg-surface-2 p-2 text-[10px] leading-4">
             {JSON.stringify(output, null, 2)}
@@ -132,9 +374,7 @@ export default function StationCard({
           </button>
         )}
 
-        {status === "running" && (
-          <span className="text-xs text-apple">生成中…</span>
-        )}
+        {status === "running" && <span className="text-xs text-apple">生成中…</span>}
         {status === "idle" && !canRun && (
           <span className="text-xs text-ink-muted">等待前序</span>
         )}

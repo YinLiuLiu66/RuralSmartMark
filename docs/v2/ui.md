@@ -232,10 +232,24 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 3D 构建方式对齐 WareTrack：代码拼 Box/Cylinder/Cone/Sphere/Plane 等低多边形几何体，MeshStandardMaterial + CanvasTexture 生成标签/二维码；不引 GLTFLoader/外部模型；镜头正交等距、软光、暖色。
 - 字体优先系统 Songti/PingFang；Noto 作为可选 fallback，不依赖 Google Fonts CDN。
 
-## 9. 实现状态（Phase 1，2026-10-21）
+## 9. 实现状态（Phase 1 / Phase 2，2026-10-21）
+
+### Phase 1
 
 - 已落地：token、桌面 shell、移动端 fallback、R3F 等距场景（果园/四站点/批次移动/站点状态/站点点击）、pipeline store/workspace API/SSE、工位卡、JSON 审核 dialog、产出物 Tabs、KPI、审核后自动启动下一站。
-- 未落地：各 Agent 的专用表单、真实 Agent、溯源 H5 内容/API、包装贴图、真实图像生成；Phase 2–3 补。
 - 视觉验收：1280×720 完整 mock 流水线；390×844 溯源页与桌面端提示；无横向溢出。
-- 已知缺口：审核仍是 JSON 编辑；3D 建筑/树木简化；bundle 约 1.23MB，Phase 4 拆包。
+
+### Phase 2
+
+- 工位卡新增专用预览：故事（IP/短故事/标签）、包装（SVG 图 + 正面/侧面/盒型）、内容（小红书/抖音钩子）、定价（溢价 + 价格梯 + 公式折叠）。
+- 引用 chips：`doc_id · 标题` 外链到 `source_url`；`credibility=demo` 的条目显示“演示”，不可当事实背书；无外链的演示条目以 span + title 展示 quote。
+- FactGuard 预警：琥珀色列出 rule/field/message；错误态红色；审核 dialog 顶部复用同一信息。
+- 审核 dialog 保留 JSON 编辑器，增加引用/预警/包装预览；数字字段提示“服务端按定价计算器重算”。字段级表单留 Phase 3（decisions #51）。
+- API 请求加 `cache: no-store`，避免审核后仍显示旧产出；Vite dev 固定 `127.0.0.1`，与 README/代理一致。
+- 视觉验收：1280×720 真实 `traced` 批次；包装卡图片、引用外链、预警列表、审核弹窗均可见；无横向溢出。
+
+### 仍未落地
+
+- 各 Agent 字段级专用表单、溯源 H5 内容/API、3D 包装贴图、真实图像生成；Phase 3–4 补。
+- 3D 建筑/树木简化；bundle 约 1.24MB，Phase 4 拆包。
 

@@ -22,14 +22,22 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite+aiosqlite:///{BACKEND_DIR / 'data' / 'app.db'}"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.siliconflow.cn/v1"
-    openai_model: str = "deepseek-ai/DeepSeek-V3.1-Terminus"
+    openai_model: str = "deepseek-ai/DeepSeek-V4.1-Flash"
     image_model: str = "Kwai-Kolors/Kolors"
     public_base_url: str = "http://127.0.0.1:5173"
     auto_approve: bool = False
+    llm_fallback_to_mock: bool = True
+    llm_timeout_seconds: float = 180.0
+    llm_thinking_budget: int = 2048
+    llm_max_tokens: int = 4096
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def artifact_path(self) -> Path:
+        return BACKEND_DIR / "data" / "artifacts"
 
 
 @lru_cache

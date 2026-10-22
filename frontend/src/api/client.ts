@@ -31,8 +31,17 @@ export interface Health {
   db: string;
 }
 
+export interface KnowledgeDoc {
+  doc_key: string;
+  title: string;
+  type: string;
+  source_url: string | null;
+  source_date: string | null;
+  credibility: string;
+}
+
 async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`/api${path}`);
+  const response = await fetch(`/api${path}`, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`API ${response.status}: ${path}`);
   }
@@ -43,4 +52,5 @@ export const api = {
   health: () => get<Health>("/health"),
   products: () => get<Product[]>("/products"),
   batches: () => get<Batch[]>("/batches"),
+  knowledge: () => get<KnowledgeDoc[]>("/knowledge"),
 };
