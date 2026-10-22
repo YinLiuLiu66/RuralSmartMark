@@ -1,0 +1,118 @@
+from sqlalchemy import select
+
+from ruralsmartmark.agents.controller import ControllerTurn
+from ruralsmartmark.models import Batch, ControllerSession, ProductProfile
+from ruralsmartmark.schemas import (
+    ControllerReply,
+    ResearchBenchmarkDraft,
+    ResearchDocDraft,
+    ResearchDraft,
+    ResearchProduct,
+)
+
+
+def _draft() -> ResearchDraft:
+    return ResearchDraft(
+        product=ResearchProduct(
+            slug="controller-fruit",
+            name="总控测试水果",
+            county="测试县",
+            province="测试省",
+            category="鲜果",
+            form="1kg 礼盒",
+        ),
+        specs={"brand_name": "总控品牌", "ip_name": "总控守园人", "trace_prefix": "CT"},
+        docs=[
+            ResearchDocDraft(
+                doc_id="ORIGIN-01",
+                title="产地",
+                type="产区",
+                source_url="internal://test",
+                source_date="2026-10-22",
+                credibility="demo",
+                content="总控测试产地说明，仅用于验证建档确认流程。",
+            )
+        ],
+        benchmarks=[
+            ResearchBenchmarkDraft(
+                channel="散装批发",
+                competitor="总控测试水果",
+                spec="1kg",
+                price_per_kg=10,
+            ),
+            ResearchBenchmarkDraft(
+                channel="电商散装",
+                competitor="总控测试水果",
+                spec="1kg",
+                price_per_kg=12,
+            ),
+            ResearchBenchmarkDraft(
+                channel="品牌礼盒",
+                competitor="总控测试水果",
+                spec="1kg",
+                price_per_kg=25,
+            ),
+        ],
+    )
+
+
+async def test_confirm_commit_product(session, client):
+    draft = _draft()
+    item = ControllerSession(
+        draft_json=draft.model_dump(mode="json"),
+        pending_action_json={
+            "id": "act-1",
+            "kind": "commit_product",
+            "summary": "确认建立总控测试水果档案",
+        },
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+
+    response = await client.post(
+        f"/api/controller/sessions/{item.id}/confirm",
+        json={"action_id": "act-1", "decision": "confirm"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["session"]["product_id"] is not None
+    assert data["session"]["batch_id"] is not None
+    assert data["session"]["draft_json"] is None
+    assert data["session"]["pending_action_json"] is None
+
+    product = await session.scalar(
+        select(ProductProfile).where(ProductProfile.slug == "controller-fruit")
+    )
+    assert product is not None
+    batch = await session.get(Batch, data["session"]["batch_id"])
+    assert batch is not None
+    assert batch.product_id == product.id
+
+
+async def test_controller_message_persists_turn(session, client, monkeypatch):
+    item = ControllerSession()
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+
+    async def fake_turn(*_args, **_kwargs):
+        return ControllerTurn(
+            reply=ControllerReply(reply="我看到你了。"),
+            draft=None,
+            pending=None,
+            events=[],
+        )
+
+    monkeypatch.setattr("ruralsmartmark.routes.controller.run_controller_turn", fake_turn)
+    response = await client.post(
+        f"/api/controller/sessions/{item.id}/messages",
+        json={"message": "你好"},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["reply"] == "我看到你了。"
+    assert [message["role"] for message in data["session"]["messages"]] == [
+        "user",
+        "assistant",
+    ]

@@ -5,9 +5,11 @@ import {
   ChevronDown,
   Megaphone,
   Play,
+  Plus,
   QrCode,
   Settings,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -23,8 +25,9 @@ import {
   STATUS_LABEL,
   type StationStatus,
 } from "../agents";
-import { api, type KnowledgeDoc, type Product } from "../api/client";
+import { api, type KnowledgeDoc } from "../api/client";
 import { traceApi } from "../api/trace";
+import ControllerPanel from "../components/ControllerPanel";
 import ReviewDialog from "../components/ReviewDialog";
 import StationCard from "../components/StationCard";
 import { usePipelineStore } from "../stores/pipeline";
@@ -87,14 +90,23 @@ function Row({ label, value }: { label: string; value: string }) {
 export default function Sandbox() {
   const [health, setHealth] = useState<"checking" | "ok" | "error">("checking");
   const [sse, setSse] = useState<"connecting" | "live" | "reconnecting">("connecting");
-  const [product, setProduct] = useState<Product | null>(null);
   const [knowledge, setKnowledge] = useState<Record<string, KnowledgeDoc>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [scanCount, setScanCount] = useState(0);
   const [creating, setCreating] = useState(false);
+  const [controllerOpen, setControllerOpen] = useState(false);
 
-  const { batches, selectedBatchId, setBatches, selectBatch } = useWorldStore();
+  const {
+    products,
+    selectedProductId,
+    batches,
+    selectedBatchId,
+    setProducts,
+    selectProduct,
+    setBatches,
+    selectBatch,
+  } = useWorldStore();
   const {
     workspace,
     selectedAgent,
@@ -112,13 +124,12 @@ export default function Sandbox() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.health(), api.products(), api.batches(), api.knowledge()])
-      .then(([healthResult, products, batchList, docs]) => {
+    Promise.all([api.health(), api.products(), api.batches()])
+      .then(([healthResult, productList, batchList]) => {
         if (cancelled) return;
         setHealth(healthResult.status === "ok" ? "ok" : "error");
-        setProduct(products[0] ?? null);
+        setProducts(productList);
         setBatches(batchList);
-        setKnowledge(Object.fromEntries(docs.map((doc) => [doc.doc_key, doc])));
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
@@ -128,7 +139,39 @@ export default function Sandbox() {
     return () => {
       cancelled = true;
     };
-  }, [setBatches]);
+  }, [setBatches, setProducts]);
+
+  const selectedProduct =
+    products.find((item) => item.id === selectedProductId) ?? products[0] ?? null;
+
+  useEffect(() => {
+    if (!selectedProduct) {
+      setKnowledge({});
+      return;
+    }
+    let cancelled = false;
+    api
+      .knowledge(selectedProduct.slug)
+      .then((docs) => {
+        if (!cancelled) {
+          setKnowledge(Object.fromEntries(docs.map((doc) => [doc.doc_key, doc])));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setKnowledge({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    if (!selectedProductId) return;
+    const visible = batches.filter((batch) => batch.product_id === selectedProductId);
+    if (!visible.some((batch) => batch.id === selectedBatchId)) {
+      selectBatch(visible[0]?.id ?? null);
+    }
+  }, [batches, selectedBatchId, selectedProductId, selectBatch]);
 
   useEffect(() => {
     if (!selectedBatchId) return;
@@ -165,8 +208,13 @@ export default function Sandbox() {
     return () => source.close();
   }, [selectedBatchId, refresh]);
 
+  const visibleBatches = selectedProductId
+    ? batches.filter((batch) => batch.product_id === selectedProductId)
+    : batches;
   const selectedBatch =
-    batches.find((batch) => batch.id === selectedBatchId) ?? batches[0] ?? null;
+    visibleBatches.find((batch) => batch.id === selectedBatchId) ??
+    visibleBatches[0] ??
+    null;
   const currentBatch = workspace?.batch ?? selectedBatch;
   const stageIndex = STATE_STAGE[currentBatch?.state ?? ""] ?? 0;
   const statusLabel = currentBatch
@@ -296,13 +344,25 @@ export default function Sandbox() {
     setCreating(true);
     setLoadError(null);
     try {
-      const batch = await api.createBatch();
+      const batch = await api.createBatch(selectedProduct?.slug);
       setBatches([batch, ...batches]);
       selectBatch(batch.id);
     } catch (reason: unknown) {
       setLoadError(reason instanceof Error ? reason.message : "新建批次失败");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleControllerDataChanged() {
+    const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
+    const newest = productList[productList.length - 1] ?? null;
+    setProducts(productList);
+    setBatches(batchList);
+    if (newest && !products.some((item) => item.id === newest.id)) {
+      selectProduct(newest.id);
+      const visible = batchList.filter((batch) => batch.product_id === newest.id);
+      selectBatch(visible[0]?.id ?? null);
     }
   }
 
@@ -321,18 +381,46 @@ export default function Sandbox() {
         <header className="flex items-center gap-4 border-b border-line bg-surface/85 px-5 backdrop-blur">
           <div className="flex items-baseline gap-2">
             <span className="font-display text-xl tracking-wide text-ink">智农云链</span>
-            <span className="text-[11px] text-ink-muted">多智能体 · 昭通丑苹果</span>
+            <span className="text-[11px] text-ink-muted">
+              多智能体 · {selectedProduct?.name ?? "未选择产品"}
+            </span>
           </div>
 
           <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted">
+            <span>产品</span>
+            <select
+              value={selectedProduct?.id ?? ""}
+              onChange={(event) => selectProduct(Number(event.target.value) || null)}
+              className="max-w-[160px] bg-transparent text-ink outline-none"
+            >
+              {products.length === 0 && <option value="">暂无产品</option>}
+              {products.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} />
+          </label>
+          <button
+            type="button"
+            aria-label="新建产品"
+            title="新建产品"
+            onClick={() => setControllerOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-apple/40 hover:text-apple"
+          >
+            <Plus size={15} />
+          </button>
+
+          <label className="flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted">
             <span>批次</span>
             <select
               value={selectedBatch?.id ?? ""}
               onChange={(event) => selectBatch(Number(event.target.value) || null)}
               className="max-w-[180px] bg-transparent text-ink outline-none"
             >
-              {batches.length === 0 && <option value="">暂无批次</option>}
-              {batches.map((batch) => (
+              {visibleBatches.length === 0 && <option value="">暂无批次</option>}
+              {visibleBatches.map((batch) => (
                 <option key={batch.id} value={batch.id}>
                   {batch.code}
                 </option>
@@ -364,6 +452,15 @@ export default function Sandbox() {
             >
               {sse === "live" ? "实时" : sse === "reconnecting" ? "重连中" : "订阅中"}
             </span>
+            <button
+              type="button"
+              aria-label="打开总控"
+              onClick={() => setControllerOpen(true)}
+              className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted hover:border-apple/40 hover:text-apple"
+            >
+              <Sparkles size={14} />
+              总控
+            </button>
             <button
               className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
               onClick={handleHeader}
@@ -456,7 +553,7 @@ export default function Sandbox() {
             </SceneBoundary>
             <div className="pointer-events-none absolute left-5 top-5">
               <div className="rounded-full border border-line bg-surface/90 px-3 py-1 text-[11px] text-ink-muted shadow-card">
-                昭通丑苹果 · {currentBatch?.code ?? "无批次"} · {statusLabel}
+                {selectedProduct?.name ?? "未选择产品"} · {currentBatch?.code ?? "无批次"} · {statusLabel}
               </div>
             </div>
             {(loadError || pipelineError) && (
@@ -502,7 +599,8 @@ export default function Sandbox() {
                   {currentBatch?.code ?? "还没有批次"}
                 </h2>
                 <p className="mt-1 text-xs text-ink-muted">
-                  {product?.name ?? "昭通丑苹果"} · {product?.form ?? "5kg / 12 枚礼盒"}
+                  {selectedProduct?.name ?? "未选择产品"} ·{" "}
+                  {selectedProduct?.form ?? "—"}
                 </p>
 
                 <div className="mt-4 space-y-2 text-xs">
@@ -522,7 +620,7 @@ export default function Sandbox() {
                     label="溯源码"
                     value={currentBatch?.trace_code ?? "待生成"}
                   />
-                  <Row label="产品档案" value={product?.slug ?? "—"} />
+                  <Row label="产品档案" value={selectedProduct?.slug ?? "—"} />
                 </div>
 
                 <p className="mt-4 text-[11px] leading-relaxed text-ink-muted">
@@ -651,6 +749,15 @@ export default function Sandbox() {
           />
         )}
       </div>
+
+      {controllerOpen && (
+        <ControllerPanel
+          productSlug={selectedProduct?.slug ?? null}
+          batchId={selectedBatch?.id ?? null}
+          onClose={() => setControllerOpen(false)}
+          onDataChanged={() => void handleControllerDataChanged()}
+        />
+      )}
     </>
   );
 }

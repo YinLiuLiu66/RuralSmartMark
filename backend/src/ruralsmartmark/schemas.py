@@ -245,3 +245,97 @@ class TraceChatRequest(BaseModel):
 class TraceChatOut(BaseModel):
     reply: str
     source: Literal["llm", "template"]
+
+
+class ResearchProduct(BaseModel):
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=80)
+    name: str = Field(min_length=1, max_length=120)
+    county: str = Field(min_length=1, max_length=120)
+    province: str = Field(default="", max_length=80)
+    category: str = Field(min_length=1, max_length=80)
+    form: str = Field(min_length=1, max_length=120)
+    palette: dict[str, str] = Field(default_factory=dict)
+
+
+class ResearchDocDraft(BaseModel):
+    doc_id: str = Field(min_length=2, max_length=40)
+    title: str = Field(min_length=1, max_length=200)
+    type: str = Field(min_length=1, max_length=40)
+    source_url: str = Field(min_length=1, max_length=500)
+    source_date: str = Field(min_length=1, max_length=20)
+    credibility: str = Field(default="media", max_length=20)
+    content: str = Field(min_length=10, max_length=3000)
+
+
+class ResearchBenchmarkDraft(BaseModel):
+    channel: Literal["散装批发", "电商散装", "品牌礼盒"]
+    competitor: str = Field(min_length=1, max_length=120)
+    spec: str = Field(min_length=1, max_length=120)
+    price_per_kg: float = Field(gt=0, le=1000)
+    source_url: str = Field(default="", max_length=500)
+    source_date: str = Field(default="", max_length=20)
+    note: str = Field(default="", max_length=255)
+
+
+class ResearchSource(BaseModel):
+    url: str = Field(min_length=4, max_length=500)
+    title: str = Field(default="", max_length=200)
+
+
+class ResearchDraft(BaseModel):
+    product: ResearchProduct
+    specs: dict = Field(default_factory=dict)
+    docs: list[ResearchDocDraft] = Field(default_factory=list, max_length=30)
+    benchmarks: list[ResearchBenchmarkDraft] = Field(default_factory=list, max_length=5)
+    questions: list[str] = Field(default_factory=list, max_length=8)
+    sources: list[ResearchSource] = Field(default_factory=list, max_length=30)
+    warnings: list[str] = Field(default_factory=list, max_length=20)
+
+
+class ControllerReply(BaseModel):
+    reply: str = Field(min_length=1, max_length=4000)
+    questions: list[str] = Field(default_factory=list, max_length=8)
+    pending_action: dict | None = None
+
+
+class ControllerSessionCreate(BaseModel):
+    product_slug: str | None = None
+    batch_id: int | None = None
+
+
+class ControllerMessageIn(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class ControllerMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    action_json: dict | None = None
+    created_at: datetime
+
+
+class ControllerSessionOut(BaseModel):
+    id: int
+    product_id: int | None = None
+    batch_id: int | None = None
+    draft_json: dict | None = None
+    pending_action_json: dict | None = None
+    messages: list[ControllerMessageOut] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class ControllerConfirmIn(BaseModel):
+    action_id: str = Field(min_length=1, max_length=80)
+    decision: Literal["confirm", "cancel"]
+
+
+class ControllerTurnOut(BaseModel):
+    session: ControllerSessionOut
+    reply: str
+    questions: list[str] = Field(default_factory=list)
+    pending_action: dict | None = None
+    events: list[dict] = Field(default_factory=list)

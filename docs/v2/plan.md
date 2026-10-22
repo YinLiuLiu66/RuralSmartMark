@@ -13,7 +13,7 @@
 - **首个案例**：昭通丑苹果（云南省昭通市昭阳区），虚构合作社子品牌，5kg/12 枚礼盒。
 - **产品形态**：3D 县域品牌流水线沙盘 + 四 Agent 上下文工作台 + 移动端溯源 H5。
 - **技术栈**：React + TypeScript + Vite + React Three Fiber + Zustand + Tailwind；FastAPI + SQLAlchemy 2.0 + SQLite；SSE；LLM/图像 Provider 可插拔。
-- **范围**：单案例深做；核心产品无关；不做游戏化；不做多产品 UI；单用户免登录。
+- **范围**：单案例深做 + 多产品档案切换；核心产品无关；不做游戏化；单用户免登录。
 - **原则**：先用 mock 打通端到端，再接真实模型；每个 Agent 都有人工审核门；所有事实带出处，演示数字标注口径。
 
 ### 为什么是昭通丑苹果
@@ -352,7 +352,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 7. `POST /api/demo/reset` 幂等；固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26` 不变。
 8. 后端关键测试 + 前端 typecheck/lint/build + Playwright 冒烟全绿。
 9. 文档：decisions v2、架构、Agent、数据、来源、runbook、AGENTS、README、05-next-steps。
-10. 单产品 UI；第二产品档案测试通过，证明可复制。
+10. 单工作台多产品切换；第二产品档案测试与总控建档均通过，证明可复制。
 11. 一键开发启动；可选 Docker；无外部服务依赖（mock 模式）。
 12. 全中文 UI，无占位文案；演示数据有标识。
 
@@ -375,7 +375,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#67（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#71（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -387,7 +387,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 ## 13. 不做什么
 
 - 不做班次/任务/评分/城镇建造等游戏机制。
-- 不做多产品 UI（只做第二个档案的测试夹具）。
+- 不做多产品并列 3D；只做单工作台产品切换。
 - 不做登录/角色/多租户。
 - 不接真实淘宝/抖音/小红书 API，不做真实爬虫；基准价用公开报价 + 来源。
 - 不接 Canva/Midjourney 账号；用通用图像 Provider + 本地合成。
@@ -475,3 +475,15 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计；`make lan` 在 `172.20.10.13` 下 LAN 首页/H5/二维码均 200，二维码 payload 指向局域网。
 - 命名收口（#67）：正式名《“智农云链”——基于多智能体协同的县域农产品品牌数字化重构系统》；界面、包装系统署名、Agent 系统提示、README/文档统一为“智农云链”；昭通案例、乌蒙丑果、山风守园人不变。
 - 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、手机真机扫码、包装厂书面报价/食品接触合规。
+
+---
+
+## 20. Phase 6 实施记录（已完成代码侧，2026-10-22）
+
+- 多产品：`GET /api/batches?product_id=`；批次码前缀读 `specs.batch_prefix`；产品下拉 + 批次过滤；H5 标题/旅程从 `specs.trace_headline`/`product.name` 读取；`knowledge_doc` 唯一约束改为 `(product_id, doc_key)`，两个产品可复用 `ORIGIN-01`。
+- 总控：新增 `controller_session`/`controller_message`；`POST /api/controller/sessions`、`messages`、`confirm`；PydanticAI `OpenAIChatModel`（Chat Completions）承载工具循环；动作白名单 + 危险动作确认卡；`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`。
+- 调研：Firecrawl `search`/`scrape` Provider；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料；真实 Firecrawl 尚未验证（缺 key）。
+- 回退：清空下游 JSON、删除下游 Artifact/插画、run 标记 failed、回到目标站重跑；历史 run 保留。
+- 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；草案卡/确认卡/消息记录。
+- 验证：后端 52 passed + 2 skipped；Playwright 9 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
+- 未完成：真实 Firecrawl 搜索验证（需要 `FIRECRAWL_API_KEY`）；真实手机扫码、包装厂书面报价、真实盒型/刀版。

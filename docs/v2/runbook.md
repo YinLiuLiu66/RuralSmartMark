@@ -11,6 +11,7 @@ cp backend/.env.example backend/.env   # 已有 .env 则跳过
 ```
 
 - `OPENAI_API_KEY` 可空；空则走 mock，四站仍能跑通。
+- 总控真实调研需要 `FIRECRAWL_API_KEY`；没有 key 时总控会提示贴来源，不会编资料。
 - 前端 Playwright Chromium 下载到 `~/Library/Caches/ms-playwright`，不入仓库。
 - 不要提交 `backend/.env`、`backend/data/`、`frontend/dist/`、`frontend/test-results/`。
 
@@ -40,6 +41,15 @@ make lan
 - 只用于可信局域网；默认 `make dev` 仍只绑 `127.0.0.1`。Ctrl-C 会一起停前后端。
 - IP 变了（切换 Wi-Fi/热点）就重新 `make lan`；脚本会重新 seed + reset，二维码跟着更新。
 
+### 2.2 总控 / 新产品
+
+- 桌面右上「总控」打开抽屉；或直接打开 `/controller`。
+- 输入“帮我做一个新产品，我想做贵州麻江蓝莓”，总控会搜索/追问并生成档案草案。
+- 草案出齐后，在确认卡点「确认建档」；新产品出现在顶栏「产品」下拉，批次自动选中。
+- 之后可以直接说“运行故事”“包装改克制一点”“通过故事”“回到包装重做”。
+- 建档/通过/驳回/回退都会先弹确认卡；查资料/读状态不会。
+- 真实搜索需要 Firecrawl key；没有 key 时贴官网/报道链接或原文。
+
 ## 3. 固定演示数据
 
 - 演示批次 `ZT-DEMO-001`，溯源码 `ZTDEMO26`，四章产出 + 5 个 artifact（含 IP 插画）。
@@ -59,15 +69,17 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 3. **扫码闭环**：点 3D 二维码立牌（或底部「溯源」），打开 `/trace/ZTDEMO26`；说明 390px H5、四段审核章、价格公式与“演示测算”标注。
 4. **H5 细节**：故事与引用、包装文案、旅程/审核时间线、小红书卡；问守园人一个保守问题（如“怎么保存？”），说明认证/功效类问题会被拒答。
 5. **回沙盘**：指出扫码数随 `trace.scanned` 增加；如时间充足，展示 `ZT-2026-001` 是 raw，可现场跑新批次（会消耗真实 LLM 额度，先确认网络与 key）。
-6. **收尾**：`curl -X POST .../api/demo/reset` 恢复干净演示态。
+6. **总控**：打开右侧「总控」，说“现在到哪了”，再演示一句“包装改克制一点”会走 Agent；建档/通过/回退会弹确认卡。
+7. **收尾**：`curl -X POST .../api/demo/reset` 恢复干净演示态。
 
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 47 passed + 1 skipped + ruff；前端 typecheck/lint/build
-make e2e     # Playwright 7 条冒烟（桌面 4 + 移动 3）
+make test    # 后端 52 passed + 2 skipped + ruff；前端 typecheck/lint/build
+make e2e     # Playwright 9 条冒烟（桌面 6 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度
+cd backend && RSM_REAL_SEARCH=1 uv run pytest tests/test_search_real.py  # 可选，真实 Firecrawl 会消耗 credits
 cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 缓存清理预演
 ```
 

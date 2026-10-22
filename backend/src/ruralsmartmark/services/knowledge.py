@@ -96,12 +96,15 @@ def load_markdown_docs(directory: Path) -> list[KnowledgeDocument]:
     return docs
 
 
-async def upsert_knowledge_docs(session: AsyncSession, product_id: int, knowledge_dir: str) -> int:
-    directory = resolve_knowledge_dir(knowledge_dir)
-    docs = load_markdown_docs(directory)
+async def upsert_knowledge_documents(
+    session: AsyncSession, product_id: int, docs: list[KnowledgeDocument]
+) -> int:
     for doc in docs:
         existing = await session.scalar(
-            select(KnowledgeDoc).where(KnowledgeDoc.doc_key == doc.doc_key)
+            select(KnowledgeDoc).where(
+                KnowledgeDoc.product_id == product_id,
+                KnowledgeDoc.doc_key == doc.doc_key,
+            )
         )
         if existing is None:
             existing = KnowledgeDoc(doc_key=doc.doc_key, product_id=product_id)
@@ -114,6 +117,12 @@ async def upsert_knowledge_docs(session: AsyncSession, product_id: int, knowledg
         existing.credibility = doc.credibility
     await session.flush()
     return len(docs)
+
+
+async def upsert_knowledge_docs(session: AsyncSession, product_id: int, knowledge_dir: str) -> int:
+    directory = resolve_knowledge_dir(knowledge_dir)
+    docs = load_markdown_docs(directory)
+    return await upsert_knowledge_documents(session, product_id, docs)
 
 
 async def list_knowledge_docs(session: AsyncSession, product_id: int) -> list[KnowledgeDoc]:

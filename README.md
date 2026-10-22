@@ -8,7 +8,7 @@
 
 ## 当前状态（2026-10-22）
 
-**Phase 3–5 已完成**：
+**Phase 3–6 已完成（总控真实搜索待 key）**：
 
 - 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。品牌「乌蒙丑果」与 IP「山风守园人」已冻结。
 - 10 篇昭通知识库 Markdown；FactGuard 校验逐字引用、违禁认证/功效/保证、数字预警；审核通过前服务端再校验一次。
@@ -19,15 +19,19 @@
 - 真实图像：SiliconFlow `Tongyi-MAI/Z-Image-Turbo` 生成 IP 插画，审核通过后落 `illustration` artifact，按 prompt hash 缓存；固定演示码使用同 prompt 的快照。
 - 公开溯源：`/trace/:code` 390px H5（故事/IP 插画/包装/价格/时间线/IP 对话）、扫码统计、未知码 404；固定演示码 `ZTDEMO26` 在 reset 后仍有完整内容。
 - 3D 沙盘：包装贴图、内容广告牌、可点击二维码、CatmullRom 批次路径、卡车出库；扫码数随 SSE 更新。
-- 自动化：Playwright 7 条冒烟（桌面沙盘/包装变体/插画失败兜底/3D 二维码 + 移动 H5/320px/404）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
+- 多产品工作台：产品下拉 + 批次按产品过滤；新产品由总控调研/确认后写入，不 seed；旧产品数据保留。
+- 单入口总控：右侧「总控」抽屉与 `/controller`；可调研、追问、调用四 Agent、修改/通过/回退；建档/通过/驳回/回退有确认卡（decisions #69）。
+- 调研链路：Firecrawl 搜索/抓页 + PydanticAI 工具循环；引用逐字校验；缺字段提问；无 key 时提示贴资料（#70）。
+- 早期站回退：确认后作废下游产出/Artifact，回到目标站重跑，历史 run 保留（#71）。
+- 自动化：Playwright 9 条冒烟（含总控面板、独立总控页、插画失败兜底）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
 - 性能：1280×720 固定演示批次 60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无横向溢出。
 - 可复制：第二产品档案夹具「麻江蓝莓」只建数据，mock 四站与真实 V4.1-Flash 四站都跑到 `traced`、`MJ` 溯源码、公开 H5/包装 PNG 可用，真实运行无 fallback、输出无昭通/苹果残留；系统提示、定价标签、包装品牌字、溯源码前缀均从产品档案读取。
 - 来源补证：地理标志公告第1478号/登记编号已补；80–85mm 精选果公开挂牌价补了 4 个惠农网页面（5斤 25/36/40 元，10斤 6.2 元/斤）；包装厂只找到 1000 个起订线索，仍无书面报价。
 - 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
 - 生图失败兜底：包装工位显示「插画这次没有生成 / 包装审核不受影响」；`python -m ruralsmartmark.maintenance image-cache --dry-run` 可预演 30 天/512MB 缓存清理。
-- 后端 47 常跑测试 + 1 条默认跳过的真实 LLM 冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
+- 后端 52 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
-**下一步是交付与补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版；公开挂牌价与地理标志公告号已补，成交价/同渠道长期价可继续跟。字段级审核表单与 Docker 已确认不做（decisions #63）。
+**下一步是交付与补证**：在 `backend/.env` 配置 `FIRECRAWL_API_KEY` 后跑真实搜索小样本；手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版。公开挂牌价与地理标志公告号已补，成交价/同渠道长期价可继续跟。字段级审核表单与 Docker 已确认不做（decisions #63）。
 
 ## 快速开始
 
@@ -68,28 +72,31 @@ pnpm dev                  # http://127.0.0.1:5173
 ```
 
 - 桌面沙盘：<http://127.0.0.1:5173/>
+- 独立总控：<http://127.0.0.1:5173/controller>
 - 公开溯源 H5：<http://127.0.0.1:5173/trace/ZTDEMO26>
 - API 文档：<http://127.0.0.1:8000/docs>
 
 Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个 Agent 走确定性 mock；有 key 时调用 OpenAI 兼容端点（默认 SiliconFlow DeepSeek-V4.1-Flash），单次超时 180 秒，`thinking_budget=2048`、`max_tokens=4096`，失败会降级为演示稿并在界面标注原因。同一个 key 也用于图像：默认 `Tongyi-MAI/Z-Image-Turbo`，包装审核通过后生成 IP 插画并缓存；生图失败不影响审核。固定演示批次与溯源码不随 key 变化。
 
+总控调研另需 `FIRECRAWL_API_KEY`（`backend/.env`）。没有搜索 key 时，总控会提示贴来源链接/原文；不会静默编资料。依赖 `pydantic-ai-slim[openai]` 与 `firecrawl-py` 只装在 `backend/.venv`。
+
 ## 目录结构
 
 ```
-Makefile                    # make dev/test/e2e/perf
+Makefile                    # make dev/lan/test/e2e/perf
 backend/
-  src/ruralsmartmark/       # FastAPI、ORM、四 Agent、知识库/FactGuard、定价/包装
+  src/ruralsmartmark/       # FastAPI、ORM、四 Agent、总控、知识库/FactGuard、定价/包装
     assets/fonts/           # 内置 Noto Serif/Sans SC + OFL，约 40MB
   migrations/               # Alembic
-  tests/                    # 47 常跑测试 + 1 条可选真实 LLM 冒烟 + fixtures/majiang
+  tests/                    # 52 常跑测试 + 2 条可选真实外部冒烟 + fixtures/majiang
 data/
   knowledge/zhaotong/       # 10 篇事实源 Markdown（入库）
 frontend/
   src/three/                # R3F 等距场景
-  src/components/           # StationCard / ReviewDialog
-  src/routes/               # Sandbox / Trace H5
-  src/api/                  # client / pipeline / trace
-  src/stores/               # Zustand
+  src/components/           # StationCard / ReviewDialog / ControllerPanel
+  src/routes/               # Sandbox / Controller / Trace H5
+  src/api/                  # client / pipeline / trace / controller
+  src/stores/               # Zustand（产品/批次/流水线）
   src/styles/               # Tailwind v4 + 山野编辑部 token
   e2e/                      # Playwright 冒烟 + perf
   playwright.config.ts      # 桌面/移动/perf projects + webServer
@@ -98,6 +105,7 @@ docs/
   v2/plan.md                # v2 产品/架构方案
   v2/ui.md                  # 前端设计契约
   v2/sources.md             # 昭通事实待核验清单
+  v2/controller.md          # 总控/多产品契约
   v2/runbook.md             # 启动/演示/验收/新增档案/排障
   05-next-steps.md          # 当前进度与下一步
 ```
@@ -108,18 +116,19 @@ docs/
 | --- | --- | --- |
 | 根 | `make dev` | 迁移 + seed + 后端 8000 + 前端 5173 |
 | 根 | `make lan` | 局域网扫码模式（0.0.0.0 + 局域网二维码；仅可信网络） |
-| 根 | `make test` | 后端 47 tests/ruff + 前端 typecheck/lint/build |
+| 根 | `make test` | 后端 52 tests/ruff + 前端 typecheck/lint/build |
 | 根 | `make e2e` / `make perf` | Playwright 冒烟 / 60 秒性能 |
 | backend | `uv run ruralsmartmark` | 启动开发服务 |
-| backend | `uv run pytest` | 后端测试（临时 SQLite；47 passed + 1 skipped） |
+| backend | `uv run pytest` | 后端测试（临时 SQLite；52 passed + 2 skipped） |
 | backend | `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` | 生图缓存清理预演（30 天/512MB） |
 | backend | `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` | 可选真实 LLM 第二产品冒烟（消耗额度） |
+| backend | `RSM_REAL_SEARCH=1 uv run pytest tests/test_search_real.py` | 可选真实 Firecrawl 搜索/抓页（消耗 credits） |
 | backend | `uv run ruff check .` | 静态检查 |
 | backend | `uv run alembic upgrade head` | 迁移 |
 | backend | `uv run python -m ruralsmartmark.seed` | 幂等 seed |
 | frontend | `pnpm dev` | 开发服 |
 | frontend | `pnpm typecheck` / `pnpm lint` / `pnpm build` | 前端检查/构建 |
-| frontend | `pnpm test:e2e` / `pnpm test:perf` | 6 条冒烟 / 2 条性能用例 |
+| frontend | `pnpm test:e2e` / `pnpm test:perf` | 9 条冒烟 / 2 条性能用例 |
 
 ## 接口
 
@@ -128,8 +137,12 @@ docs/
 | GET | `/api/health` | 健康检查（含 DB） |
 | GET | `/api/products` | 产品档案 |
 | GET | `/api/knowledge` | 知识库清单（引用 chips 用） |
-| GET | `/api/batches` | 批次列表 |
+| GET | `/api/batches?product_id=` | 批次列表（可按产品过滤） |
 | POST | `/api/batches` | 新建批次 |
+| POST | `/api/controller/sessions` | 创建/获取总控会话 |
+| GET | `/api/controller/sessions/{id}` | 总控会话、消息、草案、待确认动作 |
+| POST | `/api/controller/sessions/{id}/messages` | 发给总控（调研/读取/运行 Agent） |
+| POST | `/api/controller/sessions/{id}/confirm` | 确认/取消建档、通过、驳回、回退 |
 | GET | `/api/batches/{id}` | 批次详情 |
 | GET | `/api/batches/{id}/workspace` | 批次 + 运行记录 + 产出物 |
 | POST | `/api/batches/{id}/pipeline/start` | 运行下一步 |
@@ -153,7 +166,7 @@ docs/
 - 「山野编辑部」：暖色纸感、衬线标题、低多边形乡村；不是 WMS 冷色控制塔。
 - 3D 构建对齐 WareTrack：代码拼低多边形几何体 + 平面材质 + Texture；广告牌/二维码用 Html 覆盖层保证中文与二维码清晰；不引 GLB/写实资产。
 - 桌面看 3D 沙盘，手机只看扫码溯源 H5。
-- 不做游戏化、多产品 UI、登录/权限、真实电商 API、Canva/Midjourney、IoT 温度曲线。
+- 多产品列表/切换；不做游戏化、登录/权限、真实电商 API、Canva/Midjourney、IoT 温度曲线。
 
 ## 文档
 
@@ -161,6 +174,7 @@ docs/
 - [docs/v2/plan.md](docs/v2/plan.md) — 完整方案
 - [docs/v2/ui.md](docs/v2/ui.md) — 前端设计契约
 - [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
+- [docs/v2/controller.md](docs/v2/controller.md) — 总控/多产品契约
 - [docs/v2/runbook.md](docs/v2/runbook.md) — 启动、演示动线、验收与排障
 - [docs/decisions.md](docs/decisions.md) — 决策记录
 - [docs/05-next-steps.md](docs/05-next-steps.md) — 当前进度与下一步

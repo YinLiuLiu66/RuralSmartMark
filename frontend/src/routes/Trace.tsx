@@ -383,10 +383,11 @@ export default function Trace() {
             <QrCode size={14} />
             TRACE / {trace.trace_code}
           </div>
-          <h1 className="mt-3 font-display text-[34px] leading-[1.22]">
-            这箱苹果，
-            <br />
-            从乌蒙山来。
+          <h1 className="mt-3 whitespace-pre-line font-display text-[34px] leading-[1.22]">
+            {String(
+              trace.product.specs.trace_headline ??
+                `${trace.product.name}，\n从这一批土地来。`,
+            )}
           </h1>
           <p className="mt-4 text-sm leading-7 text-paper/75">
             {trace.pricing.persona_greeting || trace.story.story_short}
@@ -495,7 +496,10 @@ export default function Trace() {
         </section>
 
         <section className="mt-8 px-5">
-          <SectionHeading eyebrow="JOURNEY" title="这箱苹果的旅程" />
+          <SectionHeading
+            eyebrow="JOURNEY"
+            title={`${trace.product.name}的旅程`}
+          />
           <Timeline events={trace.journey} />
           <details className="group mt-4 rounded-card border border-line bg-surface">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-xs text-ink">

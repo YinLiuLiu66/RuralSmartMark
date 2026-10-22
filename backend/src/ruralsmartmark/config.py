@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     image_size: str = ""
     image_negative_prompt: str = "真实人物肖像, 照片, 品牌logo, 低清晰度"
     image_timeout_seconds: float = 120.0
+    search_provider: str = "firecrawl"
+    firecrawl_api_key: str = ""
+    search_max_results: int = 5
+    search_max_scrapes: int = 4
+    search_timeout_seconds: float = 60.0
+    controller_request_limit: int = 10
+    controller_tool_calls_limit: int = 12
+    research_request_limit: int = 8
+    research_tool_calls_limit: int = 10
+    research_max_tokens: int = 8192
     public_base_url: str = "http://127.0.0.1:5173"
     auto_approve: bool = False
     llm_fallback_to_mock: bool = True

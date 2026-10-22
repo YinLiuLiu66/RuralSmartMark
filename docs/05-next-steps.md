@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 5 已完成（2026-10-22）；进入交付/来源补证
+> 状态：🟢 Phase 6 代码侧已完成（2026-10-22）；真实 Firecrawl/外部补证待做
 > 更新时间：2026-10-22
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
@@ -8,18 +8,19 @@
 ## 0. 当前进度（截至 2026-10-22）
 
 - [x] 开发分支切回 `main`（`rewrite/v2` 已合并并删除）；旧 v1 backend/frontend 移出工作树
-- [x] SQLite + 9 张表 ORM + Alembic 迁移（含 `agent_run.guard_json`）
+- [x] SQLite + 11 张表 ORM + Alembic 迁移（含 `agent_run.guard_json`、controller 两表）
 - [x] 幂等 seed：昭通丑苹果 + 10 篇知识库 + 3 条价格基准 + 批次 `ZT-DEMO-001` / `ZT-2026-001`
 - [x] Mock LLM Provider + Mock Image Provider（无 key 可跑）
 - [x] **Phase 0/1**：沙盘骨架、四 Agent 状态机、审核/驳回/重跑、SSE、工位卡、批次移动
 - [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 内置字体包装 PNG + 引用/预警/预览 UI
 - [x] **Phase 3**：公开溯源 API + 390px H5 + 扫码统计 + IP 对话边界 + 固定演示快照 + 3D 包装贴图/广告牌/二维码/CatmullRom/卡车
-- [x] 后端测试 47 条常跑 + 1 条默认跳过的真实 LLM 冒烟 + `ruff check` 零告警
+- [x] 后端测试 52 条常跑 + 2 条默认跳过的真实外部冒烟 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback）；随后 reset 为固定演示数据
 - [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run、5 条 artifact（含插画）、`ZTDEMO26` H5、扫码/对话
 - [x] Phase 4 · 图像与视觉打磨（图像 Provider / 变体 / 加载态 / 拆包）
 - [x] Phase 5 · 加固与交付（Playwright / reset 幂等 / 第二产品夹具 / 60 秒性能 / make dev / runbook）
+- [x] Phase 6 · 多产品 + 单入口总控 + Firecrawl 调研 + 早期站回退（代码侧）
 
 ## 1. Phase 1 · Walking skeleton（已完成，摘要）
 
@@ -123,6 +124,19 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 
 **Phase 5 验收**：`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 与 `RSM_REAL_LLM=1` 真实四站均通过；`ZTDEMO26` 与 156% 溢价回归不变。
 
+## 5.1 Phase 6 · 多产品 + 总控（代码侧已完成）
+
+- [x] 知识库唯一约束改为 `(product_id, doc_key)`；两个产品可复用 `ORIGIN-01`
+- [x] 产品下拉 + 批次按产品过滤；批次码前缀读 `specs.batch_prefix`
+- [x] H5 标题/旅程从 `specs.trace_headline`/`product.name` 读取，不再写死昭通
+- [x] 总控会话/消息持久化；PydanticAI 工具循环；动作白名单
+- [x] 建档/通过/驳回/回退确认卡；早期站回退作废下游 Artifact
+- [x] Firecrawl Provider + 逐字引用校验；无 key 提示贴资料
+- [x] 右栏总控抽屉 + `/controller` 独立页；9 条 Playwright
+- [x] 后端 52 passed + 2 skipped；迁移在全新 SQLite 通过
+- [ ] 真实 Firecrawl 搜索（需要 `FIRECRAWL_API_KEY`）
+- [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
+
 ## 6. 未验证假设（开工即验证）
 
 - [x] 真实 LLM key 可用；空 key mock 路径已跑通
@@ -140,7 +154,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 80–85mm 精选果公开挂牌价：惠农网 4 个页面（5斤 25/36/40 元，10斤 6.2 元/斤）；成交价/同渠道长期价仍待跟
 - [x] 地理标志公告原文/公告号：农业部公告第1478号，AGI2010-07-00370（商务部政策法规库转录）
 
-## 7. 已知缺口（Phase 5 结束时的诚实清单）
+## 7. 已知缺口（Phase 6 结束时的诚实清单）
 
 - 字段级审核表单**不做**（#63），保留 JSON 编辑器；盒型仍是单一视觉示意，不是真实刀版。
 - 真实图像只生成 IP 插画；包装变体仅色板，不含真实盒型/刀版。生图失败已有视觉兜底，缓存清理用 `maintenance image-cache` 手动执行。
@@ -148,6 +162,9 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - 故事/内容里的区域事实已尽量引用知识库，但 LLM 仍可能写未引用的概括（FactGuard 对未引用数字只给 warning）；审核时看引用与预警。
 - IP 对话只做了关键词/规则 + LLM 后置校验；没有多轮上下文管理、没有真人客服兜底。
 - 第二产品真实 LLM 只跑了一次（四站无 fallback），未做多批次稳定性；提示词已档案化。
+- 总控真实 Firecrawl 搜索尚未验证（本机无 `FIRECRAWL_API_KEY`）；研究 Agent 的 mock 搜索已验，真实 key 需补一次小样本。
+- 总控 PydanticAI 工具循环实测比原计划多轮，默认限额调到 10 请求/12 工具；仍需真实调研观察费用与稳定性。
+- 多产品 UI 已做，但不做多产品并列 3D；产品知识库/批次互相独立。
 - 手机真机扫码、包装厂书面报价/食品接触合规、真实盒型/刀版仍未补齐；80–85mm 挂牌价与 GI 公告号已补，成交价仍待跟。
 - Docker 不做；现场依赖本机 uv + pnpm + SQLite。
 - 前端已分包：initial index 260KB、Scene 950KB 异步；手机 H5 不下载 three.js。

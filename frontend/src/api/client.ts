@@ -6,7 +6,7 @@ export interface Product {
   province: string;
   category: string;
   form: string;
-  specs: Record<string, string>;
+  specs: Record<string, unknown>;
   palette: Record<string, string>;
   scene_preset: string;
   knowledge_dir: string;
@@ -64,8 +64,10 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 export const api = {
   health: () => get<Health>("/health"),
   products: () => get<Product[]>("/products"),
-  batches: () => get<Batch[]>("/batches"),
-  knowledge: () => get<KnowledgeDoc[]>("/knowledge"),
+  batches: (productId?: number) =>
+    get<Batch[]>(productId ? `/batches?product_id=${productId}` : "/batches"),
+  knowledge: (productSlug = "zhaotong-ugly-apple") =>
+    get<KnowledgeDoc[]>(`/knowledge?product_slug=${encodeURIComponent(productSlug)}`),
   createBatch: (productSlug = "zhaotong-ugly-apple", quantityKg = 300) =>
     post<Batch>("/batches", { product_slug: productSlug, quantity_kg: quantityKg }),
 };

@@ -5,7 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import init_db
-from .routes import artifacts, batches, demo, health, knowledge, pipeline, products, trace
+from .routes import (
+    artifacts,
+    batches,
+    controller,
+    demo,
+    health,
+    knowledge,
+    pipeline,
+    products,
+    trace,
+)
 
 
 @asynccontextmanager
@@ -27,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(products.router, prefix="/api", tags=["products"])
     app.include_router(knowledge.router, prefix="/api", tags=["knowledge"])
+    app.include_router(controller.router, prefix="/api", tags=["controller"])
     app.include_router(batches.router, prefix="/api", tags=["batches"])
     app.include_router(pipeline.router, prefix="/api", tags=["pipeline"])
     app.include_router(artifacts.router, prefix="/api", tags=["artifacts"])

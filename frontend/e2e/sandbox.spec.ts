@@ -9,7 +9,7 @@ test("桌面沙盘加载固定演示批次", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("数据已连接")).toBeVisible();
-  await expect(page.getByRole("combobox").locator("option:checked")).toHaveText("ZT-DEMO-001");
+  await expect(page.getByLabel("批次").locator("option:checked")).toHaveText("ZT-DEMO-001");
   await expect(page.getByText("实时", { exact: true })).toBeVisible();
   await expect(page.getByText("6/6")).toBeVisible();
   await expect(page.getByText("已完成", { exact: true }).first()).toBeVisible();
@@ -19,7 +19,7 @@ test("桌面沙盘加载固定演示批次", async ({ page }) => {
 
 test("包装工位展示变体、服务端预览与 IP 插画", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
+  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
 
   const stations = page.locator("section", { hasText: "四站点" });
   await stations.getByRole("button", { name: /包装设计/ }).click();
@@ -54,7 +54,7 @@ test("插画生成失败时显示视觉兜底", async ({ page }) => {
   });
 
   await page.goto("/");
-  await expect(page.getByRole("combobox").locator("option:checked")).toHaveText("ZT-DEMO-001");
+  await expect(page.getByLabel("批次").locator("option:checked")).toHaveText("ZT-DEMO-001");
   const stations = page.locator("section", { hasText: "四站点" });
   await stations.getByRole("button", { name: /包装设计/ }).click();
 
@@ -62,9 +62,25 @@ test("插画生成失败时显示视觉兜底", async ({ page }) => {
   await expect(page.getByText("包装审核不受影响")).toBeVisible();
 });
 
+test("总控面板可打开并显示产品/批次切换", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("combobox").first()).toBeVisible();
+  await expect(page.getByRole("combobox").nth(1)).toBeVisible();
+
+  await page.getByRole("button", { name: "打开总控" }).click();
+  await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
+  await expect(page.getByText("告诉我你想做什么产品", { exact: false })).toBeVisible();
+});
+
+test("独立总控页可打开", async ({ page }) => {
+  await page.goto("/controller");
+  await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
+  await expect(page.getByText("调研 · 运行 · 修改 · 审核", { exact: false })).toBeVisible();
+});
+
 test("3D 二维码按钮打开溯源 H5", async ({ page, context }) => {
   await page.goto("/");
-  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
+  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
   await expect(page.getByRole("button", { name: "打开溯源页" })).toBeVisible();
 
   const opened = context.waitForEvent("page");

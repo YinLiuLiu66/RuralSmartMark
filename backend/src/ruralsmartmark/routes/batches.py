@@ -12,9 +12,10 @@ from ..services.workspace import load_workspace
 router = APIRouter()
 
 
-async def _next_code(session: AsyncSession) -> str:
+async def _next_code(session: AsyncSession, product: ProductProfile) -> str:
     year = datetime.now().year
-    prefix = f"ZT-{year}-"
+    raw_prefix = str((product.specs or {}).get("batch_prefix") or "ZT").strip() or "ZT"
+    prefix = f"{raw_prefix[:6]}-{year}-"
     count = await session.scalar(
         select(func.count()).select_from(Batch).where(Batch.code.like(f"{prefix}%"))
     )
@@ -22,8 +23,13 @@ async def _next_code(session: AsyncSession) -> str:
 
 
 @router.get("/batches", response_model=list[BatchOut])
-async def list_batches(session: SessionDep) -> list[Batch]:
-    result = await session.execute(select(Batch).order_by(Batch.id.desc()))
+async def list_batches(
+    session: SessionDep, product_id: int | None = None
+) -> list[Batch]:
+    query = select(Batch).order_by(Batch.id.desc())
+    if product_id is not None:
+        query = query.where(Batch.product_id == product_id)
+    result = await session.execute(query)
     return list(result.scalars().all())
 
 
@@ -61,7 +67,7 @@ async def create_batch(payload: BatchCreate, session: SessionDep) -> Batch:
 
     batch = Batch(
         product_id=product.id,
-        code=await _next_code(session),
+        code=await _next_code(session, product),
         quantity_kg=payload.quantity_kg,
         state="raw",
         current_station="intake",

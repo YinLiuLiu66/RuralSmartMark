@@ -7,7 +7,7 @@ test.beforeAll(async ({ request }) => {
 
 test("固定演示批次长时帧率与堆内存", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
+  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
   await expect(page.locator("canvas")).toBeVisible();
   await page.waitForTimeout(3_000);
 

@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 
 const Sandbox = lazy(() => import("./routes/Sandbox"));
 const Trace = lazy(() => import("./routes/Trace"));
+const Controller = lazy(() => import("./routes/Controller"));
 
 function PageFallback() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/" element={<Sandbox />} />
+        <Route path="/controller" element={<Controller />} />
         <Route path="/trace/:code" element={<Trace />} />
       </Routes>
     </Suspense>

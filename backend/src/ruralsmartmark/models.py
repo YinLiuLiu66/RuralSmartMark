@@ -1,6 +1,17 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -84,12 +95,15 @@ class Artifact(Base):
 
 class KnowledgeDoc(Base):
     __tablename__ = "knowledge_doc"
+    __table_args__ = (
+        Index("uq_knowledge_doc_product_doc", "product_id", "doc_key", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(
         ForeignKey("product_profile.id", ondelete="CASCADE"), index=True
     )
-    doc_key: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    doc_key: Mapped[str] = mapped_column(String(40))
     title: Mapped[str] = mapped_column(String(200))
     type: Mapped[str] = mapped_column(String(40), index=True)
     source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -145,4 +159,31 @@ class ChatMessage(Base):
     batch_id: Mapped[int] = mapped_column(ForeignKey("batch.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ControllerSession(TimestampMixin, Base):
+    __tablename__ = "controller_session"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_profile.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    batch_id: Mapped[int | None] = mapped_column(
+        ForeignKey("batch.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    draft_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    pending_action_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class ControllerMessage(Base):
+    __tablename__ = "controller_message"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("controller_session.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    action_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
