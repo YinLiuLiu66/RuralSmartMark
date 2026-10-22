@@ -1,6 +1,13 @@
+import { useEffect, useState } from "react";
 import { ArrowLeft, ExternalLink, Play, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
-import type { AgentKey, Artifact, BatchWorkspace } from "../api/pipeline";
+import {
+  pipelineApi,
+  type AgentKey,
+  type Artifact,
+  type BatchWorkspace,
+  type PackagingVariant,
+} from "../api/pipeline";
 import type { KnowledgeDoc } from "../api/client";
 import {
   agentStatus,
@@ -130,25 +137,62 @@ function PackagingPreview({
   runId,
   output,
   illustration,
+  variants,
+  variant,
+  onVariantChange,
 }: {
   batchId: number;
   runId: number | null;
   output: Record<string, unknown>;
   illustration: Artifact | null;
+  variants: PackagingVariant[];
+  variant: string;
+  onVariantChange: (variant: string) => void;
 }) {
   const copy = (output.packaging_copy ?? {}) as Record<string, unknown>;
   const structure = (output.structure ?? {}) as Record<string, unknown>;
+  const current = variants.find((item) => item.key === variant);
   return (
     <div>
+      {variants.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {variants.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              title={item.description}
+              onClick={() => onVariantChange(item.key)}
+              className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] ${
+                item.key === variant
+                  ? "border-apple/40 bg-apple-weak text-apple"
+                  : "border-line bg-paper text-ink-muted"
+              }`}
+            >
+              <span className="flex -space-x-1">
+                {item.swatches.slice(0, 3).map((color, index) => (
+                  <span
+                    key={`${item.key}-${index}`}
+                    className="h-2.5 w-2.5 rounded-full border border-white"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </span>
+              {item.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="overflow-hidden rounded-control border border-line bg-surface-2">
         <img
-          key={runId ?? 0}
-          src={`/api/batches/${batchId}/agents/packaging/preview?run=${runId ?? 0}`}
+          key={`${runId ?? 0}-${variant}`}
+          src={`/api/batches/${batchId}/agents/packaging/preview?run=${runId ?? 0}&variant=${variant}`}
           alt="包装示意预览"
           className="aspect-[8/5] w-full object-cover"
         />
       </div>
-      <p className="mt-2 text-[10.5px] text-ink-muted">服务端渲染 · 审核通过后落 PNG</p>
+      <p className="mt-2 text-[10.5px] text-ink-muted">
+        服务端渲染 · 审核通过后落 PNG{current ? ` · ${current.description}` : ""}
+      </p>
       <div className="mt-2 text-xs font-medium text-ink">{String(output.concept ?? "")}</div>
       <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10.5px] text-ink-muted">
         <span>正面：{String(copy.front ?? "—")}</span>
@@ -245,12 +289,18 @@ function OutputPreview({
   runId,
   output,
   illustration,
+  variants,
+  variant,
+  onVariantChange,
 }: {
   agent: AgentKey;
   batchId: number;
   runId: number | null;
   output: Record<string, unknown>;
   illustration: Artifact | null;
+  variants: PackagingVariant[];
+  variant: string;
+  onVariantChange: (variant: string) => void;
 }) {
   if (agent === "story") return <StoryPreview output={output} />;
   if (agent === "packaging") {
@@ -260,6 +310,9 @@ function OutputPreview({
         runId={runId}
         output={output}
         illustration={illustration}
+        variants={variants}
+        variant={variant}
+        onVariantChange={onVariantChange}
       />
     );
   }
@@ -275,6 +328,8 @@ export default function StationCard({
   onRun,
   onReview,
   onClose,
+  packagingVariant,
+  onPackagingVariantChange,
 }: {
   agent: AgentMeta;
   workspace: BatchWorkspace;
@@ -283,12 +338,31 @@ export default function StationCard({
   onRun: () => void;
   onReview: () => void;
   onClose: () => void;
+  packagingVariant: string;
+  onPackagingVariantChange: (variant: string) => void;
 }) {
+  const [variants, setVariants] = useState<PackagingVariant[]>([]);
   const status = agentStatus(workspace, agent.key);
   const run = latestRun(workspace, agent.key);
   const output = outputForAgent(workspace, agent.key);
   const illustration =
     workspace.artifacts.find((artifact) => artifact.kind === "illustration") ?? null;
+
+  useEffect(() => {
+    if (agent.key !== "packaging") return;
+    let cancelled = false;
+    pipelineApi
+      .packagingVariants(workspace.batch.id)
+      .then((items) => {
+        if (!cancelled) setVariants(items);
+      })
+      .catch(() => {
+        if (!cancelled) setVariants([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [agent.key, workspace.batch.id]);
   const canRun =
     nextAgent(workspace.batch.state) === agent.key ||
     workspace.batch.state === `${agent.key}_review`;
@@ -347,6 +421,9 @@ export default function StationCard({
             runId={run?.id ?? null}
             output={output}
             illustration={illustration}
+            variants={variants}
+            variant={packagingVariant}
+            onVariantChange={onPackagingVariantChange}
           />
         ) : (
           "还没有产出。运行后在这里预览；审核时可编辑 JSON。"

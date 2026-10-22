@@ -14,10 +14,15 @@ from ..schemas import (
     AgentRunRequest,
     ApproveRequest,
     BatchWorkspaceOut,
+    PackagingVariantOut,
     RejectRequest,
 )
 from ..services.events import bus
-from ..services.packaging import render_label_png_bytes
+from ..services.packaging import (
+    PACKAGING_VARIANTS,
+    list_packaging_variants,
+    render_label_png_bytes,
+)
 from ..services.workspace import load_workspace
 
 router = APIRouter()
@@ -88,9 +93,25 @@ async def approve_specific_agent(
     return await _workspace_or_404(session, batch_id)
 
 
+@router.get(
+    "/batches/{batch_id}/agents/packaging/variants",
+    response_model=list[PackagingVariantOut],
+)
+async def packaging_variants(batch_id: int, session: SessionDep) -> list[dict]:
+    await _batch_or_404(session, batch_id)
+    return list_packaging_variants()
+
+
 @router.get("/batches/{batch_id}/agents/packaging/preview")
-async def packaging_preview(batch_id: int, session: SessionDep, runtime: RuntimeDep) -> Response:
+async def packaging_preview(
+    batch_id: int,
+    session: SessionDep,
+    runtime: RuntimeDep,
+    variant: str = "kraft",
+) -> Response:
     batch = await _batch_or_404(session, batch_id)
+    if variant not in PACKAGING_VARIANTS:
+        raise HTTPException(status_code=422, detail="未知包装变体")
     run = await session.scalar(
         select(AgentRun)
         .where(
@@ -110,6 +131,7 @@ async def packaging_preview(batch_id: int, session: SessionDep, runtime: Runtime
         batch,
         product,
         public_base_url=runtime.settings.public_base_url,
+        variant=variant,
     )
     return Response(
         content=png,

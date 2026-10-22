@@ -9,10 +9,12 @@ function errorMessage(error: unknown): string {
 interface PipelineState {
   workspace: BatchWorkspace | null;
   selectedAgent: AgentKey | null;
+  packagingVariant: string;
   busy: boolean;
   error: string | null;
   setWorkspace: (workspace: BatchWorkspace | null) => void;
   selectAgent: (agent: AgentKey | null) => void;
+  setPackagingVariant: (variant: string) => void;
   refresh: (batchId: number, quiet?: boolean) => Promise<BatchWorkspace | null>;
   start: (batchId: number) => Promise<BatchWorkspace | null>;
   run: (batchId: number, agent: AgentKey, note?: string) => Promise<BatchWorkspace | null>;
@@ -42,10 +44,12 @@ export const usePipelineStore = create<PipelineState>((set) => {
   return {
     workspace: null,
     selectedAgent: null,
+    packagingVariant: "kraft",
     busy: false,
     error: null,
     setWorkspace: (workspace) => set({ workspace }),
     selectAgent: (selectedAgent) => set({ selectedAgent }),
+    setPackagingVariant: (packagingVariant) => set({ packagingVariant }),
     refresh: async (batchId, quiet = false) => {
       if (quiet) {
         try {

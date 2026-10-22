@@ -158,3 +158,9 @@
 **理由**：Z-Image-Turbo 约 ¥0.1/张、实测约 3 秒，中文与画面文字渲染好；审核通过后再生图，避免未通过稿浪费额度；缓存避免重跑重复扣费；固定演示码需要离线可复现，所以提交一张快照而不是现场依赖网络。
 **验证**：真实 API 512×512 与 768×1024 均 200；Provider 类实测 768×1024、约 986KB、缓存命中；`seed/demo_illustration.png` 为 768×1024、保留“AI 生成”水印；H5 与包装工位均显示；43 后端测试、ruff、前端 typecheck/lint/build 全绿。
 **拍板时间**：2026-10-22
+
+### #60 · Phase 4 包装变体、加载态与代码分割
+**结论**：包装提供 3 个视觉变体「经典牛皮纸 / 山野红 / 夜绿」，后端 `GET /api/batches/{id}/agents/packaging/variants` 为权威列表，预览与溯源图支持 `?variant=`；变体只改色板，不改文案、结构或事实。前端包装工位显示变体 chips，选择写入 Zustand，3D 礼盒贴图同步。路由与 `Scene` 改为 `lazy` + Suspense，增加 `SceneBoundary`（WebGL 失败可重试）、加载骨架、API 错误重试和空批次新建按钮；OrbitControls 开阻尼。Phase 4 以此为收口，长时 60fps、200% zoom 与 Playwright 留给 Phase 5。
+**理由**：包装变体是最能体现“同一份 Agent 产出可探索不同视觉方向”的交互；变体只动色板，避免把未审核的结构/事实写进画面。代码分割把 H5 与 three.js 隔开，手机打开溯源页不再下载 950KB 的 3D chunk；加载/错误态让现场网络波动时不至于白屏。
+**验证**：`43` 后端测试；`variants` 返回 3 项，`preview?variant=crimson` 与默认图不同，未知变体 422；溯源 `packaging.png?variant=night` 200；1280×720 场景 2.5 秒采样 120fps（高刷屏）；`pnpm build` 产出 index 260KB、Sandbox 37KB、Trace 23KB、Scene 950KB 异步 chunk；H5 与包装工位截图确认变体切换和插画。
+**拍板时间**：2026-10-22

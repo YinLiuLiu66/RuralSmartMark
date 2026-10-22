@@ -96,10 +96,14 @@ async def test_trace_packaging_png(session, client):
     code = await _traced_batch(client, session)
 
     response = await client.get(f"/api/trace/{code}/packaging.png")
+    variant = await client.get(f"/api/trace/{code}/packaging.png?variant=night")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content.startswith(b"\x89PNG")
+    assert variant.status_code == 200
+    assert variant.content.startswith(b"\x89PNG")
+    assert variant.content != response.content
 
 
 async def test_trace_qr_and_scan_stats(session, client):

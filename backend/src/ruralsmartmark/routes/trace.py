@@ -9,7 +9,11 @@ from ..deps import SessionDep
 from ..models import Batch, ChatMessage, ProductProfile, ScanEvent
 from ..schemas import TraceChatOut, TraceChatRequest, TraceOut, TraceScanOut
 from ..services.events import bus
-from ..services.packaging import render_label_png_bytes, render_qr_png
+from ..services.packaging import (
+    PACKAGING_VARIANTS,
+    render_label_png_bytes,
+    render_qr_png,
+)
 from ..services.trace import load_trace
 from ..services.trace_chat import answer_trace_question
 
@@ -46,10 +50,17 @@ async def get_trace(code: str, session: SessionDep) -> TraceOut:
 
 
 @router.get("/trace/{code}/packaging.png")
-async def trace_packaging(code: str, session: SessionDep, runtime: RuntimeDep) -> Response:
+async def trace_packaging(
+    code: str,
+    session: SessionDep,
+    runtime: RuntimeDep,
+    variant: str = "kraft",
+) -> Response:
     batch = await _traced_batch(session, code)
     if not batch.packaging_json:
         raise HTTPException(status_code=404, detail="包装产出不存在")
+    if variant not in PACKAGING_VARIANTS:
+        raise HTTPException(status_code=422, detail="未知包装变体")
     product = await session.get(ProductProfile, batch.product_id)
     if product is None:
         raise HTTPException(status_code=404, detail="产品档案不存在")
@@ -58,6 +69,7 @@ async def trace_packaging(code: str, session: SessionDep, runtime: RuntimeDep) -
         batch,
         product,
         public_base_url=runtime.settings.public_base_url,
+        variant=variant,
     )
     return Response(
         content=png,

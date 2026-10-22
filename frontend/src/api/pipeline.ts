@@ -50,6 +50,13 @@ export interface Artifact {
   approved_at: string | null;
 }
 
+export interface PackagingVariant {
+  key: string;
+  name: string;
+  description: string;
+  swatches: string[];
+}
+
 export interface BatchWorkspace {
   batch: BatchFull;
   runs: AgentRun[];
@@ -82,6 +89,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const pipelineApi = {
   workspace: (batchId: number) => request<BatchWorkspace>(`/batches/${batchId}/workspace`),
+  packagingVariants: (batchId: number) =>
+    request<PackagingVariant[]>(`/batches/${batchId}/agents/packaging/variants`),
   start: (batchId: number) =>
     request<BatchWorkspace>(`/batches/${batchId}/pipeline/start`, { method: "POST" }),
   run: (batchId: number, agent: AgentKey, note?: string) =>

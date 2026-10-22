@@ -322,13 +322,13 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 **实现口径**：公开 `GET /api/trace/{code}` 聚合批次/产品/四章产出/引用/价格/时间线/扫码数；`packaging.png` 与 `qr.png` 服务端生成；`scan` 写 `scan_event` 并广播 `trace.scanned`；`chat` 只使用已批准内容与引用证据，医疗/认证/保证类问题先模板拒答，LLM 回复再过 FactGuard 与数字白名单，失败降级模板。固定演示批次 `ZT-DEMO-001` 在 seed 时写入 `seed/demo_batch.json`（真实 V4.1 内容）+ 确定性定价 + 4 条 approved run、5 条 artifact（含插画），reset 后 H5 仍有完整内容。3D 礼盒正/背面贴包装 PNG，广告牌显示小红书标题，二维码立牌可点击打开 H5，批次沿 CatmullRom 路径移动，traced 后卡车驶出。
 
-### Phase 4 · 图像与视觉打磨（进行中）
+### Phase 4 · 图像与视觉打磨（已完成）
 
 真实图像 Provider；包装变体；色板/阴影/相机缓动；空态/错误态/加载态；性能与内存。
 
 **验收**：1280×720 60fps；截图无溢出；无 key 时 mock 仍好看。
 
-**实现口径（进行中）**：SiliconFlow 生图已接入，默认 Z-Image-Turbo；包装审核通过后生成 `illustration` artifact，H5 故事区与包装工位展示；固定演示码提交同 prompt 的插画快照。包装变体、空态/错误态、60fps 与代码分割仍未做。
+**实现口径**：SiliconFlow 生图已接入，默认 Z-Image-Turbo；包装审核通过后生成 `illustration` artifact，H5 故事区与包装工位展示；固定演示码提交同 prompt 的插画快照。包装 3 个视觉变体、3D 加载/WebGL 错误态、路由与 Scene 分包、API 重试/空批次新建已完成。
 
 ### Phase 5 · 加固与交付
 
@@ -372,7 +372,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#59（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#60（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md；architecture/agents/data/runbook/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -445,10 +445,13 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ---
 
-## 18. Phase 4 实施记录（进行中，2026-10-22）
+## 18. Phase 4 实施记录（已完成，2026-10-22）
 
 - 图像 Provider：`providers/image.py` 调 SiliconFlow `POST /v1/images/generations`；默认 `Tongyi-MAI/Z-Image-Turbo`，可切 `Tongyi-MAI/Z-Image`；自动尺寸 512×512 / 1024×576 / 768×1024，`IMAGE_SIZE` 可覆盖；负向提示词与 120 秒超时可配。
 - 缓存与失败：按 model+prompt+size+negative 的 SHA-256 存 `backend/data/image-cache/`；下载后转 PNG；包装审核通过后生成 `illustration` artifact，失败只记录 `demo=true/error`，不阻塞审核。
 - 展示：H5 故事区显示 768×1024 IP 插画与“AI 生成演示插画”水印说明；包装工位显示插画；固定演示码使用 `seed/demo_illustration.png`（保留 SiliconFlow“AI 生成”水印）。
-- 验证：真实 API 512×512/768×1024 均 200；Provider 类 768×1024 约 986KB、缓存命中；43 后端测试、ruff、typecheck/lint/build 全绿；H5 与包装工位截图检查。
-- 未做：包装变体/盒型、生图失败的视觉兜底、缓存清理、空态/错误态、60fps 长时压测、代码分割（bundle ~1.27MB）。
+- 包装变体：后端 `variants` 权威列表 + `preview?variant=` + 溯源图 `?variant=`；3 个色板变体，前端工位 chips + Zustand，3D 贴图同步；未知变体 422。
+- 加载/错误/空态：`SceneBoundary`（WebGL 失败可重试）、Suspense 骨架、API 错误重试、空批次新建按钮；OrbitControls 阻尼。
+- 代码分割：路由 lazy + Scene lazy；产出 index 260KB、Sandbox 37KB、Trace 23KB、Scene 950KB 异步 chunk；H5 不下载 three.js。
+- 验证：真实 API 512×512/768×1024 均 200；Provider 类 768×1024 约 986KB、缓存命中；43 后端测试、ruff、typecheck/lint/build 全绿；1280×720 场景 2.5 秒采样 120fps；H5 与包装工位截图；变体切换与 3D 贴图请求确认。
+- 未做：真实盒型/刀版、生图失败的视觉兜底、缓存清理、长时 60fps/200% zoom、Playwright、第二产品档案（Phase 5）。

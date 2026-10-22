@@ -48,9 +48,24 @@ async function get<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`API ${response.status}: ${path}`);
+  }
+  return (await response.json()) as T;
+}
+
 export const api = {
   health: () => get<Health>("/health"),
   products: () => get<Product[]>("/products"),
   batches: () => get<Batch[]>("/batches"),
   knowledge: () => get<KnowledgeDoc[]>("/knowledge"),
+  createBatch: (productSlug = "zhaotong-ugly-apple", quantityKg = 300) =>
+    post<Batch>("/batches", { product_slug: productSlug, quantity_kg: quantityKg }),
 };

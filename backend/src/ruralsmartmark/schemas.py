@@ -116,6 +116,13 @@ class KnowledgeDocOut(BaseModel):
     credibility: str
 
 
+class PackagingVariantOut(BaseModel):
+    key: str
+    name: str
+    description: str
+    swatches: list[str]
+
+
 class TracePriceTier(BaseModel):
     channel: str
     pack: str

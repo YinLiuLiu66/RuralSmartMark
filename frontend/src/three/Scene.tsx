@@ -549,6 +549,8 @@ export function Scene({
       <OrbitControls
         makeDefault
         enablePan
+        enableDamping
+        dampingFactor={0.08}
         minPolarAngle={Math.PI / 4.4}
         maxPolarAngle={Math.PI / 3.1}
         minZoom={0.6}

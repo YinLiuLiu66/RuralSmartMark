@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 3 已完成（2026-10-22）；Phase 4 进行中（真实图像 Provider 已完成）
+> 状态：🟢 Phase 4 已完成（2026-10-22）；下一步 Phase 5
 > 更新时间：2026-10-22
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
@@ -17,8 +17,8 @@
 - [x] 后端测试 43 条 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback）；随后 reset 为固定演示数据
-- [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run/artifact、`ZTDEMO26` H5、扫码/对话
-- [ ] Phase 4 · 图像与视觉打磨（进行中：图像 Provider 已完成）
+- [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run、5 条 artifact（含插画）、`ZTDEMO26` H5、扫码/对话
+- [x] Phase 4 · 图像与视觉打磨（图像 Provider / 变体 / 加载态 / 拆包）
 - [ ] Phase 5 · 加固与交付
 
 ## 1. Phase 1 · Walking skeleton（已完成，摘要）
@@ -93,16 +93,16 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - reset 后 `ZTDEMO26`：故事/包装/内容/定价齐全，时间线四段审核，扫码/对话可用；`ZT0006` 按预期 404。
 - 3D：礼盒红/奶油标签、广告牌标题、二维码、卡车出库可见；二维码按钮打开 `/trace/ZTDEMO26`。
 
-## 4. Phase 4 · 图像与视觉打磨（进行中）
+## 4. Phase 4 · 图像与视觉打磨（已完成）
 
 - [x] SiliconFlow 图像 Provider：默认 `Tongyi-MAI/Z-Image-Turbo`，768×1024 / 512×512 / 1024×576 自动选择，SHA-256 缓存，失败不阻塞审核
 - [x] IP 插画 `illustration` artifact：包装审核通过后生成；H5 故事区 + 包装工位展示；固定演示码提交 Z-Image-Turbo 快照
-- [ ] 包装变体/盒型；3D 材质、阴影、相机缓动
-- [ ] 空态/错误态/加载态；1280×720 60fps；DPR 上限 2
+- [x] 包装视觉变体（经典牛皮纸/山野红/夜绿）；3D 相机阻尼
+- [x] 空态/错误态/加载态；1280×720 短时采样 120fps；DPR 上限 2（长时压测留 Phase 5）
 - [x] 七类丑自检逐项记录 pass/fixed/known-gap（H5 + 沙盘，见 ui.md §6）
-- [ ] 代码分割（当前 bundle ~1.27MB 警告）
+- [x] 代码分割：index 260KB / Sandbox 37KB / Trace 23KB / Scene 950KB 异步 chunk
 
-**Phase 4 当前验证**：真实 API 512×512 与 768×1024 均 200；Provider 类 768×1024 约 986KB、缓存命中；固定演示 H5 与包装工位显示插画；43 后端测试、ruff、前端 typecheck/lint/build 全绿。包装变体、空态/错误态、60fps 与拆包尚未做。
+**Phase 4 验收**：真实 API 512×512 与 768×1024 均 200；Provider 类 768×1024 约 986KB、缓存命中；固定演示 H5 与包装工位显示插画；3 个包装变体可切换且 3D 贴图同步；1280×720 场景 2.5 秒采样 120fps；`SceneBoundary`/Suspense/API 重试/空批次新建已接；路由与 three.js 分包；43 后端测试、ruff、前端 typecheck/lint/build 全绿。长时 60fps、200% zoom 留 Phase 5。
 
 ## 5. Phase 5 · 加固与交付（简报）
 
@@ -129,14 +129,14 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [ ] 80–85mm 精选果的同规格、同渠道价格（至少 3 家）
 - [ ] 地理标志公告原文/公告号（当前用协会页 + 云南日报/昭通新闻网）
 
-## 7. 已知缺口（Phase 3 结束时的诚实清单）
+## 7. 已知缺口（Phase 4 结束时的诚实清单）
 
-- 包装变体/盒型、字段级审核表单、Playwright、第二产品档案夹具**还没有**。
-- 真实图像已接入，但只生成 IP 插画；包装变体、生图失败时的视觉兜底和缓存清理策略还没做。
+- 字段级审核表单、Playwright、第二产品档案夹具**还没有**；盒型仍是单一视觉示意，不是真实刀版。
+- 真实图像已接入，但只生成 IP 插画；包装变体已做（仅色板，不含真实盒型/刀版）；生图失败的视觉兜底和缓存清理策略还没做。
 - 定价 156% 与包装成本 5.7 元/盒是演示测算；页面已标“演示测算”。
 - 故事/内容里的区域事实已尽量引用知识库，但 LLM 仍可能写未引用的概括（FactGuard 对未引用数字只给 warning）；审核时看引用与预警。
 - IP 对话只做了关键词/规则 + LLM 后置校验；没有多轮上下文管理、没有真人客服兜底。
-- 前端 bundle 约 1.27MB（three.js 占大头）；Phase 4 再做代码分割。
+- 前端已分包：initial index 260KB、Scene 950KB 异步；手机 H5 不下载 three.js。
 - 200% zoom、超长批次码、长时 60fps/内存尚未压测。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 

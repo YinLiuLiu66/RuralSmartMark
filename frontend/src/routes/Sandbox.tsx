@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BadgePercent,
   BookOpen,
@@ -29,7 +29,11 @@ import ReviewDialog from "../components/ReviewDialog";
 import StationCard from "../components/StationCard";
 import { usePipelineStore } from "../stores/pipeline";
 import { useWorldStore } from "../stores/world";
-import { Scene } from "../three/Scene";
+import { SceneBoundary } from "../three/SceneBoundary";
+
+const Scene = lazy(() =>
+  import("../three/Scene").then((module) => ({ default: module.Scene })),
+);
 
 const STAGES = [
   { key: "intake", label: "原料入库" },
@@ -39,6 +43,17 @@ const STAGES = [
   { key: "pricing", label: "定价上架" },
   { key: "trace", label: "扫码溯源" },
 ];
+
+function SceneLoading() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-paper">
+      <div className="text-center">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-line border-t-apple" />
+        <p className="mt-3 text-xs text-ink-muted">正在搭建沙盘…</p>
+      </div>
+    </div>
+  );
+}
 
 function Metric({
   label,
@@ -77,11 +92,14 @@ export default function Sandbox() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [scanCount, setScanCount] = useState(0);
+  const [creating, setCreating] = useState(false);
 
   const { batches, selectedBatchId, setBatches, selectBatch } = useWorldStore();
   const {
     workspace,
     selectedAgent,
+    packagingVariant,
+    setPackagingVariant,
     busy,
     error: pipelineError,
     refresh,
@@ -116,8 +134,9 @@ export default function Sandbox() {
     if (!selectedBatchId) return;
     selectAgent(null);
     setReviewOpen(false);
+    setPackagingVariant("kraft");
     void refresh(selectedBatchId);
-  }, [selectedBatchId, refresh, selectAgent]);
+  }, [selectedBatchId, refresh, selectAgent, setPackagingVariant]);
 
   useEffect(() => {
     if (!selectedBatchId) return;
@@ -167,10 +186,10 @@ export default function Sandbox() {
   const packagingImageUrl =
     currentBatch && workspace?.batch.packaging_json
       ? traceCode
-        ? `/api/trace/${traceCode}/packaging.png`
+        ? `/api/trace/${traceCode}/packaging.png?variant=${encodeURIComponent(packagingVariant)}`
         : `/api/batches/${currentBatch.id}/agents/packaging/preview?v=${encodeURIComponent(
             currentBatch.updated_at,
-          )}`
+          )}&variant=${encodeURIComponent(packagingVariant)}`
       : null;
   const marketingJson = workspace?.batch.marketing_json as
     | { xiaohongshu?: { title?: string } }
@@ -271,6 +290,20 @@ export default function Sandbox() {
   function handleOpenTrace() {
     if (!traceCode) return;
     window.open(`/trace/${traceCode}`, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleCreateBatch() {
+    setCreating(true);
+    setLoadError(null);
+    try {
+      const batch = await api.createBatch();
+      setBatches([batch, ...batches]);
+      selectBatch(batch.id);
+    } catch (reason: unknown) {
+      setLoadError(reason instanceof Error ? reason.message : "新建批次失败");
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -404,28 +437,41 @@ export default function Sandbox() {
           </aside>
 
           <main className="relative min-h-0 bg-paper">
-            <Scene
-              batchCode={currentBatch?.code ?? "ZT-2026-001"}
-              batchStation={currentBatch?.current_station ?? "intake"}
-              stationStatuses={stationStatuses}
-              packagingImageUrl={packagingImageUrl}
-              marketingTitle={marketingTitle}
-              traceCode={traceCode}
-              traced={traced}
-              onSelectBatch={() => {
-                if (currentBatch) selectBatch(currentBatch.id);
-              }}
-              onSelectStation={handleSelectStation}
-              onOpenTrace={handleOpenTrace}
-            />
+            <SceneBoundary>
+              <Suspense fallback={<SceneLoading />}>
+                <Scene
+                  batchCode={currentBatch?.code ?? "ZT-2026-001"}
+                  batchStation={currentBatch?.current_station ?? "intake"}
+                  stationStatuses={stationStatuses}
+                  packagingImageUrl={packagingImageUrl}
+                  marketingTitle={marketingTitle}
+                  traceCode={traceCode}
+                  traced={traced}
+                  onSelectBatch={() => {
+                    if (currentBatch) selectBatch(currentBatch.id);
+                  }}
+                  onSelectStation={handleSelectStation}
+                  onOpenTrace={handleOpenTrace}
+                />
+              </Suspense>
+            </SceneBoundary>
             <div className="pointer-events-none absolute left-5 top-5">
               <div className="rounded-full border border-line bg-surface/90 px-3 py-1 text-[11px] text-ink-muted shadow-card">
                 昭通丑苹果 · {currentBatch?.code ?? "无批次"} · {statusLabel}
               </div>
             </div>
             {(loadError || pipelineError) && (
-              <div className="absolute left-1/2 top-4 max-w-[80%] -translate-x-1/2 rounded-control border border-danger/30 bg-surface px-4 py-2 text-xs text-danger shadow-card">
-                {loadError ?? pipelineError}
+              <div className="absolute left-1/2 top-4 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-control border border-danger/30 bg-surface px-4 py-2 text-xs text-danger shadow-card">
+                <span>{loadError ?? pipelineError}</span>
+                {loadError && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="shrink-0 underline underline-offset-4"
+                  >
+                    重试
+                  </button>
+                )}
               </div>
             )}
           </main>
@@ -440,6 +486,8 @@ export default function Sandbox() {
                 onRun={handleRunAgent}
                 onReview={() => setReviewOpen(true)}
                 onClose={() => selectAgent(null)}
+                packagingVariant={packagingVariant}
+                onPackagingVariantChange={setPackagingVariant}
               />
             ) : (
               <section className="card p-4">
@@ -481,6 +529,16 @@ export default function Sandbox() {
                 <p className="mt-4 text-[11px] leading-relaxed text-ink-muted">
                   点顶栏按钮运行/审核；点 3D 站点或右侧四站点查看每个 Agent 的产出。
                 </p>
+                {!currentBatch && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCreateBatch()}
+                    disabled={creating}
+                    className="mt-3 w-full rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    {creating ? "新建中…" : "新建演示批次"}
+                  </button>
+                )}
               </section>
             )}
 

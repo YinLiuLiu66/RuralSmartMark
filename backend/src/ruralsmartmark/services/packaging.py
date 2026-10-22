@@ -12,6 +12,37 @@ from PIL import Image, ImageDraw, ImageFont
 from ..models import Batch, ProductProfile
 
 DEFAULT_PALETTE = ["#B6402A", "#C9A46A", "#3F6B4F", "#F7F3EA"]
+
+PACKAGING_VARIANTS: dict[str, dict[str, object]] = {
+    "kraft": {
+        "name": "经典牛皮纸",
+        "description": "产品档案原始色板，苹果红 + 牛皮纸 + 叶绿",
+        "swatches": ["#B6402A", "#C9A46A", "#3F6B4F", "#F7F3EA"],
+        "palette": None,
+    },
+    "crimson": {
+        "name": "山野红",
+        "description": "更浓的苹果红主色，适合礼赠场景",
+        "swatches": ["#8F2E1F", "#D9B37A", "#2F5A42", "#FBF6EC"],
+        "palette": {
+            "apple": "#8F2E1F",
+            "kraft": "#D9B37A",
+            "leaf": "#2F5A42",
+            "paper": "#FBF6EC",
+        },
+    },
+    "night": {
+        "name": "夜绿",
+        "description": "深绿主色、苹果红点缀，弱化节庆感",
+        "swatches": ["#24483A", "#C9A46A", "#B6402A", "#F1EBDD"],
+        "palette": {
+            "apple": "#24483A",
+            "kraft": "#C9A46A",
+            "leaf": "#B6402A",
+            "paper": "#F1EBDD",
+        },
+    },
+}
 _FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
 BUNDLED_FONTS = {
     ("serif", False): _FONT_DIR / "NotoSerifSC-Regular.otf",
@@ -35,8 +66,23 @@ _FONT_NAME = "Noto Serif SC, Songti SC, serif"
 _SANS_NAME = "Noto Sans SC, PingFang SC, sans-serif"
 
 
-def _palette(product: ProductProfile) -> list[str]:
-    roles = product.palette or {}
+def list_packaging_variants() -> list[dict[str, object]]:
+    return [
+        {
+            "key": key,
+            "name": meta["name"],
+            "description": meta["description"],
+            "swatches": meta["swatches"],
+        }
+        for key, meta in PACKAGING_VARIANTS.items()
+    ]
+
+
+def _palette(product: ProductProfile, variant: str = "kraft") -> list[str]:
+    roles = dict(product.palette or {})
+    override = PACKAGING_VARIANTS.get(variant, {}).get("palette")
+    if isinstance(override, dict):
+        roles.update(override)
     values = [
         roles.get("apple", DEFAULT_PALETTE[0]),
         roles.get("kraft", DEFAULT_PALETTE[1]),
@@ -269,8 +315,9 @@ def _render_label_image(
     product: ProductProfile,
     *,
     public_base_url: str,
+    variant: str = "kraft",
 ) -> Image.Image:
-    colors = _palette(product)
+    colors = _palette(product, variant)
     primary, kraft, leaf, paper = colors[:4]
     copy = _copy(output)
     structure = _structure(output)
@@ -358,8 +405,15 @@ def render_label_png_bytes(
     product: ProductProfile,
     *,
     public_base_url: str,
+    variant: str = "kraft",
 ) -> bytes:
-    image = _render_label_image(output, batch, product, public_base_url=public_base_url)
+    image = _render_label_image(
+        output,
+        batch,
+        product,
+        public_base_url=public_base_url,
+        variant=variant,
+    )
     buffer = BytesIO()
     image.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()
@@ -372,9 +426,16 @@ def render_label_png(
     path: Path,
     *,
     public_base_url: str,
+    variant: str = "kraft",
 ) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(
-        render_label_png_bytes(output, batch, product, public_base_url=public_base_url)
+        render_label_png_bytes(
+            output,
+            batch,
+            product,
+            public_base_url=public_base_url,
+            variant=variant,
+        )
     )
     return path

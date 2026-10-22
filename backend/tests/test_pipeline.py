@@ -41,6 +41,18 @@ async def test_pipeline_end_to_end(session, client):
     assert preview.headers["content-type"] == "image/png"
     assert preview.content.startswith(b"\x89PNG")
 
+    variants = await client.get(f"/api/batches/{batch_id}/agents/packaging/variants")
+    assert variants.status_code == 200
+    assert {item["key"] for item in variants.json()} == {"kraft", "crimson", "night"}
+    variant_preview = await client.get(
+        f"/api/batches/{batch_id}/agents/packaging/preview?variant=crimson"
+    )
+    assert variant_preview.status_code == 200
+    assert variant_preview.content.startswith(b"\x89PNG")
+    assert variant_preview.content != preview.content
+    unknown = await client.get(f"/api/batches/{batch_id}/agents/packaging/preview?variant=nope")
+    assert unknown.status_code == 422
+
     approved = await client.post(f"/api/batches/{batch_id}/agents/packaging/approve", json={})
     assert approved.json()["batch"]["state"] == "packaging_approved"
     packaging_artifact = next(

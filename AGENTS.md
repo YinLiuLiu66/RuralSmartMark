@@ -15,8 +15,9 @@
 - **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次移动。
 - **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI。
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
-- **Phase 4 进行中**：真实图像 Provider 已接入（默认 `Tongyi-MAI/Z-Image-Turbo`，审核通过后生成 `illustration` artifact，SHA-256 缓存）；下一步包装变体、空态/错误态、性能与代码分割。
-- **尚未实现**：包装变体、字段级审核表单（当前 JSON 编辑器）、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格与包装厂真实报价、地理标志公告原文。别假设它们存在。
+- **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
+- **下一步 Phase 5**：Playwright 冒烟、第二产品档案、长时 60fps/200% zoom、字段级审核表单（可选）、真实价格/包装厂/GI 公告核验。
+- **尚未实现**：字段级审核表单（当前 JSON 编辑器）、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格与包装厂真实报价、地理标志公告原文。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -92,13 +93,15 @@ frontend/
   src/api/trace.ts                  # 公开溯源 / 扫码 / 对话类型与 API
   src/agents.ts                     # Agent 元数据、状态映射、下一站/审核站
   src/stores/world.ts               # Zustand：批次/选中批次
-  src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/busy
+  src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/包装变体/busy
   src/three/Scene.tsx               # 等距场景（包装贴图/广告牌/二维码/路径/卡车）
+  src/three/SceneBoundary.tsx       # WebGL/懒加载错误边界
   src/three/stations.ts             # 四站点元数据
-  src/components/StationCard.tsx    # 工位卡（预览/引用/FactGuard/包装图）
+  src/components/StationCard.tsx    # 工位卡（预览/引用/FactGuard/包装变体/插画）
   src/components/ReviewDialog.tsx   # 原生 dialog 审核（JSON + 引用/预警/包装预览）
   src/routes/Sandbox.tsx            # 桌面沙盘 `/` + SSE + 审核动线 + 扫码计数
   src/routes/Trace.tsx              # 公开溯源 H5 `/trace/:code`（390px）
+  src/App.tsx                       # 路由懒加载（Sandbox / Trace 分包）
   src/styles/global.css             # Tailwind v4 @theme + 山野编辑部 token
   vite.config.ts package.json
 docs/

@@ -260,11 +260,14 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 修复：二维码被 Tailwind preflight 的 `max-width:100%` 压成 14px，改为 `maxWidth:none`；广告牌中文在 CanvasTexture 远端不可读，改用 Html 卡片；StrictMode 下提前释放纹理导致礼盒贴图空白，改用 `useTexture` + Suspense。
 - Phase 3 结束时已知缺口：各 Agent 字段级表单、Playwright、200% zoom、长时 60fps/内存压测；bundle 约 1.27MB，Phase 4 拆包；包装 PNG 已内置 Noto 字体，SVG 仍依赖查看端字体，只作导出用途。
 
-### Phase 4（进行中）
+### Phase 4（已完成）
 
 - 真实图像：包装审核通过后生成 `illustration` artifact（默认 Z-Image-Turbo，768×1024）；H5 故事区显示插画与“AI 生成演示插画 · 固定快照/服务端生成 · 非真实人物”说明；包装工位显示插画。
 - 固定演示码使用 `seed/demo_illustration.png`，保留 SiliconFlow“AI 生成”水印；不把水印裁掉，避免看起来像真实摄影。
 - 生图失败不阻塞审核：包装工位显示“插画生成失败，包装审核不受影响”；缓存按 prompt hash 存 `backend/data/image-cache/`。
-- 验证：390×844 H5 插画区截图；1280×720 包装工位插画截图；真实 API 512×512/768×1024 均 200。
-- 未做：包装变体/盒型、生图失败的视觉兜底、缓存清理、空态/错误态、60fps 长时压测、代码分割。
+- 包装变体：工位显示「经典牛皮纸 / 山野红 / 夜绿」色板 chips，选中后预览图、溯源图与 3D 礼盒贴图同步；只改色板，不改文案/结构/事实。
+- 加载/错误/空态：路由 Suspense 骨架；`SceneBoundary` 捕获 WebGL/懒加载失败并可重试；API 错误横幅带重试；无批次时给“新建演示批次”。
+- 代码分割：路由 lazy + Scene lazy；H5 不下载 three.js；`Scene` chunk 950KB 异步，initial index 260KB。
+- 验证：390×844 H5 插画区截图；1280×720 包装工位插画/变体截图；2.5 秒采样 120fps；真实 API 512×512/768×1024 均 200。
+- 未做：真实盒型/刀版、生图失败的视觉兜底、缓存清理、长时 60fps/200% zoom、Playwright、第二产品档案（Phase 5）。
 
