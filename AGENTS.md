@@ -16,9 +16,9 @@
 - **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI。
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
-- **Phase 5 已完成**：Playwright 6 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
+- **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
 - **下一步交付/补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
-- **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、生图失败的视觉兜底、图像缓存清理、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
+- **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -64,8 +64,9 @@
 - `uv sync` → 依赖安装（别手动建 venv）
 - `uv run alembic upgrade head` → 建表/迁移
 - `uv run python -m ruralsmartmark.seed` → 种演示数据（幂等）
+- `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` → 生图缓存清理预演（默认 30 天/512MB）
 - `uv run ruralsmartmark` → 起服务，端口 8000
-- `uv run pytest` → 全测试（44 passed + 1 条默认跳过的真实 LLM 冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
+- `uv run pytest` → 全测试（47 passed + 1 条默认跳过的真实 LLM 冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
 - `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` → 可选真实 LLM 第二产品冒烟，会消耗额度
 - `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化
 
@@ -75,7 +76,7 @@
 - `pnpm dev` → 开发服，端口 5173
 - `pnpm typecheck` / `pnpm lint` / `pnpm build`
 - `pnpm exec playwright install chromium` → 首次安装测试浏览器
-- `pnpm test:e2e` → 6 条冒烟；`pnpm test:perf` → 性能用例；`PERF_SECONDS=60 pnpm test:perf` 可指定时长
+- `pnpm test:e2e` → 7 条冒烟；`pnpm test:perf` → 性能用例；`PERF_SECONDS=60 pnpm test:perf` 可指定时长
 
 文档无构建步骤，直接改 `.md`。
 
@@ -84,21 +85,21 @@
 ```
 backend/
   src/ruralsmartmark/
-    main.py config.py db.py deps.py models.py schemas.py
+    main.py config.py db.py deps.py models.py schemas.py maintenance.py
     routes/ health.py products.py batches.py demo.py pipeline.py
            knowledge.py artifacts.py trace.py   # 知识库 / 包装文件 / 公开溯源
     agents/ base.py schemas.py prompts.py engine.py runtime.py mock.py orchestrator.py
     providers/ llm.py image.py      # LLM + SiliconFlow 生图 + Mock
     services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
-             trace.py trace_chat.py # 公开溯源聚合 + IP 对话边界
+             trace.py trace_chat.py image_cache.py # 公开溯源/对话/生图缓存清理
     assets/fonts/                  # 内置 Noto Serif/Sans + OFL
     seed/ __init__.py __main__.py demo_batch.json demo_illustration.png  # 幂等 seed + 固定演示快照
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
          test_knowledge.py test_fact_guard.py test_pricing.py test_engine.py
-         test_llm.py test_packaging.py test_trace.py test_image.py test_second_product.py
-         test_second_product_real.py  # 可选真实 LLM 冒烟（RSM_REAL_LLM=1）
+         test_llm.py test_packaging.py test_trace.py test_image.py test_image_cache.py
+         test_second_product.py test_second_product_real.py  # 后者为可选真实 LLM 冒烟
          fixtures/majiang/          # 第二产品档案夹具（只建数据；含 demo 知识库）
 data/knowledge/zhaotong/*.md        # 事实源；已入库
 frontend/

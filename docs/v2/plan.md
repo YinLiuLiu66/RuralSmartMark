@@ -334,7 +334,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 单元/集成/Playwright 冒烟；demo reset 幂等；第二产品档案测试；Docker/一键启动；文档/来源/决策；验收清单。
 
-**实现口径**：Playwright 桌面/移动冒烟 6 条 + 60 秒性能 2 条；reset 回归覆盖“扫码后归零、重复 reset 不重复”；麻江蓝莓只建数据夹具，mock 与真实 V4.1-Flash 四站均跑通，提示词/定价/包装/溯源码前缀档案化；根 `Makefile` 提供 `dev/test/e2e/perf`；Docker 与字段级表单确认不做（decisions #63）；LLM 输出未知字段忽略（#64）。
+**实现口径**：Playwright 桌面/移动冒烟 7 条 + 60 秒性能 2 条；reset 回归覆盖“扫码后归零、重复 reset 不重复”；麻江蓝莓只建数据夹具，mock 与真实 V4.1-Flash 四站均跑通，提示词/定价/包装/溯源码前缀档案化；根 `Makefile` 提供 `dev/test/e2e/perf`；Docker 与字段级表单确认不做（decisions #63）；LLM 输出未知字段忽略（#64）；生图失败视觉兜底与缓存清理（#65）。
 
 **验收**：DoD 全过；新 Agent 只读文档能跑起来。
 
@@ -374,7 +374,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#64（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#65（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -462,13 +462,14 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 19. Phase 5 实施记录（已完成，2026-10-22）
 
-- Playwright：本地 `@playwright/test` + Chromium；`playwright.config.ts` 三个 project（desktop/mobile/perf），`webServer` 在服务未启动时自动迁移 + seed + 起后端与前端。6 条冒烟覆盖固定演示批次、包装变体/插画、3D 二维码新标签 H5、390px H5 与扫码、320px 无溢出、未知/超长码 404；2 条性能覆盖 60 秒帧率/堆与 200% 等效视口。
+- Playwright：本地 `@playwright/test` + Chromium；`playwright.config.ts` 三个 project（desktop/mobile/perf），`webServer` 在服务未启动时自动迁移 + seed + 起后端与前端。7 条冒烟覆盖固定演示批次、包装变体/插画、插画失败视觉兜底、3D 二维码新标签 H5、390px H5 与扫码、320px 无溢出、未知/超长码 404；2 条性能覆盖 60 秒帧率/堆与 200% 等效视口。
 - reset 幂等：`test_demo_reset_keeps_fixed_demo_trace` 先扫码再 reset，断言扫码数归零、4 run/5 artifact 不重复；`test_seed_is_idempotent` 断言重复 seed 不新增 run/artifact。
 - 第二产品夹具：`backend/tests/fixtures/majiang/` 产品 JSON + 6 篇 demo 知识库 + 3 条基准价；`test_second_product_runs_without_code_changes` 用 mock 跑完四站，断言 `traced`、`MJ####` 溯源码、公开 H5、包装 PNG、无昭通/苹果残留。`RSM_REAL_LLM=1` 的真实 V4.1-Flash 四站也通过：四站 `model != mock`、无 fallback，耗时约 90 秒；默认测试跳过以免意外扣费。
 - 档案化：`build_system_prompt(product)` / `agent_brief(agent, product)` 从 `specs` 读取；`demo_copy` 支持第二档案的 mock 文案；定价的 `pack_kg/*_pack_label/persona_greeting_scene/sorting_note/packaging_note/pricing_faq`、包装品牌字/主字/标语/页脚、溯源码前缀均可配；昭通默认值不变。
 - 真实 LLM 稳定性：V4.1-Flash 在第二产品营销输出里多写 `wechat.title_note: null`，触发表述校验降级；输出模型改为忽略未知键（#64），真实四站重跑通过。
+- 生图兜底与缓存：包装工位在插画 artifact 带错误或图片加载失败时显示设计化空态；`services/image_cache.py` + `maintenance image-cache` 支持 30 天/512MB 清理，先删最旧、支持 dry-run（#65）。
 - 来源补证：农业部公告第1478号 / AGI2010-07-00370 已入 GI-01；80–85mm 精选果补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，仍无书面报价。
 - 性能：headless Chromium 1280×720 固定演示批次 60 秒 58.3fps，JSHeap 44.5MB→42.4MB；640×360 显示“3D 沙盘需要桌面端”且无横向溢出。
 - 一键启动：根 `Makefile` 的 `dev/test/e2e/perf`；runbook `docs/v2/runbook.md` 覆盖启动、演示动线、验收、新增档案与排障。
-- 验证：后端 44 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 6 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过。
-- 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、生图失败视觉兜底、缓存清理、手机真机扫码、包装厂书面报价/食品接触合规。
+- 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计。
+- 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、手机真机扫码、包装厂书面报价/食品接触合规。

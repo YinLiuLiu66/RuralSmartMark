@@ -53,10 +53,11 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 44 passed + 1 skipped + ruff；前端 typecheck/lint/build
-make e2e     # Playwright 6 条冒烟（桌面 3 + 移动 3）
+make test    # 后端 47 passed + 1 skipped + ruff；前端 typecheck/lint/build
+make e2e     # Playwright 7 条冒烟（桌面 4 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度
+cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 缓存清理预演
 ```
 
 - 性能基线（2026-10-22，本机 1280×720 headless Chromium）：60 秒 58.3fps，JSHeap 44.5MB→42.4MB。

@@ -152,6 +152,14 @@ function PackagingPreview({
   const copy = (output.packaging_copy ?? {}) as Record<string, unknown>;
   const structure = (output.structure ?? {}) as Record<string, unknown>;
   const current = variants.find((item) => item.key === variant);
+  const [illustrationFailed, setIllustrationFailed] = useState(false);
+
+  useEffect(() => {
+    setIllustrationFailed(false);
+  }, [illustration?.file_url]);
+
+  const illustrationError = Boolean(illustration?.content_json?.error) || illustrationFailed;
+
   return (
     <div>
       {variants.length > 0 && (
@@ -199,22 +207,34 @@ function PackagingPreview({
         <span>侧面：{String(copy.side ?? "—")}</span>
         <span className="col-span-2">盒型：{String(structure.box_type ?? "—")}</span>
       </div>
-      {illustration?.file_url && (
+      {illustration?.file_url && !illustrationError && (
         <div className="mt-3 overflow-hidden rounded-control border border-line bg-surface-2">
           <img
             src={illustration.file_url}
             alt="IP 插画（AI 生成）"
             className="aspect-[3/4] w-full object-cover"
+            onError={() => setIllustrationFailed(true)}
           />
           <p className="border-t border-line px-2 py-1.5 text-[10px] text-ink-muted">
             IP 插画 · {String(illustration.content_json?.model ?? "Z-Image-Turbo")} · 演示合成
           </p>
         </div>
       )}
-      {Boolean(illustration?.content_json?.error) && (
-        <p className="mt-2 text-[10px] leading-4 text-amber">
-          插画生成失败，包装审核不受影响；可稍后重跑包装。
-        </p>
+      {illustrationError && (
+        <div
+          role="status"
+          className="mt-3 overflow-hidden rounded-control border border-dashed border-line bg-surface-2"
+        >
+          <div className="flex aspect-[3/4] flex-col items-center justify-center gap-2 px-5 text-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-apple-weak text-[11px] font-medium text-apple">
+              IP
+            </span>
+            <p className="text-xs text-ink">插画这次没有生成</p>
+            <p className="text-[10px] leading-5 text-ink-faint">
+              包装审核不受影响；可稍后重跑包装。
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

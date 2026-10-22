@@ -11,13 +11,14 @@ uv run python -m ruralsmartmark.seed
 uv run ruralsmartmark         # http://127.0.0.1:8000
 ```
 
-测试与检查（44 条常跑 + 1 条可选真实 LLM 冒烟）：
+测试与检查（47 条常跑 + 1 条可选真实 LLM 冒烟）：
 
 ```bash
 uv run pytest
 RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py   # 可选，会消耗额度
 uv run ruff check .
 uv run ruff format .
+uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 生图缓存清理预演
 ```
 
 接口：

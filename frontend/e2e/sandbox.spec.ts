@@ -32,6 +32,36 @@ test("包装工位展示变体、服务端预览与 IP 插画", async ({ page })
   await expect(page.getByAltText("包装示意预览")).toHaveAttribute("src", /variant=night/);
 });
 
+test("插画生成失败时显示视觉兜底", async ({ page }) => {
+  await page.route("**/api/batches/*/workspace", async (route) => {
+    const response = await route.fetch();
+    const workspace = await response.json();
+    workspace.artifacts = workspace.artifacts.map((artifact: Record<string, unknown>) =>
+      artifact.kind === "illustration"
+        ? {
+            ...artifact,
+            file_path: null,
+            file_url: null,
+            content_json: { ...(artifact.content_json ?? {}), error: "测试失败" },
+          }
+        : artifact,
+    );
+    await route.fulfill({
+      status: response.status(),
+      contentType: "application/json",
+      body: JSON.stringify(workspace),
+    });
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("combobox").locator("option:checked")).toHaveText("ZT-DEMO-001");
+  const stations = page.locator("section", { hasText: "四站点" });
+  await stations.getByRole("button", { name: /包装设计/ }).click();
+
+  await expect(page.getByText("插画这次没有生成")).toBeVisible();
+  await expect(page.getByText("包装审核不受影响")).toBeVisible();
+});
+
 test("3D 二维码按钮打开溯源 H5", async ({ page, context }) => {
   await page.goto("/");
   await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
