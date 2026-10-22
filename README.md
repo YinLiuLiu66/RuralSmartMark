@@ -11,9 +11,9 @@
 - 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。
 - 10 篇昭通知识库 Markdown；FactGuard 校验逐字引用、违禁认证/功效/保证、数字预警；审核通过前服务端再校验一次。
 - 确定性定价计算器：成本、三档价格、毛利、156% 演示溢价与服务端重算；LLM 只写解释。
-- 包装合成：同一份文案生成 SVG 预览与 Pillow PNG；审核通过后落盘，二维码指向 `/trace/:code`（H5 内容在 Phase 3）。
+- 包装合成：内置 Noto Serif/Sans（OFL，约 40MB）渲染 PNG，预览接口直接返回服务端 PNG；审核通过后落盘，二维码指向 `/trace/:code`（H5 内容在 Phase 3）。
 - 前端 React 19 + R3F 9 + Tailwind 4：3D 沙盘、工位卡（引用/预警/包装预览）、JSON 审核弹窗、批次沿站点移动、KPI/产出物 Tabs。
-- 后端 27 测试、ruff、前端 typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 跑通到 `traced`；切换后的 V4.1-Flash 已验证故事/包装 Agent，旧 `traced` 批次未用新模型重跑。mock 动线仍可跑。
+- 后端 29 测试、ruff、前端 typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 跑通到 `traced`；切换后的 V4.1-Flash 已验证故事/包装 Agent，旧 `traced` 批次未用新模型重跑。mock 动线仍可跑。
 
 **Phase 3 下一步**：3D 包装贴图/广告牌/二维码联动 + 公开溯源 API/H5 + IP 对话。真实图像 Provider、字段级审核表单、扫码统计写入尚未实现。
 
@@ -51,8 +51,9 @@ Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个
 ```
 backend/
   src/ruralsmartmark/       # FastAPI、ORM、四 Agent、知识库/FactGuard、定价/包装
+    assets/fonts/           # 内置 Noto Serif/Sans SC + OFL，约 40MB
   migrations/               # Alembic
-  tests/                    # health / seed / pipeline / knowledge / guard / pricing / engine
+  tests/                    # health / seed / pipeline / knowledge / guard / pricing / engine / fonts
 data/
   knowledge/zhaotong/       # 10 篇事实源 Markdown（入库）
 frontend/
@@ -96,7 +97,7 @@ docs/
 | POST | `/api/batches/{id}/agents/{agent}/run` | 重跑当前 Agent |
 | POST | `/api/batches/{id}/agents/{agent}/approve` | 审核通过（服务端二次 FactGuard/定价重算） |
 | POST | `/api/batches/{id}/agents/{agent}/reject` | 驳回 |
-| GET | `/api/batches/{id}/agents/packaging/preview` | 包装 SVG 预览 |
+| GET | `/api/batches/{id}/agents/packaging/preview` | 包装 PNG 预览（服务端渲染） |
 | GET | `/api/artifacts/{id}/file` | 审核后的包装 PNG |
 | GET | `/api/batches/{id}/events` | SSE 实时事件 |
 | GET | `/api/batches/by-code/{code}` | 按批次码查 |

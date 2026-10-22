@@ -146,7 +146,7 @@ function PackagingPreview({
           className="aspect-[8/5] w-full object-cover"
         />
       </div>
-      <p className="mt-2 text-[10.5px] text-ink-muted">SVG 示意 · 审核通过后落 PNG</p>
+      <p className="mt-2 text-[10.5px] text-ink-muted">服务端渲染 · 审核通过后落 PNG</p>
       <div className="mt-2 text-xs font-medium text-ink">{String(output.concept ?? "")}</div>
       <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10.5px] text-ink-muted">
         <span>正面：{String(copy.front ?? "—")}</span>

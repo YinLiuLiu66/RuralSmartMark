@@ -13,7 +13,7 @@
 
 - **Phase 0 已完成**：`rewrite/v2` 分支；旧 v1 后端/前端/文档/Postgres 数据已移出工作树（`main` 保留历史）；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
 - **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次沿站点移动、审核后自动启动下一站。
-- **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、包装 SVG 预览 + Pillow PNG、引用/预警/包装预览 UI、知识库 API。
+- **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI、知识库 API。
 - **下一步 Phase 3**：沙盘联动（包装贴图/广告牌/二维码）+ 公开溯源 API/H5 + IP 对话。
 - **尚未实现**：公开溯源 API/IP 对话、3D 包装贴图、真实图像 Provider、字段级审核表单（当前 JSON 编辑器）、扫码统计落库。别假设它们存在。
 
@@ -26,6 +26,7 @@
   `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
   `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
 - 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。
+- 包装字体 `backend/src/ruralsmartmark/assets/fonts/` 内置 Noto Serif/Sans SC（OFL，约 40MB）；PNG 不再依赖系统字体。
   运行期包装 PNG 在 `backend/data/artifacts/`（gitignore）。
 - `uv run pytest` **不需要 PG**；测试用临时 SQLite；单函数一样跑。
 - 前端没有测试框架；只有 `pnpm typecheck` / `pnpm lint` / `pnpm build` 兜底；别假设有 vitest/jest。
@@ -74,11 +75,13 @@ backend/
     agents/ base.py schemas.py prompts.py engine.py runtime.py mock.py orchestrator.py
     providers/ llm.py image.py      # Provider 接口 + Mock
     services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
+    assets/fonts/                  # 内置 Noto Serif/Sans + OFL
     seed/ __init__.py __main__.py   # 幂等 seed（含知识库 Markdown）
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
          test_knowledge.py test_fact_guard.py test_pricing.py test_engine.py
+         test_llm.py test_packaging.py
 data/knowledge/zhaotong/*.md        # 事实源；已入库
 frontend/
   src/api/client.ts                 # fetch 封装 + Product/Batch/Knowledge 类型

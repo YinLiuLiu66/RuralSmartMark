@@ -12,8 +12,8 @@
 - [x] 幂等 seed：昭通丑苹果 + 10 篇知识库 + 3 条价格基准 + 批次 `ZT-DEMO-001` / `ZT-2026-001`
 - [x] Mock LLM Provider + Mock Image Provider（无 key 可跑）
 - [x] **Phase 0/1**：沙盘骨架、四 Agent 状态机、审核/驳回/重跑、SSE、工位卡、批次移动
-- [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 包装 SVG/PNG + 引用/预警/预览 UI
-- [x] 后端测试 27 条 + `ruff check` 零告警
+- [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 内置字体包装 PNG + 引用/预警/预览 UI
+- [x] 后端测试 29 条 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] 真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 走到 `traced`（`ZT0002`，156% 演示溢价）；切换后的 V4.1-Flash 已验证故事/包装 Agent，旧 `traced` 批次未重跑；mock 动线仍可跑
 - [ ] Phase 3 · 沙盘联动 + 溯源 H5
@@ -49,7 +49,7 @@
 
 ### 2.3 包装合成
 
-- [x] `services/packaging.py`：SVG 预览 + Pillow PNG（1600×1000，固定品牌色角色）
+- [x] `services/packaging.py`：内置 Noto Serif/Sans，服务端 PNG 预览 + 落盘（1600×1000，固定品牌色角色）
 - [x] `GET /api/batches/{id}/agents/packaging/preview`、`GET /api/artifacts/{id}/file`
 - [x] 审核通过后落盘；定价生成溯源码后重渲染最终二维码
 
@@ -67,11 +67,11 @@ cd backend && uv run pytest && uv run ruff check .
 cd frontend && pnpm typecheck && pnpm lint && pnpm build
 ```
 
-- `uv run pytest` 27 passed；`uv run ruff check .` 零告警。
+- `uv run pytest` 29 passed；`uv run ruff check .` 零告警。
 - `pnpm typecheck` / `lint` / `build` 全绿（bundle ~1.24MB，Phase 4 拆包）。
 - 真实 DeepSeek：`ZT-2026-001` 故事/包装/内容/定价四步均 `waiting_review` → 批准 → `traced`；`ZT0002`，礼盒 ¥128/5kg，溢价 156%，二维码指向 `/trace/ZT0002`。
 - 真实营销 Agent 首次 90s 超时降级；提高到 180s 后成功。超时是真实风险，已在 `.env.example` 固定 180。
-- 浏览器：引用外链可点、FactGuard 预警可见、包装 SVG 预览正常、审核后再校验拦截验证通过（pytest）。
+- 浏览器：引用外链可点、FactGuard 预警可见、包装 PNG 预览正常、审核后再校验拦截验证通过（pytest）。
 
 ## 3. Phase 3 · 沙盘联动 + 溯源 H5（简报）
 

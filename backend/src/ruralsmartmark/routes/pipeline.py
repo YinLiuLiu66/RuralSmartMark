@@ -17,7 +17,7 @@ from ..schemas import (
     RejectRequest,
 )
 from ..services.events import bus
-from ..services.packaging import build_label_svg
+from ..services.packaging import render_label_png_bytes
 from ..services.workspace import load_workspace
 
 router = APIRouter()
@@ -105,15 +105,15 @@ async def packaging_preview(batch_id: int, session: SessionDep, runtime: Runtime
     product = await session.get(ProductProfile, batch.product_id)
     if product is None:
         raise HTTPException(status_code=409, detail="产品档案缺失")
-    svg = build_label_svg(
+    png = render_label_png_bytes(
         run.output_json,
         batch,
         product,
         public_base_url=runtime.settings.public_base_url,
     )
     return Response(
-        content=svg,
-        media_type="image/svg+xml",
+        content=png,
+        media_type="image/png",
         headers={"Cache-Control": "no-store"},
     )
 

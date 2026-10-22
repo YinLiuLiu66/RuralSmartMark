@@ -96,7 +96,7 @@
 **拍板时间**：2026-10-21
 
 ### #49 · 包装合成与文件
-**结论**：包装 Agent 输出结构化文案；`services/packaging.py` 用同一份产出生成 SVG 预览与 Pillow PNG 落盘；预览走 `GET /api/batches/{id}/agents/packaging/preview`，审核通过的 PNG 走 `GET /api/artifacts/{id}/file`；Phase 2 不接真实图像 API，3D 贴图在 Phase 3 消费该 PNG。
+**结论**：包装 Agent 输出结构化文案；`services/packaging.py` 原用同一份产出生成 SVG 预览与 Pillow PNG 落盘；预览接口 `GET /api/batches/{id}/agents/packaging/preview`（后由 #53 改为服务端 PNG），审核通过的 PNG 走 `GET /api/artifacts/{id}/file`；Phase 2 不接真实图像 API，3D 贴图在 Phase 3 消费该 PNG。
 **理由**：SVG 可审可改、PNG 供 3D/导出；不引入 cairosvg/浏览器渲染依赖，Pillow 已有。
 **拍板时间**：2026-10-21
 
@@ -106,7 +106,7 @@
 **拍板时间**：2026-10-21
 
 ### #51 · Phase 2 审核 UI 边界
-**结论**：Phase 2 保留 JSON 编辑器，增加引用 chips、FactGuard 预警、包装 SVG 预览；字段级专用表单推迟到 Phase 3，等四个 Agent 的 JSON 契约稳定后再做。
+**结论**：Phase 2 保留 JSON 编辑器，增加引用 chips、FactGuard 预警、包装预览（后由 #53 改为 PNG）；字段级专用表单推迟到 Phase 3，等四个 Agent 的 JSON 契约稳定后再做。
 **理由**：真实 Agent 刚接入时字段还会调整，先做专用表单会返工；引用/预警/预览已经覆盖“人做 20% 判断”的关键信息。
 **验证**：故事审核弹窗实测引用可点、预警可见、编辑后通过；服务端二次 FactGuard 与定价重算。
 **拍板时间**：2026-10-21
@@ -115,4 +115,10 @@
 **结论**：默认模型切到 `deepseek-ai/DeepSeek-V4.1-Flash`；通过 SiliconFlow 的 `extra_body.thinking_budget` 限制思维链，默认 2048（可配 128–32768，0 关闭），最终输出 `max_tokens=4096`；`reasoning_content` 仍不进入业务产出，只使用最终 `content`。
 **理由**：V4.1-Flash 是推理模型，长思维链会拉高延迟和 token；2048 足够四类结构化产出，同时把最终 JSON 的预算单独留出。仍不把思维链拼回 Prompt，避免泄漏和解析污染。
 **验证**：真实 API 短请求 1.3s/71 tokens；完整故事 Agent 5161 tokens、376 字无 fallback；包装 Agent 11223 tokens、无 fallback、FactGuard 零错误；界面显示新模型名。
+**拍板时间**：2026-10-22
+
+### #53 · 内置中文字体与包装预览
+**结论**：内置 Noto Serif SC / Noto Sans SC 官方 `SubsetOTF/SC` 字体（Regular + Bold，约 40MB，OFL-1.1）；PNG 用内置字体渲染，Serif 做品牌/标题，Sans 做正文；包装预览接口改为服务端 PNG；SVG 渲染函数保留作后续导出，当前不提供导出入口。
+**理由**：macOS 系统字体不可再分发，Linux/Docker 缺字体时 Pillow 会回退到无中文字形的默认字体；内置完整 SC 字库让预览和最终 PNG 跨机器一致，避免“Mac 正常、演示机方框”。预览改 PNG 是因为 SVG 由浏览器渲染，读不到后端内置字体。
+**验证**：四份字体校验为 OpenType、合计约 40MB；`pytest` 29 passed；PNG 预览 `content-type=image/png`、1600×1000；真实包装稿用 Noto 渲染无缺字。
 **拍板时间**：2026-10-22

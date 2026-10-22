@@ -104,7 +104,7 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 - 不引入暗色模式；`color-scheme: light`。暗色不在 v2 范围，避免两套对比度维护。
 - 衬线只用于标题、品牌名、故事正文；UI 控件、数字、按钮用无衬线。数字全部 `font-variant-numeric: tabular-nums`。
-- 字体不依赖外部 CDN；优先系统字体（macOS 的 Songti/PingFang），Noto 作为可选 fallback；构建时不下载字体。
+- 字体不依赖外部 CDN；PNG 用内置 Noto Serif/Sans（OFL）；SVG 保留系统字体栈；构建时不下载字体。
 - 两个饱和色同时可见的上限：苹果红（主操作/选中）+ 叶绿（完成/成功）；牛皮纸只做背景纹理/装饰，不承担语义。
 - 无渐变、无玻璃拟态、无 emoji 状态图标；图标统一用 lucide，线宽一致。
 
@@ -230,7 +230,7 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 图标用 lucide-react；不混用 emoji/手绘系统图标。
 - 不做暗色模式；不做移动端沙盘；溯源 H5 独立路由。
 - 3D 构建方式对齐 WareTrack：代码拼 Box/Cylinder/Cone/Sphere/Plane 等低多边形几何体，MeshStandardMaterial + CanvasTexture 生成标签/二维码；不引 GLTFLoader/外部模型；镜头正交等距、软光、暖色。
-- 字体优先系统 Songti/PingFang；Noto 作为可选 fallback，不依赖 Google Fonts CDN。
+- PNG 用内置 Noto Serif/Sans；SVG 用系统字体栈；不依赖 Google Fonts CDN。
 
 ## 9. 实现状态（Phase 1 / Phase 2，2026-10-21）
 
@@ -241,7 +241,7 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 ### Phase 2
 
-- 工位卡新增专用预览：故事（IP/短故事/标签）、包装（SVG 图 + 正面/侧面/盒型）、内容（小红书/抖音钩子）、定价（溢价 + 价格梯 + 公式折叠）。
+- 工位卡新增专用预览：故事（IP/短故事/标签）、包装（服务端 PNG + 正面/侧面/盒型）、内容（小红书/抖音钩子）、定价（溢价 + 价格梯 + 公式折叠）。
 - 引用 chips：`doc_id · 标题` 外链到 `source_url`；`credibility=demo` 的条目显示“演示”，不可当事实背书；无外链的演示条目以 span + title 展示 quote。
 - FactGuard 预警：琥珀色列出 rule/field/message；错误态红色；审核 dialog 顶部复用同一信息。
 - 审核 dialog 保留 JSON 编辑器，增加引用/预警/包装预览；数字字段提示“服务端按定价计算器重算”。字段级表单留 Phase 3（decisions #51）。
@@ -252,4 +252,5 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 - 各 Agent 字段级专用表单、溯源 H5 内容/API、3D 包装贴图、真实图像生成；Phase 3–4 补。
 - 3D 建筑/树木简化；bundle 约 1.24MB，Phase 4 拆包。
+- 包装 PNG 已内置 Noto 字体；SVG 仍依赖查看端字体，只作导出用途。
 

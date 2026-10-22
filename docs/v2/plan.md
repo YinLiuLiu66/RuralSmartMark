@@ -97,7 +97,7 @@
 
 - 关键词：山野编辑部、暖、克制、有纸张感；不是 WMS 冷色控制塔。
 - 色板：米白底 `#F7F3EA`、墨绿 `#1F3A2E`、苹果红 `#C8452D`、叶绿 `#4F7A5A`、牛皮纸 `#C9A46A`。
-- 字体：标题 Songti SC / Noto Serif SC，界面 PingFang SC / Noto Sans SC；数字用 tabular；不依赖外部字体 CDN。
+- 字体：PNG 用内置 Noto Serif SC / Noto Sans SC（OFL）；SVG 保留字体栈；数字用 tabular；不依赖外部字体 CDN。
 - 卡片：16–20px 圆角、细边框、柔和阴影；不用重玻璃拟态。
 - 3D：低多边形、暖阳光、软阴影；建筑带一点乡村屋檐/木构意象，不做写实仓库。
 - 动效：站点状态点、批次沿路移动、数字 count-up、产出物翻页；不做游戏化弹窗/彩带。
@@ -127,7 +127,7 @@
 
 - 输入：已通过的故事/IP、产品规格（5kg/12 枚/80–85mm/保鲜要求）、包装模板、品牌色。
 - 输出 JSON：`concept`、`palette`、`typography`、`ip_image_prompt`、`packaging_copy{front,back,side,inside}`、`structure{box_type,dimensions,material}`、`cost_estimate`、`derivative_ideas[]`。
-- 工具：图像 Provider（真实/mock）、SVG/Pillow 合成器、模板注册表。
+- 工具：图像 Provider（真实/mock）、Pillow 合成器 + 内置字体、SVG 导出、模板注册表。
 - 校验：文案长度适配版面；二维码占位；不出现"有机/绿色食品"等未认证标志；成本算术正确。
 - UI：正面/背面/侧面/盒型预览、变体画廊、3D 盒贴图、导出 PNG/SVG（标注"示意"）。
 
@@ -231,7 +231,7 @@ AGENTS.md README.md
 - SSE：`sse-starlette`；单 worker + 内存事件总线（不引 Redis/Celery）。
 - LLM：OpenAI SDK；环境变量 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`；默认 SiliconFlow DeepSeek-V4.1-Flash（可改），推理预算 `thinking_budget=2048`、最终输出 `max_tokens=4096`；`MockLLMProvider` 无 key 可用。
 - 图像：`ImageProvider` 接口；`SiliconFlowImageProvider`（模型可配，按 v2 Provider 接口重写）+ `MockImageProvider`（Pillow 生成图案/占位）；生成结果下载到本地，按 prompt hash 缓存。
-- 包装合成：SVG 模板 + Pillow/cairosvg；中文字体用 Noto Sans SC/Serif SC（OFL）；输出 2048×1024 贴图 + 印刷示意 PNG。
+- 包装合成：Pillow 服务端渲染；内置 Noto Serif SC / Noto Sans SC（OFL）；输出 1600×1000 印刷示意 PNG，SVG 渲染函数保留作后续导出。
 - 二维码：`qrcode[pil]`；`PUBLIC_BASE_URL` 生成 `/t/{code}`。
 - 配置：`.env`（LLM/图像/`DATABASE_URL`/`PUBLIC_BASE_URL`/`AUTO_APPROVE`）；`.env.example` 入库。
 - 部署：开发时 `uv run ruralsmartmark` + `pnpm dev`；生产 `pnpm build` 后 FastAPI 挂 `frontend/dist`；可选 Dockerfile + compose（app 单服务，SQLite 卷）。
@@ -311,7 +311,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 **验收**：每个 Agent 产出通过 schema；引用可点；违规 claim 被拦截；pytest 覆盖三态流转。
 
-**实现口径**：10 篇知识库 Markdown；Pydantic 输出模型 + 重试 1 次 + mock 降级；FactGuard 逐字引用/违禁词/数字预警；定价确定性计算器 + 服务端重算；包装 SVG 预览 + Pillow PNG；审核 UI 保留 JSON 编辑器并加引用/预警/包装预览（字段级表单留 Phase 3，见 decisions #51）。
+**实现口径**：10 篇知识库 Markdown；Pydantic 输出模型 + 重试 1 次 + mock 降级；FactGuard 逐字引用/违禁词/数字预警；定价确定性计算器 + 服务端重算；内置 Noto 字体 + 服务端 PNG 预览；审核 UI 保留 JSON 编辑器并加引用/预警/包装预览（字段级表单留 Phase 3，见 decisions #51）。
 
 ### Phase 3 · 沙盘联动
 
@@ -321,7 +321,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ### Phase 4 · 图像与视觉打磨
 
-真实图像 Provider；包装变体；字体/色板/阴影/相机缓动；空态/错误态/加载态；性能与内存。
+真实图像 Provider；包装变体；色板/阴影/相机缓动；空态/错误态/加载态；性能与内存。
 
 **验收**：1280×720 60fps；截图无溢出；无 key 时 mock 仍好看。
 
@@ -419,7 +419,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 真实 Agent：`agents/engine.py` 统一生成器，Pydantic 结构化输出、失败重试 1 次、真实调用失败或无 key 时降级 mock；`AgentRun` 记录 `model/tokens/guard_json`。
 - FactGuard：引用 doc_id 存在 + quote 逐字命中；拦截未认证/功效/保证/官方背书/“个个冰糖心”；数字未在引用文档或产品档案出现时 warning；审核通过前再校验一次。
 - 定价：`services/pricing.py` 计算果价、损耗、分选、冷链、礼盒、平台/营销费、三档价格、毛利与溢价；LLM 只写解释，数字不一致时用模板；审核时服务端重算价格。
-- 包装：`services/packaging.py` 生成 SVG 预览与 1600×1000 PNG；固定品牌色角色避免模型色板顺序破坏版式；二维码指向 `/trace/{trace_code}`；审核通过后落盘，定价后重渲染为最终码。
+- 包装：`services/packaging.py` 用内置 Noto Serif/Sans 生成 1600×1000 PNG；固定品牌色角色避免模型色板顺序破坏版式；预览接口返回服务端 PNG；二维码指向 `/trace/{trace_code}`；审核通过后落盘，定价后重渲染为最终码。
 - 前端：工位卡显示故事/包装/内容/定价专用预览、引用 chips、FactGuard 预警、模型/tokens；审核弹窗复用引用/预警/包装预览；新增 `/api/knowledge` 与 `/api/artifacts/{id}/file`。
-- 验证：27 后端测试、ruff、typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 走到 `traced`（`ZT0002`，156% 演示溢价）；营销 Agent 首次 90s 超时降级，提高到 180s 后成功。切换 V4.1-Flash 后重新验证故事（5161 tokens）与包装（11223 tokens），均无 fallback；旧 `traced` 批次未重跑。
+- 验证：29 后端测试、ruff、typecheck/lint/build 全绿；真实 DeepSeek-V3.1-Terminus 批次 `ZT-2026-001` 走到 `traced`（`ZT0002`，156% 演示溢价）；营销 Agent 首次 90s 超时降级，提高到 180s 后成功。切换 V4.1-Flash 后重新验证故事（5161 tokens）与包装（11223 tokens），均无 fallback；旧 `traced` 批次未重跑。
 - 未做：公开溯源 API/IP 对话、3D 贴图/广告牌联动、真实图像 Provider、字段级审核表单、扫码统计落库。

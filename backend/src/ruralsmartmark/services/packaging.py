@@ -12,17 +12,27 @@ from PIL import Image, ImageDraw, ImageFont
 from ..models import Batch, ProductProfile
 
 DEFAULT_PALETTE = ["#B6402A", "#C9A46A", "#3F6B4F", "#F7F3EA"]
-FONT_CANDIDATES = (
+_FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+BUNDLED_FONTS = {
+    ("serif", False): _FONT_DIR / "NotoSerifSC-Regular.otf",
+    ("serif", True): _FONT_DIR / "NotoSerifSC-Bold.otf",
+    ("sans", False): _FONT_DIR / "NotoSansSC-Regular.otf",
+    ("sans", True): _FONT_DIR / "NotoSansSC-Bold.otf",
+}
+SERIF_FALLBACKS = (
     "/System/Library/Fonts/Supplemental/Songti.ttc",
-    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+)
+SANS_FALLBACKS = (
     "/System/Library/Fonts/PingFang.ttc",
     "/System/Library/Fonts/STHeiti Medium.ttc",
     "/System/Library/Fonts/Hiragino Sans GB.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
 )
 _HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_FONT_NAME = "Noto Serif SC, Songti SC, serif"
+_SANS_NAME = "Noto Sans SC, PingFang SC, sans-serif"
 
 
 def _palette(product: ProductProfile) -> list[str]:
@@ -125,39 +135,63 @@ def build_label_svg(
   <rect width="500" height="1000" fill="{primary}"/>
   <circle cx="410" cy="120" r="150" fill="{kraft}" opacity="0.28"/>
   <circle cx="80" cy="930" r="190" fill="{leaf}" opacity="0.22"/>
-  <text x="58" y="96" font-family="Songti SC, Noto Serif SC, serif" font-size="38" fill="{paper}">乡土印记</text>
-  <text x="58" y="138" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="20" fill="{paper}" opacity="0.86">乌蒙丑果 · 演示品牌</text>
-  <text x="52" y="520" font-family="Songti SC, Noto Serif SC, serif" font-size="310" fill="{paper}">丑</text>
-  <text x="58" y="600" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="24" fill="{paper}" opacity="0.9">长得丑，甜得认真</text>
-  <text x="58" y="900" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="19" fill="{paper}" opacity="0.82">{safe(product.county)}</text>
-  <text x="58" y="934" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="17" fill="{paper}" opacity="0.72">演示包装 · 非印刷稿</text>
+  <text x="58" y="96" font-family="{_FONT_NAME}" font-size="38" fill="{paper}">乡土印记</text>
+  <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">乌蒙丑果 · 演示品牌</text>
+  <text x="52" y="520" font-family="{_FONT_NAME}" font-size="310" fill="{paper}">丑</text>
+  <text x="58" y="600" font-family="{_SANS_NAME}" font-size="24" fill="{paper}" opacity="0.9">长得丑，甜得认真</text>
+  <text x="58" y="900" font-family="{_SANS_NAME}" font-size="19" fill="{paper}" opacity="0.82">{safe(product.county)}</text>
+  <text x="58" y="934" font-family="{_SANS_NAME}" font-size="17" fill="{paper}" opacity="0.72">演示包装 · 非印刷稿</text>
 
-  <text x="590" y="120" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="20" fill="{leaf}" letter-spacing="4">STORY / PACKAGING / TRACE</text>
-  <text x="590" y="235" font-family="Songti SC, Noto Serif SC, serif" font-size="62" fill="#1F2A24">{safe(copy["front"])}</text>
-  <text x="590" y="290" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="25" fill="#6B6F66">{safe(concept)}</text>
+  <text x="590" y="120" font-family="{_SANS_NAME}" font-size="20" fill="{leaf}" letter-spacing="4">STORY / PACKAGING / TRACE</text>
+  <text x="590" y="235" font-family="{_FONT_NAME}" font-size="62" fill="#1F2A24">{safe(copy["front"])}</text>
+  <text x="590" y="290" font-family="{_SANS_NAME}" font-size="25" fill="#6B6F66">{safe(concept)}</text>
   <line x1="590" y1="320" x2="1480" y2="320" stroke="{kraft}" stroke-width="3"/>
   {back_svg}
-  <text x="590" y="560" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="23" fill="{primary}">{safe(copy["side"])}</text>
-  <text x="590" y="606" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="20" fill="#6B6F66">{safe(structure["box_type"])} · {safe(structure["dimensions"])}</text>
-  <text x="590" y="642" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="18" fill="#6B6F66">{safe(structure["material"])}</text>
-  <text x="590" y="680" font-family="Songti SC, Noto Serif SC, serif" font-size="26" fill="{leaf}">盒内一句话</text>
+  <text x="590" y="560" font-family="{_SANS_NAME}" font-size="23" fill="{primary}">{safe(copy["side"])}</text>
+  <text x="590" y="606" font-family="{_SANS_NAME}" font-size="20" fill="#6B6F66">{safe(structure["box_type"])} · {safe(structure["dimensions"])}</text>
+  <text x="590" y="642" font-family="{_SANS_NAME}" font-size="18" fill="#6B6F66">{safe(structure["material"])}</text>
+  <text x="590" y="680" font-family="{_FONT_NAME}" font-size="26" fill="{leaf}">盒内一句话</text>
   {inside_svg}
   <rect x="1240" y="690" width="250" height="250" rx="16" fill="#FFFFFF" stroke="{kraft}" stroke-width="3"/>
   <image x="1258" y="708" width="214" height="214" href="{qr_uri}"/>
-  <text x="1365" y="972" text-anchor="middle" font-family="PingFang SC, Noto Sans SC, sans-serif" font-size="18" fill="#6B6F66">扫码看这箱苹果的旅程</text>
+  <text x="1365" y="972" text-anchor="middle" font-family="{_SANS_NAME}" font-size="18" fill="#6B6F66">扫码看这箱苹果的旅程</text>
 </svg>"""
 
 
-def _font(size: int, *, serif: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    ordered = FONT_CANDIDATES if serif else tuple(reversed(FONT_CANDIDATES))
+def _font(
+    size: int, *, serif: bool = False, bold: bool = False
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    family = "serif" if serif else "sans"
+    ordered = [BUNDLED_FONTS[(family, bold)]]
+    ordered.extend(SERIF_FALLBACKS if serif else SANS_FALLBACKS)
     for path in ordered:
         if not Path(path).exists():
             continue
         try:
-            return ImageFont.truetype(path, size)
+            return ImageFont.truetype(str(path), size)
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+def _wrap_lines(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    max_width: int,
+) -> list[str]:
+    lines: list[str] = []
+    current = ""
+    for char in text:
+        candidate = current + char
+        if draw.textlength(candidate, font=font) > max_width and current:
+            lines.append(current)
+            current = char
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
 
 
 def _draw_wrapped(
@@ -171,30 +205,71 @@ def _draw_wrapped(
     *,
     max_lines: int = 4,
 ) -> None:
+    lines = _wrap_lines(draw, text, font, max_width)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        lines[-1] = lines[-1][:-1] + "…"
     x, y = xy
-    lines: list[str] = []
-    current = ""
-    for char in text:
-        candidate = current + char
-        if draw.textlength(candidate, font=font) > max_width and current:
-            lines.append(current)
-            current = char
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    for index, line in enumerate(lines[:max_lines]):
+    for index, line in enumerate(lines):
         draw.text((x, y + index * line_height), line, font=font, fill=fill)
 
 
-def render_label_png(
+def _fit_font(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    max_width: int,
+    size: int,
+    *,
+    serif: bool = False,
+    bold: bool = False,
+    min_size: int = 14,
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    while size > min_size:
+        font = _font(size, serif=serif, bold=bold)
+        if draw.textlength(text, font=font) <= max_width:
+            return font
+        size -= 2
+    return _font(min_size, serif=serif, bold=bold)
+
+
+def _draw_wrapped_fit(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    xy: tuple[int, int],
+    max_width: int,
+    fill: str,
+    line_height: int,
+    *,
+    size: int,
+    max_lines: int,
+    serif: bool = False,
+    bold: bool = False,
+    min_size: int = 16,
+) -> None:
+    while size > min_size:
+        font = _font(size, serif=serif, bold=bold)
+        if len(_wrap_lines(draw, text, font, max_width)) <= max_lines:
+            break
+        size -= 2
+    _draw_wrapped(
+        draw,
+        text,
+        _font(size, serif=serif, bold=bold),
+        xy,
+        max_width,
+        fill,
+        line_height,
+        max_lines=max_lines,
+    )
+
+
+def _render_label_image(
     output: dict,
     batch: Batch,
     product: ProductProfile,
-    path: Path,
     *,
     public_base_url: str,
-) -> Path:
+) -> Image.Image:
     colors = _palette(product)
     primary, kraft, leaf, paper = colors[:4]
     copy = _copy(output)
@@ -208,42 +283,96 @@ def render_label_png(
     draw.ellipse([260, -30, 560, 270], fill=kraft)
     draw.ellipse([-110, 740, 270, 1120], fill=leaf)
 
-    serif_big = _font(310, serif=True)
-    serif_title = _font(38, serif=True)
-    serif_mid = _font(58, serif=True)
+    serif_big = _font(310, serif=True, bold=True)
+    serif_title = _font(38, serif=True, bold=True)
     sans_20 = _font(20)
     sans_24 = _font(24)
-    sans_26 = _font(26)
 
     draw.text((58, 54), "乡土印记", font=serif_title, fill=paper)
     draw.text((58, 112), "乌蒙丑果 · 演示品牌", font=sans_20, fill=paper)
     draw.text((52, 210), "丑", font=serif_big, fill=paper)
     draw.text((58, 570), "长得丑，甜得认真", font=sans_24, fill=paper)
-    draw.text((58, 880), product.county, font=sans_20, fill=paper)
+    county_font = _fit_font(draw, product.county, 400, 20, min_size=14)
+    draw.text((58, 880), product.county, font=county_font, fill=paper)
     draw.text((58, 916), "演示包装 · 非印刷稿", font=sans_20, fill=paper)
 
     draw.text((590, 100), "STORY / PACKAGING / TRACE", font=sans_20, fill=leaf)
-    draw.text((590, 170), copy["front"], font=serif_mid, fill="#1F2A24")
-    draw.text((590, 248), concept, font=sans_24, fill="#6B6F66")
-    draw.line([590, 300, 1480, 300], fill=kraft, width=3)
-    _draw_wrapped(draw, copy["back"], sans_26, (590, 330), 870, "#4A4F49", 40, max_lines=4)
-
-    draw.text((590, 530), copy["side"], font=sans_24, fill=primary)
-    draw.text(
-        (590, 574),
-        f"{structure['box_type']} · {structure['dimensions']}",
-        font=sans_20,
-        fill="#6B6F66",
+    headline_font = _fit_font(draw, copy["front"], 890, 58, serif=True, bold=True, min_size=26)
+    draw.text((590, 170), copy["front"], font=headline_font, fill="#1F2A24")
+    _draw_wrapped_fit(
+        draw,
+        concept,
+        (590, 248),
+        870,
+        "#6B6F66",
+        30,
+        size=24,
+        max_lines=2,
+        min_size=16,
     )
-    draw.text((590, 608), structure["material"], font=sans_20, fill="#6B6F66")
-    draw.text((590, 660), "盒内一句话", font=_font(26, serif=True), fill=leaf)
-    _draw_wrapped(draw, copy["inside"], sans_26, (590, 702), 600, "#4A4F49", 38, max_lines=3)
+    draw.line([590, 300, 1480, 300], fill=kraft, width=3)
+    _draw_wrapped_fit(
+        draw,
+        copy["back"],
+        (590, 330),
+        870,
+        "#4A4F49",
+        40,
+        size=26,
+        max_lines=5,
+        min_size=18,
+    )
+
+    side_font = _fit_font(draw, copy["side"], 870, 24, min_size=16)
+    draw.text((590, 530), copy["side"], font=side_font, fill=primary)
+    structure_line = f"{structure['box_type']} · {structure['dimensions']}"
+    structure_font = _fit_font(draw, structure_line, 870, 20, min_size=14)
+    draw.text((590, 574), structure_line, font=structure_font, fill="#6B6F66")
+    material_font = _fit_font(draw, structure["material"], 870, 20, min_size=14)
+    draw.text((590, 608), structure["material"], font=material_font, fill="#6B6F66")
+    draw.text((590, 660), "盒内一句话", font=_font(26, serif=True, bold=True), fill=leaf)
+    _draw_wrapped_fit(
+        draw,
+        copy["inside"],
+        (590, 702),
+        600,
+        "#4A4F49",
+        38,
+        size=26,
+        max_lines=3,
+        min_size=18,
+    )
 
     qr = Image.open(BytesIO(_qr_png(trace_url, box_size=10))).convert("RGB").resize((214, 214))
     draw.rounded_rectangle([1240, 690, 1490, 940], radius=16, fill="white", outline=kraft, width=3)
     image.paste(qr, (1258, 708))
     draw.text((1365, 950), "扫码看这箱苹果的旅程", font=sans_20, fill="#6B6F66", anchor="ma")
+    return image
 
+
+def render_label_png_bytes(
+    output: dict,
+    batch: Batch,
+    product: ProductProfile,
+    *,
+    public_base_url: str,
+) -> bytes:
+    image = _render_label_image(output, batch, product, public_base_url=public_base_url)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG", optimize=True)
+    return buffer.getvalue()
+
+
+def render_label_png(
+    output: dict,
+    batch: Batch,
+    product: ProductProfile,
+    path: Path,
+    *,
+    public_base_url: str,
+) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, format="PNG", optimize=True)
+    path.write_bytes(
+        render_label_png_bytes(output, batch, product, public_base_url=public_base_url)
+    )
     return path

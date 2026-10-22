@@ -38,8 +38,8 @@ async def test_pipeline_end_to_end(session, client):
 
     preview = await client.get(f"/api/batches/{batch_id}/agents/packaging/preview")
     assert preview.status_code == 200
-    assert preview.headers["content-type"].startswith("image/svg+xml")
-    assert "丑得真实" in preview.text
+    assert preview.headers["content-type"] == "image/png"
+    assert preview.content.startswith(b"\x89PNG")
 
     approved = await client.post(f"/api/batches/{batch_id}/agents/packaging/approve", json={})
     assert approved.json()["batch"]["state"] == "packaging_approved"
