@@ -11,7 +11,7 @@
 
 ## 当前阶段（2026-10-21）
 
-- **Phase 0 已完成**：`rewrite/v2` 分支；旧 v1 后端/前端/文档/Postgres 数据已移出工作树（`main` 保留历史）；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
+- **Phase 0 已完成**：开发分支已从 `rewrite/v2` 切回 `main`（旧分支已删除）；旧 v1 后端/前端/文档/Postgres 数据已移出工作树；SQLite 9 张表 + Alembic 初始迁移；seed；Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`；前端 React 19 + R3F 9 + Tailwind 4 骨架、3D 场景、`/trace` 骨架。
 - **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次沿站点移动、审核后自动启动下一站。
 - **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI、知识库 API。
 - **下一步 Phase 3**：沙盘联动（包装贴图/广告牌/二维码）+ 公开溯源 API/H5 + IP 对话。

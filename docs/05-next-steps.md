@@ -7,7 +7,7 @@
 
 ## 0. 当前进度（截至 2026-10-21）
 
-- [x] `rewrite/v2` 分支；旧 v1 backend/frontend 移出工作树（`main` 保留历史）
+- [x] 开发分支切回 `main`（`rewrite/v2` 已合并并删除）；旧 v1 backend/frontend 移出工作树
 - [x] SQLite + 9 张表 ORM + Alembic 迁移（含 `agent_run.guard_json`）
 - [x] 幂等 seed：昭通丑苹果 + 10 篇知识库 + 3 条价格基准 + 批次 `ZT-DEMO-001` / `ZT-2026-001`
 - [x] Mock LLM Provider + Mock Image Provider（无 key 可跑）

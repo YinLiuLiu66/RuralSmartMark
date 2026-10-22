@@ -295,7 +295,7 @@ Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.
 
 ### Phase 0 · 地基
 
-分支 `rewrite/v2`；新文档与决策；backend/frontend 脚手架；SQLite/Alembic；seed（产品档案、知识库、基准价、一个 raw 批次、一个已完成演示批次）；mock LLM/Image Provider；健康检查。
+Phase 0 在 `rewrite/v2` 开发，后并入 `main`；新文档与决策；backend/frontend 脚手架；SQLite/Alembic；seed（产品档案、知识库、基准价、一个 raw 批次、一个已完成演示批次）；mock LLM/Image Provider；健康检查。
 
 **验收**：`uv run pytest`、`pnpm typecheck/lint/build` 全绿；打开页面能看到 seed 批次。
 
@@ -371,7 +371,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - `docs/v2/`：plan.md / ui.md / sources.md；architecture/agents/data/runbook/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
-- 分支 `rewrite/v2`；每个 Phase 完成提交；push 前先向你确认（按你的习惯）。
+- 开发分支 `main`；每个 Phase 完成提交；push 前先向你确认（按你的习惯）。
 - `.gitignore` 已覆盖 `/data/`、`backend/data/`；不提交生成物/.env。
 
 ---
@@ -393,7 +393,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 14. Phase 0 实施记录（2026-10-21）
 
-- 分支 `rewrite/v2`；旧 v1 backend/frontend 移出工作树（`main` 保留历史）。
+- Phase 0 在 `rewrite/v2` 开发，后并入 `main`；旧 v1 backend/frontend 移出工作树。
 - SQLite 9 张表 + Alembic 初始迁移；幂等 seed（1 产品 / 3 知识库占位 / 3 基准价 / 2 批次）。
 - Mock LLM/Image Provider；`/api/health`、`/api/products`、`/api/batches`、`/api/demo/reset`。
 - 后端 4 测试 + ruff 零告警；前端 React 19 + R3F 9 + Tailwind 4 骨架；3D 场景与 `/trace` 骨架。
