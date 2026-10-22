@@ -334,7 +334,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 单元/集成/Playwright 冒烟；demo reset 幂等；第二产品档案测试；Docker/一键启动；文档/来源/决策；验收清单。
 
-**实现口径**：Playwright 桌面/移动冒烟 7 条 + 60 秒性能 2 条；reset 回归覆盖“扫码后归零、重复 reset 不重复”；麻江蓝莓只建数据夹具，mock 与真实 V4.1-Flash 四站均跑通，提示词/定价/包装/溯源码前缀档案化；根 `Makefile` 提供 `dev/test/e2e/perf`；Docker 与字段级表单确认不做（decisions #63）；LLM 输出未知字段忽略（#64）；生图失败视觉兜底与缓存清理（#65）。
+**实现口径**：Playwright 桌面/移动冒烟 7 条 + 60 秒性能 2 条；reset 回归覆盖“扫码后归零、重复 reset 不重复”；麻江蓝莓只建数据夹具，mock 与真实 V4.1-Flash 四站均跑通，提示词/定价/包装/溯源码前缀档案化；根 `Makefile` 提供 `dev/lan/test/e2e/perf`；Docker 与字段级表单确认不做（decisions #63）；LLM 输出未知字段忽略（#64）；生图失败视觉兜底与缓存清理（#65）；局域网扫码模式（#66）。
 
 **验收**：DoD 全过；新 Agent 只读文档能跑起来。
 
@@ -374,7 +374,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#65（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#66（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -470,6 +470,6 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 生图兜底与缓存：包装工位在插画 artifact 带错误或图片加载失败时显示设计化空态；`services/image_cache.py` + `maintenance image-cache` 支持 30 天/512MB 清理，先删最旧、支持 dry-run（#65）。
 - 来源补证：农业部公告第1478号 / AGI2010-07-00370 已入 GI-01；80–85mm 精选果补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，仍无书面报价。
 - 性能：headless Chromium 1280×720 固定演示批次 60 秒 58.3fps，JSHeap 44.5MB→42.4MB；640×360 显示“3D 沙盘需要桌面端”且无横向溢出。
-- 一键启动：根 `Makefile` 的 `dev/test/e2e/perf`；runbook `docs/v2/runbook.md` 覆盖启动、演示动线、验收、新增档案与排障。
-- 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计。
+- 一键启动：根 `Makefile` 的 `dev/lan/test/e2e/perf`；`make lan` 自动检测局域网 IP、Vite 监听 `0.0.0.0`、后端 `PUBLIC_BASE_URL` 与固定演示二维码指向局域网，并自动 reset；默认 `make dev` 仍只绑 127.0.0.1。runbook `docs/v2/runbook.md` 覆盖启动、手机扫码、演示动线、验收、新增档案与排障。
+- 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计；`make lan` 在 `172.20.10.13` 下 LAN 首页/H5/二维码均 200，二维码 payload 指向局域网。
 - 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、手机真机扫码、包装厂书面报价/食品接触合规。

@@ -29,6 +29,17 @@ cd backend && uv run alembic upgrade head && uv run python -m ruralsmartmark.see
 cd frontend && pnpm dev
 ```
 
+### 2.1 手机真机扫码（局域网）
+
+```bash
+make lan
+```
+
+- 电脑与手机连同一个 Wi-Fi；脚本会打印 `http://<局域网IP>:5173/trace/ZTDEMO26`，3D 二维码和包装二维码都指向这个地址。
+- 首次运行 macOS 可能弹防火墙提示，允许 Python/Node 接入局域网。
+- 只用于可信局域网；默认 `make dev` 仍只绑 `127.0.0.1`。Ctrl-C 会一起停前后端。
+- IP 变了（切换 Wi-Fi/热点）就重新 `make lan`；脚本会重新 seed + reset，二维码跟着更新。
+
 ## 3. 固定演示数据
 
 - 演示批次 `ZT-DEMO-001`，溯源码 `ZTDEMO26`，四章产出 + 5 个 artifact（含 IP 插画）。

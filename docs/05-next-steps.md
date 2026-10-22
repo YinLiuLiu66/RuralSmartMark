@@ -115,7 +115,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 一键启动：根 `Makefile` 的 `make dev/test/e2e/perf`；Playwright `webServer` 自动拉起未启动的服务
 - [x] 来源补证：农业部公告第1478号/AGI2010-07-00370 入 GI-01；80–85mm 补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，无书面报价
 - [x] 生图失败视觉兜底（包装工位）与缓存清理命令（30 天/512MB，支持 dry-run）
-- [x] 文档收口：decisions #61–#65、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
+- [x] 局域网扫码入口：`make lan` 自动取 IP、Vite 监听 0.0.0.0、后端 `PUBLIC_BASE_URL` 与二维码指向局域网，reset 后可用；真机扫描仍需同一 Wi-Fi 实测
+- [x] 文档收口：decisions #61–#66、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
 - [x] 字段级审核表单：Phase 5 确认不做，保留 JSON 编辑器（#58/#63）
 - [x] Docker：确认不做，继续 uv + pnpm 本地进程（#63）
 - [x] 演示脚本与彩排：见 `docs/v2/runbook.md` §4
@@ -131,7 +132,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] H5 390px/320px 无横向溢出；二维码按钮可打开 H5
 - [x] SiliconFlow 图像模型可用：`Tongyi-MAI/Z-Image-Turbo` 512×512/768×1024 均 200，约 ¥0.1/张；默认保留“AI 生成”水印
 - [x] 3D 场景长时 60fps：headless Chromium 1280×720 采样 60 秒 58.3fps，堆内存不增长
-- [ ] 手机真机扫码（当前只验了 390px 视口与 Playwright 移动模拟）
+- [x] 局域网扫码入口：`make lan` 已验 LAN 首页/H5/二维码 200，二维码 payload 指向局域网 IP
+- [ ] 手机真机扫码（当前只验了 390px 视口、Playwright 移动模拟与局域网 HTTP，尚未用真实手机扫）
 - [x] 200% 等效视口：640×360 回退桌面提示且无横向溢出；H5 320px/超长码已压测
 - [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站与真实 V4.1-Flash 四站，不改核心代码
 - [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算；只找到 1000 个起订线索）

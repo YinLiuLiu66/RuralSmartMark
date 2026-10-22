@@ -194,3 +194,9 @@
 **理由**：生图缓存只增不减会占满本地盘；自动清理可能在演示前误删固定素材，所以做成显式命令。失败兜底要让审核者一眼看出“包装产出仍然有效”，而不是怀疑整站坏了。
 **验证**：`tests/test_image_cache.py` 覆盖过期、超容量、dry-run 三种情况；Playwright 新增“插画生成失败时显示视觉兜底”用例，7 条冒烟全过；`maintenance image-cache --dry-run` 可打印扫描/将删除/保留统计。
 **拍板时间**：2026-10-22
+
+### #66 · 局域网扫码演示模式
+**结论**：新增 `make lan` / `scripts/lan-demo.sh`：自动检测 `en0`/`en1` 的局域网 IP，前端用 `vite --host 0.0.0.0 --strictPort`，后端用 `PUBLIC_BASE_URL=http://<LAN_IP>:5173` 启动，启动后自动 `POST /api/demo/reset`，让固定演示码二维码指向局域网地址。默认 `make dev` 仍只绑 `127.0.0.1`；`make lan` 只用于可信局域网，Ctrl-C 同时停止前后端。
+**理由**：真机扫码是剩余验收项，而二维码内容由 `public_base_url` 生成；如果只开 Vite 的 LAN 监听但不重置演示数据，旧二维码仍指向 127.0.0.1。把 IP 探测、监听、重置和退出收在一个脚本里，现场只需 `make lan` 然后拿手机扫。
+**验证**：本机检测到 `172.20.10.13`；`http://172.20.10.13:5173/`、`/trace/ZTDEMO26`、`/api/trace/ZTDEMO26/qr.png` 均 200；workspace 中 `pricing.qr_payload` 为 `http://172.20.10.13:5173/trace/ZTDEMO26`。真机扫描仍需用户在同一 Wi-Fi 下完成。
+**拍板时间**：2026-10-22

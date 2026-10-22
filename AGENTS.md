@@ -17,7 +17,7 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **下一步交付/补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
+- **下一步交付/补证**：手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
@@ -55,6 +55,7 @@
 仓库根（一键）：
 
 - `make dev` → 迁移 + seed + 后端 8000 + 前端 5173；Ctrl-C 一起停
+- `make lan` → 局域网扫码模式：Vite 监听 0.0.0.0，后端 `PUBLIC_BASE_URL` 指向局域网 IP，并 reset 演示二维码；只用于可信局域网
 - `make test` → 后端 pytest/ruff + 前端 typecheck/lint/build
 - `make e2e` → Playwright 桌面/移动冒烟（未启动的服务由 Playwright 自动拉起）
 - `make perf` → 60 秒帧率/堆内存 + 200% 等效视口
@@ -128,7 +129,8 @@ docs/
   v2/sources.md                     # 昭通事实待核验清单
   v2/runbook.md                     # 启动/演示动线/验收/新增档案/排障
   05-next-steps.md                  # 唯一动态任务清单
-Makefile                            # make dev/test/e2e/perf
+Makefile                            # make dev/lan/test/e2e/perf
+scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_BASE_URL + reset）
 .agent/skills/                      # 可复用技能包
 ```
 

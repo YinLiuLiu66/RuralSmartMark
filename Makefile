@@ -1,4 +1,4 @@
-.PHONY: dev test e2e perf
+.PHONY: dev lan test e2e perf
 
 dev:
 	@set -e; \
@@ -6,6 +6,9 @@ dev:
 	(cd backend && uv run alembic upgrade head && uv run python -m ruralsmartmark.seed && uv run ruralsmartmark) & backend=$$!; \
 	(cd frontend && pnpm dev) & frontend=$$!; \
 	wait
+
+lan:
+	./scripts/lan-demo.sh
 
 test:
 	cd backend && uv run pytest && uv run ruff check .

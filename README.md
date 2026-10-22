@@ -37,6 +37,12 @@
 make dev
 ```
 
+手机真机扫码（需电脑与手机同一 Wi-Fi）：
+
+```bash
+make lan    # 自动取局域网 IP、Vite 监听 0.0.0.0、二维码指向局域网地址
+```
+
 分开启动：
 
 ### 后端
@@ -99,6 +105,7 @@ docs/
 | 位置 | 命令 | 说明 |
 | --- | --- | --- |
 | 根 | `make dev` | 迁移 + seed + 后端 8000 + 前端 5173 |
+| 根 | `make lan` | 局域网扫码模式（0.0.0.0 + 局域网二维码；仅可信网络） |
 | 根 | `make test` | 后端 47 tests/ruff + 前端 typecheck/lint/build |
 | 根 | `make e2e` / `make perf` | Playwright 冒烟 / 60 秒性能 |
 | backend | `uv run ruralsmartmark` | 启动开发服务 |
