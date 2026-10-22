@@ -20,16 +20,16 @@
 - 公开溯源：`/trace/:code` 390px H5（故事/IP 插画/包装/价格/时间线/IP 对话）、扫码统计、未知码 404；固定演示码 `ZTDEMO26` 在 reset 后仍有完整内容。
 - 3D 沙盘：包装贴图、内容广告牌、可点击二维码、CatmullRom 批次路径、卡车出库；扫码数随 SSE 更新。
 - 多产品工作台：产品下拉 + 批次按产品过滤；新产品由总控调研/确认后写入，不 seed；旧产品数据保留。
-- 单入口总控：右侧「总控」抽屉与 `/controller`；可调研、追问、调用四 Agent、修改/通过/回退；建档/通过/驳回/回退有确认卡（decisions #69）。
-- 调研链路：Firecrawl 搜索/抓页 + PydanticAI 工具循环；引用逐字校验；缺字段提问；无 key 时提示贴资料（#70）。本机已用真实 Firecrawl 跑通搜索/抓页与麻江蓝莓草案（1 条来源、价格缺失转为追问）。
+- 单入口总控：右侧「总控」抽屉与 `/controller`；可调研、追问、调用四 Agent、修改/通过/回退；建档/通过/驳回/回退有确认卡（decisions #69）。回复走 SSE 流式，思维链默认折叠、展开后一行一条；用户消息发送后立即显示（#72）。
+- 调研链路：Firecrawl 异步搜索/抓页 + PydanticAI 工具循环；引用逐字校验；缺字段提问；无 key 时提示贴资料（#70）。检索网络失败自动重试并给中文提示；默认绕过会拖垮长连接的系统代理（`FIRECRAWL_TRUST_ENV=false`）。本机已用真实 Firecrawl 跑通搜索/抓页与麻江蓝莓草案（1 条来源、价格缺失转为追问）。
 - 早期站回退：确认后作废下游产出/Artifact，回到目标站重跑，历史 run 保留（#71）。
-- 自动化：Playwright 9 条冒烟（含总控面板、独立总控页、插画失败兜底）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
+- 自动化：Playwright 10 条冒烟（含总控面板、独立总控页、流式用户消息/思维链折叠、插画失败兜底）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
 - 性能：1280×720 固定演示批次 60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无横向溢出。
 - 可复制：第二产品档案夹具「麻江蓝莓」只建数据，mock 四站与真实 V4.1-Flash 四站都跑到 `traced`、`MJ` 溯源码、公开 H5/包装 PNG 可用，真实运行无 fallback、输出无昭通/苹果残留；系统提示、定价标签、包装品牌字、溯源码前缀均从产品档案读取。
 - 来源补证：地理标志公告第1478号/登记编号已补；80–85mm 精选果公开挂牌价补了 4 个惠农网页面（5斤 25/36/40 元，10斤 6.2 元/斤）；包装厂只找到 1000 个起订线索，仍无书面报价。
 - 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
 - 生图失败兜底：包装工位显示「插画这次没有生成 / 包装审核不受影响」；`python -m ruralsmartmark.maintenance image-cache --dry-run` 可预演 30 天/512MB 缓存清理。
-- 后端 52 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
+- 后端 55 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
 **下一步是交付与补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版。公开挂牌价与地理标志公告号已补，成交价/同渠道长期价可继续跟。字段级审核表单与 Docker 已确认不做（decisions #63）。
 
@@ -78,7 +78,7 @@ pnpm dev                  # http://127.0.0.1:5173
 
 Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个 Agent 走确定性 mock；有 key 时调用 OpenAI 兼容端点（默认 SiliconFlow DeepSeek-V4.1-Flash），单次超时 180 秒，`thinking_budget=2048`、`max_tokens=4096`，失败会降级为演示稿并在界面标注原因。同一个 key 也用于图像：默认 `Tongyi-MAI/Z-Image-Turbo`，包装审核通过后生成 IP 插画并缓存；生图失败不影响审核。固定演示批次与溯源码不随 key 变化。
 
-总控调研另需 `FIRECRAWL_API_KEY`（`backend/.env`）。没有搜索 key 时，总控会提示贴来源链接/原文；不会静默编资料。依赖 `pydantic-ai-slim[openai]` 与 `firecrawl-py` 只装在 `backend/.venv`。
+总控调研另需 `FIRECRAWL_API_KEY`（`backend/.env`）。没有搜索 key 时，总控会提示贴来源链接/原文；不会静默编资料。Firecrawl 默认绕过系统代理（`FIRECRAWL_TRUST_ENV=false`），本地代理导致检索 EOF 时可保持默认；必须走代理时设为 `true`。依赖 `pydantic-ai-slim[openai]` 与 `firecrawl-py` 只装在 `backend/.venv`。
 
 ## 目录结构
 
@@ -141,7 +141,8 @@ docs/
 | POST | `/api/batches` | 新建批次 |
 | POST | `/api/controller/sessions` | 创建/获取总控会话 |
 | GET | `/api/controller/sessions/{id}` | 总控会话、消息、草案、待确认动作 |
-| POST | `/api/controller/sessions/{id}/messages` | 发给总控（调研/读取/运行 Agent） |
+| POST | `/api/controller/sessions/{id}/messages` | 发给总控（非流式，调研/读取/运行 Agent） |
+| POST | `/api/controller/sessions/{id}/messages/stream` | 流式发给总控（SSE：user/thinking/delta/tool/done/error） |
 | POST | `/api/controller/sessions/{id}/confirm` | 确认/取消建档、通过、驳回、回退 |
 | GET | `/api/batches/{id}` | 批次详情 |
 | GET | `/api/batches/{id}/workspace` | 批次 + 运行记录 + 产出物 |

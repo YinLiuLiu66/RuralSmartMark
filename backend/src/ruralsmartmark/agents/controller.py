@@ -2,9 +2,20 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, AgentRunResultEvent, RunContext
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+    ThinkingPart,
+    ThinkingPartDelta,
+)
 from pydantic_ai.usage import UsageLimits
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,11 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import Settings
 from ..models import Batch, ControllerSession, ProductProfile
 from ..providers.search import SearchProvider
-from ..schemas import ControllerReply, ResearchDraft
+from ..schemas import ResearchDraft
 from ..services.rewind import AGENT_ORDER, STAGE_INDEX
 from ..services.workspace import load_workspace
 from .base import AgentName
-from .pydantic_model import build_pydantic_model
+from .pydantic_model import build_model_settings, build_pydantic_model
 from .research import ResearchUnavailable, run_research
 from .runtime import AgentRuntime
 
@@ -40,10 +51,16 @@ class ControllerDeps:
 
 @dataclass(slots=True)
 class ControllerTurn:
-    reply: ControllerReply
+    reply: str
     draft: ResearchDraft | None
     pending: dict | None
     events: list[dict]
+    questions: list[str] = field(default_factory=list)
+    thinking: list[str] = field(default_factory=list)
+
+
+def _thinking_lines(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.strip()][:200]
 
 
 def _summary_output(output: dict | None) -> str:
@@ -88,9 +105,14 @@ async def run_controller_turn(
     *,
     search: SearchProvider,
     history: list[tuple[str, str]] | None = None,
+    emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurn:
     if not runtime.settings.openai_api_key:
         raise ControllerUnavailable("没有 OPENAI_API_KEY，总控不可用；请先在 backend/.env 配置。")
+
+    async def notify(event: dict) -> None:
+        if emit is not None:
+            await emit(event)
 
     product = (
         await session.get(ProductProfile, controller_session.product_id)
@@ -116,18 +138,22 @@ async def run_controller_turn(
     model = build_pydantic_model(runtime.settings)
     agent = Agent(
         model,
-        output_type=ControllerReply,
+        output_type=str,
         deps_type=ControllerDeps,
+        model_settings=build_model_settings(runtime.settings, temperature=0.3),
         instructions=(
             "你是「智农云链」的总控，不是内容生成 Agent。"
             "你可以读取产品/批次/AgentRun，调用四个 Agent，或启动调研。"
             "用户要新产品的资料时先调 research_product；有草案后向用户列缺口。"
             "危险动作（建档、通过、驳回、回退）只能调 request_action 让用户确认，绝不能直接执行。"
             "用户说包装/故事不好时，调 run_agent 并带上具体 note；如果目标站已通过且下游存在，改调 request_action('rewind_to_agent')。"
-            "只调用必要工具，同一工具不要连续重复；拿到足够信息后立即输出 final_result。"
+            "只调用必要工具，同一工具不要连续重复；拿到足够信息后直接回答。"
             "批次状态为 traced 时说明四站已完成、可看溯源/新批次，不要编造“最后确认/上架”等不存在的步骤。"
             "只有确实调用了 request_action 时才提确认；不要把普通查询说成危险动作。"
-            "回复简洁、中文，说明你做了什么、当前状态、下一步。"
+            "最终回答用中文自然语言，直接给结论和下一步；不要输出 JSON、代码围栏或 final_result 字样。"
+            "回答用纯文本，不要用 Markdown 加粗、标题；需要分点就用「-」。"
+            "需要用户补充信息时，在回答里列 1–3 个具体问题。"
+            "工具失败时如实说明原因和替代做法，不要编造检索结果。"
         ),
     )
 
@@ -278,24 +304,59 @@ async def run_controller_turn(
 用户消息：
 {message}
 """
+    text_chunks: list[str] = []
+    thinking_chunks: list[str] = []
+    result = None
     try:
-        result = await agent.run(
+        async with agent.run_stream_events(
             prompt,
             deps=deps,
             usage_limits=UsageLimits(
                 request_limit=runtime.settings.controller_request_limit,
                 tool_calls_limit=runtime.settings.controller_tool_calls_limit,
             ),
-        )
+        ) as events:
+            async for event in events:
+                if isinstance(event, AgentRunResultEvent):
+                    result = event.result
+                elif isinstance(event, PartStartEvent):
+                    part = event.part
+                    if isinstance(part, ThinkingPart) and part.content:
+                        thinking_chunks.append(part.content)
+                        await notify({"type": "thinking", "text": part.content})
+                    elif isinstance(part, TextPart) and part.content:
+                        text_chunks.append(part.content)
+                        await notify({"type": "delta", "text": part.content})
+                elif isinstance(event, PartDeltaEvent):
+                    delta = event.delta
+                    if isinstance(delta, ThinkingPartDelta) and delta.content_delta:
+                        thinking_chunks.append(delta.content_delta)
+                        await notify({"type": "thinking", "text": delta.content_delta})
+                    elif isinstance(delta, TextPartDelta) and delta.content_delta:
+                        text_chunks.append(delta.content_delta)
+                        await notify({"type": "delta", "text": delta.content_delta})
+                elif isinstance(event, FunctionToolCallEvent):
+                    name = event.part.tool_name
+                    deps.events.append({"tool": name, "status": "running"})
+                    await notify({"type": "tool", "name": name, "status": "running"})
+                elif isinstance(event, FunctionToolResultEvent):
+                    name = str(getattr(event.part, "tool_name", "") or "")
+                    deps.events.append({"tool": name, "status": "done"})
+                    await notify({"type": "tool", "name": name, "status": "done"})
     except Exception as exc:
         raise ControllerUnavailable(f"总控调用失败：{str(exc)[:240]}") from exc
 
-    reply = result.output
-    if reply.pending_action is None and deps.pending is not None:
-        reply.pending_action = deps.pending
+    reply_text = (result.output if result is not None else "").strip()
+    if not reply_text:
+        reply_text = "".join(text_chunks).strip()
+    if not reply_text:
+        raise ControllerUnavailable("总控没有生成文字回复，请再试一次。")
+
     return ControllerTurn(
-        reply=reply,
+        reply=reply_text,
         draft=deps.draft,
         pending=deps.pending,
         events=deps.events,
+        questions=list(deps.draft.questions) if deps.draft else [],
+        thinking=_thinking_lines("".join(thinking_chunks)),
     )

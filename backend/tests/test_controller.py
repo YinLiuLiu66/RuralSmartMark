@@ -3,7 +3,6 @@ from sqlalchemy import select
 from ruralsmartmark.agents.controller import ControllerTurn
 from ruralsmartmark.models import Batch, ControllerSession, ProductProfile
 from ruralsmartmark.schemas import (
-    ControllerReply,
     ResearchBenchmarkDraft,
     ResearchDocDraft,
     ResearchDraft,
@@ -98,10 +97,12 @@ async def test_controller_message_persists_turn(session, client, monkeypatch):
 
     async def fake_turn(*_args, **_kwargs):
         return ControllerTurn(
-            reply=ControllerReply(reply="我看到你了。"),
+            reply="我看到你了。",
             draft=None,
             pending=None,
             events=[],
+            questions=[],
+            thinking=["先确认用户只是打招呼。"],
         )
 
     monkeypatch.setattr("ruralsmartmark.routes.controller.run_controller_turn", fake_turn)
@@ -112,7 +113,49 @@ async def test_controller_message_persists_turn(session, client, monkeypatch):
     assert response.status_code == 200, response.text
     data = response.json()
     assert data["reply"] == "我看到你了。"
+    assert data["thinking"] == ["先确认用户只是打招呼。"]
     assert [message["role"] for message in data["session"]["messages"]] == [
         "user",
         "assistant",
     ]
+
+
+async def test_controller_message_streams_events(session, client, monkeypatch):
+    item = ControllerSession()
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+
+    async def fake_turn(*_args, emit=None, **_kwargs):
+        assert emit is not None
+        await emit({"type": "thinking", "text": "先想一下。\n再回答。"})
+        await emit({"type": "delta", "text": "你好，"})
+        await emit({"type": "delta", "text": "我在。"})
+        return ControllerTurn(
+            reply="你好，我在。",
+            draft=None,
+            pending=None,
+            events=[],
+            questions=[],
+            thinking=["先想一下。", "再回答。"],
+        )
+
+    monkeypatch.setattr("ruralsmartmark.routes.controller.run_controller_turn", fake_turn)
+    async with client.stream(
+        "POST",
+        f"/api/controller/sessions/{item.id}/messages/stream",
+        json={"message": "在吗"},
+    ) as response:
+        assert response.status_code == 200, await response.aread()
+        body = "".join([chunk async for chunk in response.aiter_text()])
+
+    assert '"type": "user"' in body
+    assert '"type": "thinking"' in body
+    assert '"type": "delta"' in body
+    assert '"type": "done"' in body
+    assert "你好，我在。" in body
+
+    refreshed = await client.get(f"/api/controller/sessions/{item.id}")
+    messages = refreshed.json()["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
+    assert messages[1]["content"] == "你好，我在。"

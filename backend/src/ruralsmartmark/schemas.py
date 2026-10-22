@@ -292,12 +292,6 @@ class ResearchDraft(BaseModel):
     warnings: list[str] = Field(default_factory=list, max_length=20)
 
 
-class ControllerReply(BaseModel):
-    reply: str = Field(min_length=1, max_length=4000)
-    questions: list[str] = Field(default_factory=list, max_length=8)
-    pending_action: dict | None = None
-
-
 class ControllerSessionCreate(BaseModel):
     product_slug: str | None = None
     batch_id: int | None = None
@@ -339,3 +333,4 @@ class ControllerTurnOut(BaseModel):
     questions: list[str] = Field(default_factory=list)
     pending_action: dict | None = None
     events: list[dict] = Field(default_factory=list)
+    thinking: list[str] = Field(default_factory=list)

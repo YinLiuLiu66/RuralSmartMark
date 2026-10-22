@@ -8,6 +8,7 @@ import ruralsmartmark.models  # noqa: F401 - register all tables on Base.metadat
 from ruralsmartmark.agents.runtime import AgentRuntime, get_runtime
 from ruralsmartmark.config import get_settings
 from ruralsmartmark.db import Base, build_engine, get_session
+from ruralsmartmark.deps import get_session_factory
 from ruralsmartmark.main import app
 from ruralsmartmark.providers.llm import MockLLMProvider, get_llm_provider
 
@@ -48,6 +49,7 @@ async def client(engine, tmp_path):
     runtime.artifact_dir.mkdir(parents=True, exist_ok=True)
 
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_session_factory] = lambda: maker
     app.dependency_overrides[get_runtime] = lambda: runtime
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http_client:
         yield http_client

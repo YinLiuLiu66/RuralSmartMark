@@ -375,7 +375,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#71（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#72（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -481,10 +481,10 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 ## 20. Phase 6 实施记录（已完成，2026-10-22）
 
 - 多产品：`GET /api/batches?product_id=`；批次码前缀读 `specs.batch_prefix`；产品下拉 + 批次过滤；H5 标题/旅程从 `specs.trace_headline`/`product.name` 读取；`knowledge_doc` 唯一约束改为 `(product_id, doc_key)`，两个产品可复用 `ORIGIN-01`。
-- 总控：新增 `controller_session`/`controller_message`；`POST /api/controller/sessions`、`messages`、`confirm`；PydanticAI `OpenAIChatModel`（Chat Completions）承载工具循环；动作白名单 + 危险动作确认卡；`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`。
-- 调研：Firecrawl `search`/`scrape` Provider；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料。真实 Firecrawl 搜索/抓页与麻江蓝莓草案已验证。
+- 总控：新增 `controller_session`/`controller_message`；`POST /api/controller/sessions`、`messages`、`messages/stream`、`confirm`；PydanticAI `OpenAIChatModel`（Chat Completions）承载工具循环；动作白名单 + 危险动作确认卡；`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`。流式回复透传 `reasoning_content` 为折叠思维链；用户消息先落库并乐观显示；控制器输出改为纯文本。
+- 调研：Firecrawl `AsyncFirecrawl` `search`/`scrape` Provider；默认绕过系统代理并做网络重试；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料。真实 Firecrawl 搜索/抓页与麻江蓝莓草案已验证。
 - 回退：清空下游 JSON、删除下游 Artifact/插画、run 标记 failed、回到目标站重跑；历史 run 保留。
-- 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；草案卡/确认卡/消息记录。
-- 验证：后端 52 passed + 2 skipped；Playwright 9 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
+- 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；流式正文/思维链折叠/草案卡/确认卡/消息记录。
+- 验证：后端 55 passed + 2 skipped；Playwright 10 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
 - 真实 Firecrawl：`RSM_REAL_SEARCH=1` 搜索/抓页测试通过；麻江蓝莓真实调研草案拿到 1 条来源（搜狐地理标志报道），价格/包装/品牌转为追问，未编造。
 - 未完成：真实手机扫码、包装厂书面报价、真实盒型/刀版。

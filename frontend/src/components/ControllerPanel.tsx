@@ -1,7 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Loader2, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowUpRight,
+  Brain,
+  ChevronRight,
+  Loader2,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 
-import { controllerApi, type ControllerSession } from "../api/controller";
+import {
+  controllerApi,
+  type ControllerMessage,
+  type ControllerSession,
+  type ControllerStreamEvent,
+} from "../api/controller";
 
 const ACTION_LABEL: Record<string, string> = {
   commit_product: "确认建档",
@@ -9,6 +23,122 @@ const ACTION_LABEL: Record<string, string> = {
   reject_agent: "确认驳回",
   rewind_to_agent: "确认回退并重跑",
 };
+
+const TOOL_LABEL: Record<string, string> = {
+  list_products: "正在读取产品列表",
+  get_workspace: "正在读取批次状态",
+  research_product: "正在检索资料并整理档案",
+  search_web: "正在搜索来源",
+  scrape_sources: "正在抓取页面正文",
+  run_agent: "正在调用 Agent",
+  request_action: "正在准备确认卡",
+};
+
+function latestToolLabel(tools: string[]): string {
+  const latest = tools[tools.length - 1];
+  if (!latest) return "总控正在思考…";
+  return TOOL_LABEL[latest] ?? `正在执行 ${latest}`;
+}
+
+function thinkingLines(text: string): string[] {
+  if (!text.trim()) return [];
+  const lines: string[] = [];
+  for (const paragraph of text.split(/\n+/)) {
+    let rest = paragraph.trim();
+    if (!rest) continue;
+    while (rest.length > 110) {
+      const window = rest.slice(0, 110);
+      const cut = Math.max(
+        window.lastIndexOf("。"),
+        window.lastIndexOf("；"),
+        window.lastIndexOf("！"),
+        window.lastIndexOf("？"),
+        window.lastIndexOf("."),
+        window.lastIndexOf(";"),
+      );
+      const index = cut >= 20 ? cut + 1 : 110;
+      lines.push(rest.slice(0, index).trim());
+      rest = rest.slice(index).trim();
+    }
+    if (rest) lines.push(rest);
+  }
+  return lines;
+}
+
+function messageThinking(message: ControllerMessage): string[] {
+  const raw = message.action_json?.thinking;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (line): line is string => typeof line === "string" && line.trim().length > 0,
+  );
+}
+
+function ThinkingBlock({
+  lines,
+  streaming = false,
+}: {
+  lines: string[];
+  streaming?: boolean;
+}) {
+  if (!streaming && lines.length === 0) return null;
+  return (
+    <details className="group mb-2 rounded-control border border-line/70 bg-paper/70 px-2.5 py-2">
+      <summary className="flex cursor-pointer list-none select-none items-center gap-1.5 text-[10px] text-ink-faint [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          size={11}
+          className="transition-transform group-open:rotate-90"
+        />
+        {streaming ? (
+          <Loader2 size={11} className="animate-spin" />
+        ) : (
+          <Brain size={11} />
+        )}
+        {streaming ? "思考中" : "思考过程"} · {lines.length} 行
+      </summary>
+      <div className="mt-2 space-y-1.5 border-t border-line/60 pt-2">
+        {lines.map((line, index) => (
+          <p
+            key={`${index}-${line.slice(0, 12)}`}
+            className="whitespace-pre-wrap break-words text-[11px] leading-5 text-ink-faint"
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function UserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[88%] whitespace-pre-line break-words rounded-card rounded-br-md bg-apple px-3.5 py-2.5 text-[13px] leading-6 text-white">
+        {text}
+      </div>
+    </div>
+  );
+}
+
+function AssistantBubble({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[88%] whitespace-pre-line break-words rounded-card rounded-bl-md border border-line bg-surface px-3.5 py-2.5 text-[13px] leading-6 text-ink-muted">
+        <div className="mb-1 flex items-center gap-1 text-[10px] text-ink-faint">
+          <ShieldCheck size={11} />
+          总控
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface StreamState {
+  thinking: string;
+  answer: string;
+  tools: string[];
+  active: boolean;
+}
 
 export default function ControllerPanel({
   productSlug,
@@ -27,12 +157,16 @@ export default function ControllerPanel({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingUser, setPendingUser] = useState<string | null>(null);
+  const [stream, setStream] = useState<StreamState | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     setSession(null);
     setError(null);
+    setPendingUser(null);
+    setStream(null);
     controllerApi
       .createSession(productSlug, batchId)
       .then((result) => {
@@ -50,7 +184,69 @@ export default function ControllerPanel({
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [session?.messages.length, busy]);
+  }, [
+    session?.messages.length,
+    pendingUser,
+    stream?.answer,
+    stream?.thinking,
+    busy,
+  ]);
+
+  function applyStreamEvent(event: ControllerStreamEvent) {
+    if (event.type === "user") {
+      setPendingUser(null);
+      setSession((current) => {
+        if (!current) return current;
+        if (current.messages.some((row) => row.id === event.message.id)) {
+          return current;
+        }
+        return { ...current, messages: [...current.messages, event.message] };
+      });
+      return;
+    }
+    if (event.type === "thinking") {
+      setStream((current) =>
+        current ? { ...current, thinking: current.thinking + event.text } : current,
+      );
+      return;
+    }
+    if (event.type === "delta") {
+      setStream((current) =>
+        current ? { ...current, answer: current.answer + event.text } : current,
+      );
+      return;
+    }
+    if (event.type === "tool") {
+      if (event.status !== "running") return;
+      setStream((current) =>
+        current
+          ? { ...current, tools: [...current.tools, event.name].slice(-3) }
+          : current,
+      );
+      return;
+    }
+    if (event.type === "done") {
+      setSession(event.turn.session);
+      setPendingUser(null);
+      setStream(null);
+      setBusy(false);
+      return;
+    }
+    if (event.type === "error") {
+      setError(event.detail);
+      setStream(null);
+      setBusy(false);
+      if (session) {
+        void controllerApi
+          .getSession(session.id)
+          .then((next) => {
+            setSession(next);
+            setPendingUser(null);
+          })
+          .catch(() => undefined);
+      }
+    }
+  }
 
   async function send(text: string) {
     if (!session || busy || !text.trim()) return;
@@ -58,13 +254,29 @@ export default function ControllerPanel({
     setInput("");
     setBusy(true);
     setError(null);
+    setPendingUser(message);
+    setStream({ thinking: "", answer: "", tools: [], active: true });
+    let finished = false;
     try {
-      const turn = await controllerApi.sendMessage(session.id, message);
-      setSession(turn.session);
+      await controllerApi.streamMessage(session.id, message, (event) => {
+        if (event.type === "done" || event.type === "error") finished = true;
+        applyStreamEvent(event);
+      });
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "总控没有回应");
     } finally {
       setBusy(false);
+      setStream(null);
+      if (!finished) {
+        setError((current) => current ?? "连接中断，已保留你的消息；请再发一次或刷新页面。");
+        void controllerApi
+          .getSession(session.id)
+          .then((next) => {
+            setSession(next);
+            setPendingUser(null);
+          })
+          .catch(() => undefined);
+      }
     }
   }
 
@@ -79,6 +291,8 @@ export default function ControllerPanel({
         decision,
       );
       setSession(turn.session);
+      setPendingUser(null);
+      setStream(null);
       if (decision === "confirm") onDataChanged();
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "确认失败");
@@ -90,6 +304,7 @@ export default function ControllerPanel({
   const draft = session?.draft_json;
   const pending = session?.pending_action_json;
   const questions = draft?.questions ?? [];
+  const streamLines = stream ? thinkingLines(stream.thinking) : [];
 
   return (
     <aside
@@ -127,7 +342,7 @@ export default function ControllerPanel({
           </div>
         )}
 
-        {session?.messages.length === 0 && !busy && (
+        {session?.messages.length === 0 && !busy && !pendingUser && (
           <div className="rounded-card border border-dashed border-line bg-surface p-4">
             <p className="text-sm leading-6 text-ink">
               告诉我你想做什么产品，或者直接问当前批次。
@@ -147,28 +362,39 @@ export default function ControllerPanel({
           </div>
         )}
 
-        {session?.messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[88%] whitespace-pre-line break-words rounded-card px-3.5 py-2.5 text-[13px] leading-6 ${
-                message.role === "user"
-                  ? "rounded-br-md bg-apple text-white"
-                  : "rounded-bl-md border border-line bg-surface text-ink-muted"
-              }`}
-            >
-              {message.role === "assistant" && (
-                <div className="mb-1 flex items-center gap-1 text-[10px] text-ink-faint">
-                  <ShieldCheck size={11} />
-                  总控
-                </div>
-              )}
+        {session?.messages.map((message) => {
+          if (message.role === "user") {
+            return <UserBubble key={message.id} text={message.content} />;
+          }
+          const tracedLines = messageThinking(message);
+          return (
+            <AssistantBubble key={message.id}>
+              {tracedLines.length > 0 && <ThinkingBlock lines={tracedLines} />}
               {message.content}
-            </div>
-          </div>
-        ))}
+            </AssistantBubble>
+          );
+        })}
+
+        {pendingUser && <UserBubble text={pendingUser} />}
+
+        {stream && (
+          <AssistantBubble>
+            {stream.thinking.trim() && (
+              <ThinkingBlock lines={streamLines} streaming={stream.active} />
+            )}
+            {stream.answer ? (
+              <div>
+                {stream.answer}
+                <span className="ml-0.5 inline-block h-3.5 w-1 animate-pulse bg-apple/70 align-middle" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                <Loader2 size={12} className="animate-spin" />
+                {latestToolLabel(stream.tools)}
+              </div>
+            )}
+          </AssistantBubble>
+        )}
 
         {draft && (
           <section className="rounded-card border border-line bg-surface p-4">
@@ -240,15 +466,18 @@ export default function ControllerPanel({
           </section>
         )}
 
-        {busy && (
+        {busy && !stream && (
           <div className="flex items-center gap-2 text-xs text-ink-faint">
             <Loader2 size={14} className="animate-spin" />
-            总控正在看资料 / 调用 Agent…
+            总控正在处理…
           </div>
         )}
 
         {error && (
-          <div role="alert" className="rounded-control border border-danger/30 bg-surface px-3 py-2 text-[11px] leading-5 text-danger">
+          <div
+            role="alert"
+            className="rounded-control border border-danger/30 bg-surface px-3 py-2 text-[11px] leading-5 text-danger"
+          >
             {error}
           </div>
         )}

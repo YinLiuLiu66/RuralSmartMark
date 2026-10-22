@@ -132,8 +132,10 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 总控会话/消息持久化；PydanticAI 工具循环；动作白名单
 - [x] 建档/通过/驳回/回退确认卡；早期站回退作废下游 Artifact
 - [x] Firecrawl Provider + 逐字引用校验；无 key 提示贴资料
-- [x] 右栏总控抽屉 + `/controller` 独立页；9 条 Playwright
-- [x] 后端 52 passed + 2 skipped；迁移在全新 SQLite 通过
+- [x] 右栏总控抽屉 + `/controller` 独立页
+- [x] 总控 SSE 流式、思维链默认折叠、用户消息乐观显示（decisions #72）
+- [x] Firecrawl 改 `AsyncFirecrawl`，网络失败重试并默认绕过系统代理（#72）
+- [x] 后端 55 passed + 2 skipped；Playwright 10 条；迁移在全新 SQLite 通过
 - [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓草案（本机 key；1 条来源、价格缺失转追问）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 

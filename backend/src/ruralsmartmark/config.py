@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     image_timeout_seconds: float = 120.0
     search_provider: str = "firecrawl"
     firecrawl_api_key: str = ""
+    firecrawl_trust_env: bool = False
     search_max_results: int = 5
     search_max_scrapes: int = 4
     search_timeout_seconds: float = 60.0

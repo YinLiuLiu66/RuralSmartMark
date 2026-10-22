@@ -45,10 +45,11 @@ make lan
 
 - 桌面右上「总控」打开抽屉；或直接打开 `/controller`。
 - 输入“帮我做一个新产品，我想做贵州麻江蓝莓”，总控会搜索/追问并生成档案草案。
+- 发送后用户消息立即出现；回答逐字流式增长。需要看总控为什么查/停时，点「思考过程」展开思维链（默认折叠）。
 - 草案出齐后，在确认卡点「确认建档」；新产品出现在顶栏「产品」下拉，批次自动选中。
 - 之后可以直接说“运行故事”“包装改克制一点”“通过故事”“回到包装重做”。
 - 建档/通过/驳回/回退都会先弹确认卡；查资料/读状态不会。
-- 真实搜索需要 Firecrawl key；没有 key 时贴官网/报道链接或原文。
+- 真实搜索需要 Firecrawl key；没有 key 时贴官网/报道链接或原文。检索连接中断会自动重试，仍失败时直接贴链接即可。
 
 ## 3. 固定演示数据
 
@@ -107,6 +108,9 @@ cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run 
 | 3D 显示“场景没有启动” | 点“重试 3D”；确认浏览器 WebGL 未禁用；手机端本来不提供 3D |
 | 包装工位没有图 | 先确认选中 `ZT-DEMO-001`；再看 `/api/trace/ZTDEMO26/packaging.png` 是否 200 |
 | 插画生成失败 | 审核不受影响；检查 `IMAGE_*` 配置与网络，重跑包装或稍后重试 |
+| 总控发消息后一直“思考中” | 看后端日志与 `/api/controller/sessions/{id}/messages/stream` 是否在建连；检查 `CONTROLLER_REQUEST_LIMIT`、模型超时与网络；刷新后消息仍在，可重发 |
+| 总控没有思维链 | 确认 `LLM_THINKING_BUDGET>0`；短回答模型可能不产生 reasoning，属正常；思考过程默认折叠，点“思考过程”展开 |
+| Firecrawl 检索报连接中断 | 默认 `FIRECRAWL_TRUST_ENV=false` 绕过本地系统代理；仍失败时检查 key/额度，或直接贴来源链接/原文 |
 | Playwright 报浏览器缺失 | `cd frontend && pnpm exec playwright install chromium` |
 | 端口被占用 | 停掉旧进程；Playwright `reuseExistingServer` 会复用已跑的 8000/5173 |
 

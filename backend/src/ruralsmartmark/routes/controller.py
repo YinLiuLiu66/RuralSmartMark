@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import asyncio
+import json
+from collections.abc import Awaitable, Callable
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from ..agents.base import AgentName
 from ..agents.controller import ControllerUnavailable, run_controller_turn
 from ..agents.orchestrator import approve_agent, reject_agent
 from ..agents.runtime import RuntimeDep
-from ..deps import SessionDep
+from ..deps import SessionDep, SessionFactoryDep
 from ..models import Batch, ControllerMessage, ControllerSession, ProductProfile
 from ..providers.search import SearchProvider, get_search_provider
 from ..schemas import (
@@ -87,28 +92,34 @@ async def get_controller_session(session_id: int, session: SessionDep) -> Contro
     return await _session_out(session, item)
 
 
-@router.post("/controller/sessions/{session_id}/messages", response_model=ControllerTurnOut)
-async def post_controller_message(
-    session_id: int,
-    payload: ControllerMessageIn,
+async def _run_turn(
     session: SessionDep,
+    item: ControllerSession,
+    message: str,
     runtime: RuntimeDep,
+    *,
+    emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurnOut:
-    item = await session.get(ControllerSession, session_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="controller session not found")
-
     history = [
-        (message.role, message.content)
-        for message in await _messages(session, session_id)
+        (row.role, row.content) for row in await _messages(session, item.id)
     ]
     user_message = ControllerMessage(
         session_id=item.id,
         role="user",
-        content=payload.message,
+        content=message,
     )
     session.add(user_message)
     await session.commit()
+    await session.refresh(user_message)
+    if emit is not None:
+        await emit(
+            {
+                "type": "user",
+                "message": ControllerMessageOut.model_validate(user_message).model_dump(
+                    mode="json"
+                ),
+            }
+        )
 
     search: SearchProvider = get_search_provider(runtime.settings)
     try:
@@ -116,9 +127,10 @@ async def post_controller_message(
             session,
             runtime,
             item,
-            payload.message,
+            message,
             search=search,
             history=history,
+            emit=emit,
         )
     except ControllerUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -126,11 +138,12 @@ async def post_controller_message(
     assistant = ControllerMessage(
         session_id=item.id,
         role="assistant",
-        content=turn.reply.reply,
+        content=turn.reply,
         action_json={
-            "questions": turn.reply.questions,
+            "questions": turn.questions,
             "pending_action": turn.pending,
             "events": turn.events,
+            "thinking": turn.thinking,
         },
     )
     session.add(assistant)
@@ -142,10 +155,84 @@ async def post_controller_message(
     await session.refresh(item)
     return ControllerTurnOut(
         session=await _session_out(session, item),
-        reply=turn.reply.reply,
-        questions=turn.reply.questions,
+        reply=turn.reply,
+        questions=turn.questions,
         pending_action=turn.pending,
         events=turn.events,
+        thinking=turn.thinking,
+    )
+
+
+@router.post("/controller/sessions/{session_id}/messages", response_model=ControllerTurnOut)
+async def post_controller_message(
+    session_id: int,
+    payload: ControllerMessageIn,
+    session: SessionDep,
+    runtime: RuntimeDep,
+) -> ControllerTurnOut:
+    item = await session.get(ControllerSession, session_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="controller session not found")
+    return await _run_turn(session, item, payload.message, runtime)
+
+
+@router.post("/controller/sessions/{session_id}/messages/stream")
+async def stream_controller_message(
+    session_id: int,
+    payload: ControllerMessageIn,
+    runtime: RuntimeDep,
+    session_factory: SessionFactoryDep,
+) -> StreamingResponse:
+    queue: asyncio.Queue[dict | None] = asyncio.Queue()
+
+    async def emit(event: dict) -> None:
+        await queue.put(event)
+
+    async def worker() -> None:
+        try:
+            async with session_factory() as db_session:
+                item = await db_session.get(ControllerSession, session_id)
+                if item is None:
+                    await queue.put({"type": "error", "detail": "总控会话不存在"})
+                    return
+                turn = await _run_turn(
+                    db_session, item, payload.message, runtime, emit=emit
+                )
+                await queue.put({"type": "done", "turn": turn.model_dump(mode="json")})
+        except ControllerUnavailable as exc:
+            await queue.put({"type": "error", "detail": str(exc)})
+        except HTTPException as exc:
+            await queue.put({"type": "error", "detail": str(exc.detail)})
+        except Exception as exc:  # noqa: BLE001 - SSE 必须把失败转成可见事件
+            await queue.put({"type": "error", "detail": f"总控调用失败：{str(exc)[:240]}"})
+        finally:
+            await queue.put(None)
+
+    task = asyncio.create_task(worker())
+
+    async def stream():
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=15)
+                except TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                if event is None:
+                    break
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

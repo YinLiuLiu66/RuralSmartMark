@@ -78,6 +78,82 @@ test("独立总控页可打开", async ({ page }) => {
   await expect(page.getByText("调研 · 运行 · 修改 · 审核", { exact: false })).toBeVisible();
 });
 
+test("总控先显示用户消息，思维链默认折叠", async ({ page }) => {
+  const now = "2026-10-22T12:00:00";
+  const session = {
+    id: 7,
+    product_id: null,
+    batch_id: null,
+    draft_json: null,
+    pending_action_json: null,
+    messages: [],
+    created_at: now,
+    updated_at: now,
+  };
+  const userMessage = {
+    id: 1,
+    role: "user",
+    content: "你好",
+    action_json: null,
+    created_at: now,
+  };
+  const assistantMessage = {
+    id: 2,
+    role: "assistant",
+    content: "你好，我是总控。",
+    action_json: { thinking: ["先确认用户意图。", "再回答。"] },
+    created_at: now,
+  };
+  const sse = [
+    `data: ${JSON.stringify({ type: "user", message: userMessage })}\n\n`,
+    `data: ${JSON.stringify({ type: "thinking", text: "先确认用户意图。\n再回答。" })}\n\n`,
+    `data: ${JSON.stringify({ type: "delta", text: "你好，" })}\n\n`,
+    `data: ${JSON.stringify({ type: "delta", text: "我是总控。" })}\n\n`,
+    `data: ${JSON.stringify({
+      type: "done",
+      turn: {
+        session: { ...session, messages: [userMessage, assistantMessage] },
+        reply: "你好，我是总控。",
+        questions: [],
+        pending_action: null,
+        events: [],
+        thinking: ["先确认用户意图。", "再回答。"],
+      },
+    })}\n\n`,
+  ].join("");
+
+  await page.route("**/api/controller/sessions**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/messages/stream")) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: sse,
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(session),
+    });
+  });
+
+  await page.goto("/controller");
+  await page.getByPlaceholder(/帮我做贵州麻江蓝莓/).fill("你好");
+  await page.getByRole("button", { name: "发送给总控" }).click();
+
+  await expect(page.getByText("你好", { exact: true })).toBeVisible();
+  const summary = page.getByText(/思考过程 · 2 行/);
+  await expect(summary).toBeVisible();
+  await expect(page.getByText("先确认用户意图。")).toBeHidden();
+  await expect(page.getByText("你好，我是总控。")).toBeVisible();
+
+  await summary.click();
+  await expect(page.getByText("先确认用户意图。")).toBeVisible();
+});
+
 test("3D 二维码按钮打开溯源 H5", async ({ page, context }) => {
   await page.goto("/");
   await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });

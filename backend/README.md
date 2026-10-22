@@ -38,7 +38,7 @@ uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 生图缓�
 - `GET /api/trace/{code}` / `packaging.png` / `qr.png`
 - `GET|POST /api/trace/{code}/scan`；`POST /api/trace/{code}/chat`
 - `POST /api/controller/sessions` / `GET /api/controller/sessions/{id}`
-- `POST /api/controller/sessions/{id}/messages` / `confirm`（总控调研/运行/确认）
+- `POST /api/controller/sessions/{id}/messages`（非流式）/ `messages/stream`（SSE：user/thinking/delta/tool/done/error）/ `confirm`
 - `POST /api/demo/reset`（重建固定演示批次并保留完整内容）
 
 知识库在仓库根 `data/knowledge/zhaotong/*.md`，seed 时写入 `knowledge_doc`；`seed/demo_batch.json` 是固定演示批次的真实 V4.1 内容快照，`seed/demo_illustration.png` 是对应 IP 插画快照；reset 后由 seed 写入四章产出、4 条 approved run、5 条 artifact（含插画）和确定性定价。真实 LLM 可空 key 走 mock；`LLM_FALLBACK_TO_MOCK` / `LLM_TIMEOUT_SECONDS` / `LLM_THINKING_BUDGET` / `LLM_MAX_TOKENS` 见 `.env.example`；默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。

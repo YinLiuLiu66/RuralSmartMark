@@ -25,21 +25,21 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）。后端 52 passed + 2 skipped，Playwright 9 条。Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
-- **下一步交付/补证**：手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）。后端 55 passed + 2 skipped，Playwright 10 条。Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
 - 包管理器：uv（后端）+ pnpm（前端）；不存在 requirements.txt / package-lock。
   已实测：Python 3.13、uv 0.13、Node 24、pnpm 12。
-- 总控依赖：`pydantic-ai-slim[openai]` + `firecrawl-py`，只装在 `backend/.venv`；不要全局安装。Firecrawl SDK 的类名是 `Firecrawl`，方法 `search()` / `scrape()`。
+- 总控依赖：`pydantic-ai-slim[openai]` + `firecrawl-py`，只装在 `backend/.venv`；不要全局安装。Firecrawl 用 `AsyncFirecrawl`，方法 `search()` / `scrape()`；适配层默认绕过系统代理。
 - 数据库：**SQLite**，默认 `backend/data/app.db`（已 gitignore）；不需要 Docker/Postgres。
 - `.env`：`backend/.env.example` 复制为 `.env`；`OPENAI_API_KEY` 可空，空则走 Mock；
   `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
   `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
   图像：`IMAGE_MODEL=Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`），`IMAGE_SIZE` 空=按调用尺寸自动选 512×512/1024×576/768×1024，`IMAGE_BASE_URL` 空=复用 `OPENAI_BASE_URL`，`IMAGE_TIMEOUT_SECONDS=120`。
-  总控调研：`SEARCH_PROVIDER=firecrawl`、`FIRECRAWL_API_KEY`（空则提示贴资料）、`SEARCH_MAX_RESULTS=5`、`SEARCH_MAX_SCRAPES=4`、`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`、`RESEARCH_REQUEST_LIMIT=10`、`RESEARCH_TOOL_CALLS_LIMIT=16`、`RESEARCH_MAX_TOKENS=8192`。
+  总控调研：`SEARCH_PROVIDER=firecrawl`、`FIRECRAWL_API_KEY`（空则提示贴资料）、`FIRECRAWL_TRUST_ENV=false`（默认绕过系统代理；必须走代理时设 true）、`SEARCH_MAX_RESULTS=5`、`SEARCH_MAX_SCRAPES=4`、`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`、`RESEARCH_REQUEST_LIMIT=10`、`RESEARCH_TOOL_CALLS_LIMIT=16`、`RESEARCH_MAX_TOKENS=8192`。
 - 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。
 - 包装字体 `backend/src/ruralsmartmark/assets/fonts/` 内置 Noto Serif/Sans SC（OFL，约 40MB）；PNG 不再依赖系统字体。
   运行期包装 PNG 与 IP 插画在 `backend/data/artifacts/`；生图缓存 `backend/data/image-cache/`（均 gitignore）。
@@ -166,7 +166,7 @@ scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_B
 | docs/v2/plan.md | v2 产品/架构方案 | 方案变化先改 decisions，再同步本文 |
 | docs/v2/ui.md | 前端设计契约 / token / 组件 | 前端结构、token、组件变化时同步 |
 | docs/v2/sources.md | 昭通事实待核验清单 | 每条事实补 source_url / 原文 / 日期；冲突用区间 |
-| docs/v2/controller.md | 总控/多产品契约 | 动作白名单、确认/回退、限额、前端入口变化时同步 |
+| docs/v2/controller.md | 总控/多产品契约 | 动作白名单、确认/回退、流式协议、限额、前端入口变化时同步 |
 | docs/v2/runbook.md | 启动/演示/验收操作 | 命令、端口、演示动线、新增档案步骤、排障变化时同步 |
 | docs/05-next-steps.md | 唯一动态任务清单 | 开工前写条目与假设；完工打勾；新假设补录 |
 | README.md | 人类读者入口 | 运行方式/目录变化时同步；不复制 AGENTS 的约束 |
