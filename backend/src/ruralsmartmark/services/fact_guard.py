@@ -29,7 +29,7 @@ _BANNED_RULES: list[tuple[str, re.Pattern[str], Severity, str]] = [
             r"排毒|养颜|保健功效|药效|助眠"
         ),
         "error",
-        "苹果是普通食品，不得写医疗/保健功效",
+        "普通食品不得写医疗/保健功效",
     ),
     (
         "COMP-04",

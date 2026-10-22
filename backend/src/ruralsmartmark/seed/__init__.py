@@ -41,6 +41,7 @@ PRODUCT_SPECS = {
     "harvest": "晚熟红富士，秋季采摘",
     "altitude": "高海拔（具体数值待核验）",
     "positioning": "虚构合作社子品牌「乌蒙丑果」与 IP「山风守园人」；区域事实可查，品牌与人物为演示合成",
+    "origin_aliases": ["昭通", "昭阳"],
 }
 
 PRODUCT_PALETTE = {

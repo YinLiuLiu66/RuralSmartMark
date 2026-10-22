@@ -288,7 +288,9 @@ async def approve_agent(
 
     pending_trace_code = batch.trace_code
     if agent == AgentName.PRICING and not pending_trace_code:
-        pending_trace_code = f"ZT{batch.id:04d}"
+        product = await session.get(ProductProfile, batch.product_id)
+        prefix = str((product.specs or {}).get("trace_prefix") or "ZT") if product else "ZT"
+        pending_trace_code = f"{prefix[:4]}{batch.id:04d}"
 
     content, guard = await _validate_review_content(
         session,

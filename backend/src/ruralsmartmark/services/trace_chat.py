@@ -59,11 +59,17 @@ def _allowed_numbers(trace: TraceOut) -> set[str]:
     return _numbers(payload)
 
 
-def _safe_refusal(issue_rule: str) -> str | None:
+def _safe_refusal(issue_rule: str, trace: TraceOut) -> str | None:
     if issue_rule == "COMP-03":
-        return "这属于医疗或保健方面的问题，我不能给出这样的结论。这里只讲这一批苹果的产地、包装、价格和保存方式。"
+        return (
+            "这属于医疗或保健方面的问题，我不能给出这样的结论。"
+            f"这里只讲这一批{trace.product.name}的产地、包装、价格和保存方式。"
+        )
     if issue_rule in {"COMP-02", "COMP-06"}:
-        return "我们没有相关认证证书，也不声称官方授权或地理标志授权。这里只把昭通苹果作为产地背景，品牌与角色均为演示设定。"
+        return (
+            "我们没有相关认证证书，也不声称官方授权或地理标志授权。"
+            f"这里只把{trace.product.county}作为产地背景，品牌与角色均为演示设定。"
+        )
     if issue_rule == "COMP-04":
         return "我不能对口感、销售或增收做保证。这一页只说明批次记录和演示测算，不替任何一颗果子打包票。"
     if issue_rule == "STYLE-02":
@@ -84,24 +90,30 @@ def _template_reply(message: str, trace: TraceOut) -> str:
     text = message.strip()
     if any(keyword in text for keyword in ("贵", "价格", "溢价", "多少钱", "128", "元")):
         return f"{trace.pricing.rationale} 以上是演示测算。"
-    if any(keyword in text for keyword in ("斑点", "丑", "表皮", "外观", "果皮")):
+    if any(keyword in text for keyword in ("斑点", "丑", "表皮", "外观", "果皮", "果粉", "白霜")):
         return (
             f"{trace.packaging.packaging_copy.back} "
-            "这是演示合作社的设定，不是昭通苹果全行业的样子。"
+            f"这是演示合作社的设定，不是{trace.product.name}全行业的样子。"
         )
     if any(keyword in text for keyword in ("保存", "放多久", "冷藏", "储存")):
         return (
             _faq(trace, "保存", "放") or "阴凉通风处保存，冷藏口感更脆；按批次标注的时间尽快食用。"
         )
-    if any(keyword in text for keyword in ("产地", "哪里", "昭通", "海拔", "果园")):
+    aliases = trace.product.specs.get("origin_aliases") or []
+    if not isinstance(aliases, list):
+        aliases = []
+    if any(
+        keyword in text
+        for keyword in ("产地", "哪里", "海拔", "果园", trace.product.name, *aliases)
+    ):
         return (
-            f"这一批来自{trace.product.county}的山坡果园。"
+            f"这一批来自{trace.product.county}。"
             f"{trace.story.story_short} 具体海拔没有核定，这一页不写。"
         )
-    if any(keyword in text for keyword in ("甜", "好吃", "口感", "糖")):
+    if any(keyword in text for keyword in ("甜", "酸", "好吃", "口感", "糖")):
         sugar = str(trace.product.specs.get("sugar") or "")
         return (
-            f"甜不甜要看这一颗的实际口感，我不能替每颗果子担保。"
+            "甜不甜、酸不酸要看这一颗的实际口感，我不能替每颗果子担保。"
             f"产品档案里的口径是：{sugar}；那是资料口径，不是单颗实测值。"
         )
     if any(keyword in text for keyword in ("码", "批次", "溯源", "真的", "记录")):
@@ -123,7 +135,7 @@ async def answer_trace_question(
     text = message.strip()
     issue = find_banned_claim(text)
     if issue is not None:
-        refusal = _safe_refusal(issue.rule)
+        refusal = _safe_refusal(issue.rule, trace)
         if refusal:
             return TraceChatOut(reply=refusal, source="template")
 

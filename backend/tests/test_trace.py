@@ -51,8 +51,14 @@ async def test_trace_public_payload(session, client):
 async def test_demo_reset_keeps_fixed_demo_trace(client):
     first = await client.post("/api/demo/reset")
     assert first.status_code == 200
+
+    scanned = await client.post("/api/trace/ZTDEMO26/scan")
+    assert scanned.json() == {"scan_count": 1, "recorded": True}
+
     second = await client.post("/api/demo/reset")
     assert second.status_code == 200
+    scan_stats = await client.get("/api/trace/ZTDEMO26/scan")
+    assert scan_stats.json() == {"scan_count": 0, "recorded": False}
 
     trace = await client.get("/api/trace/ZTDEMO26")
     assert trace.status_code == 200
@@ -77,6 +83,7 @@ async def test_demo_reset_keeps_fixed_demo_trace(client):
     demo = next(batch for batch in batches if batch["code"] == "ZT-DEMO-001")
     workspace = (await client.get(f"/api/batches/{demo['id']}/workspace")).json()
     assert len(workspace["runs"]) == 4
+    assert len(workspace["artifacts"]) == 5
     assert {artifact["kind"] for artifact in workspace["artifacts"]} == {
         "story",
         "packaging",

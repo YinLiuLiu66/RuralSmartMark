@@ -13,6 +13,13 @@ export const useWorldStore = create<WorldState>((set) => ({
   batches: [],
   selectedBatchId: null,
   setBatches: (batches) =>
-    set({ batches, selectedBatchId: batches[0]?.id ?? null }),
+    set({
+      batches,
+      selectedBatchId:
+        batches.find((batch) => batch.code === "ZT-DEMO-001")?.id ??
+        batches.find((batch) => batch.state === "traced")?.id ??
+        batches[0]?.id ??
+        null,
+    }),
   selectBatch: (selectedBatchId) => set({ selectedBatchId }),
 }));

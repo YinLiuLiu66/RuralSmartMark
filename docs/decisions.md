@@ -164,3 +164,21 @@
 **理由**：包装变体是最能体现“同一份 Agent 产出可探索不同视觉方向”的交互；变体只动色板，避免把未审核的结构/事实写进画面。代码分割把 H5 与 three.js 隔开，手机打开溯源页不再下载 950KB 的 3D chunk；加载/错误态让现场网络波动时不至于白屏。
 **验证**：`43` 后端测试；`variants` 返回 3 项，`preview?variant=crimson` 与默认图不同，未知变体 422；溯源 `packaging.png?variant=night` 200；1280×720 场景 2.5 秒采样 120fps（高刷屏）；`pnpm build` 产出 index 260KB、Sandbox 37KB、Trace 23KB、Scene 950KB 异步 chunk；H5 与包装工位截图确认变体切换和插画。
 **拍板时间**：2026-10-22
+
+### #61 · Phase 5 自动化验收与一键启动
+**结论**：前端引入本地 `@playwright/test`（不入全局），配 `frontend/playwright.config.ts` 与 `e2e/` 两组冒烟：桌面沙盘加载固定演示批次、包装变体与插画、3D 二维码打开 H5；移动 H5 完整展示、扫码计数、320px 无溢出、未知码/超长码 404。性能用例单独 `perf` project：固定演示批次 60 秒采样帧率与 JS 堆，200% 等效视口（640×360）验证桌面提示回退且无横向溢出。新增根 `Makefile` 的 `dev/test/e2e/perf`，Playwright 的 `webServer` 在未启动时自动拉起后端（迁移 + seed）与前端。`/api/demo/reset` 回归增加“扫码后 reset 归零、重复 reset 不产生重复 run/artifact”。沙盘首次加载优先选中 `ZT-DEMO-001`，其次任一 `traced` 批次，避免现场落在 raw 批次。
+**理由**：此前只有手动浏览器验收，Phase 5 需要可重复证据；Playwright 本地 devDependency + Chromium 缓存不污染系统；性能用例与冒烟分开，避免每次都跑 60 秒。
+**验证**：`pnpm test:e2e` 6 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed（58.3fps、44.5MB→42.4MB、640×360 无溢出）；后端 44 tests、ruff、前端 typecheck/lint/build 全绿。
+**拍板时间**：2026-10-22
+
+### #62 · 第二产品档案夹具与档案化输出
+**结论**：用麻江蓝莓做**只建数据**的第二档案夹具（`backend/tests/fixtures/majiang/`）：产品 JSON + 6 篇明确标注 `credibility=demo` 的知识库 + 3 条基准价；pytest 用 mock LLM 跑完整四站，断言 `traced`、`MJ` 前缀溯源码、H5 公开数据与包装 PNG，并断言输出不含昭通/乌蒙/山风/苹果。为让“换档案不改代码”成立，系统提示、Agent brief、mock 文案、定价档位/标签/欢迎语/时间线/FAQ、包装品牌字与页脚、溯源码前缀均改为从 `ProductProfile.specs` 读取，昭通默认值保持不变。第二档案不进入 seed、不建 UI、不做第二套 3D。
+**理由**：DoD 要求证明可复制；只加数据不改核心代码，才是可复制的证据。夹具数据全部标 demo，避免把测试数据当成真实麻江蓝莓事实。
+**验证**：`test_second_product_runs_without_code_changes` 通过；全量 44 tests；昭通固定演示码 `ZTDEMO26` 与 156% 溢价回归不变。
+**拍板时间**：2026-10-22
+
+### #63 · Phase 5 收口：字段级表单与 Docker 不做
+**结论**：字段级审核表单继续保留 JSON 编辑器方案（沿用 #58），Docker 不做；开发启动用根 `Makefile` 的 `make dev`（uv + pnpm 本地进程），不引入容器依赖。真实盒型/刀版、生图失败视觉兜底、缓存清理、手机真机扫码、真实价格/包装厂报价/GI 公告原文仍列为后续核验项，不阻塞当前演示。
+**理由**：当前审核 UI 已覆盖引用、预警、包装预览与 JSON 编辑，竞赛现场可用；Docker 与项目“无外部服务依赖、SQLite 本地跑”的取舍冲突，收益低。把时间留给可重复验收与第二档案证据。
+**验证**：`make -n dev` 正确展开；`make test`/`make e2e`/`make perf` 可执行；缺口已同步 `docs/05-next-steps.md`。
+**拍板时间**：2026-10-22

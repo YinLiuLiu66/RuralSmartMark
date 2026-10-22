@@ -39,6 +39,10 @@ venv/
 .coverage
 htmlcov/
 
+# ---------- Playwright 运行产物 ----------
+frontend/test-results/
+frontend/playwright-report/
+
 # ---------- Node / 前端 ----------
 node_modules/
 dist/

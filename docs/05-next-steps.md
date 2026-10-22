@@ -1,6 +1,6 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 4 已完成（2026-10-22）；下一步 Phase 5
+> 状态：🟢 Phase 5 已完成（2026-10-22）；进入交付/来源补证
 > 更新时间：2026-10-22
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
@@ -14,12 +14,12 @@
 - [x] **Phase 0/1**：沙盘骨架、四 Agent 状态机、审核/驳回/重跑、SSE、工位卡、批次移动
 - [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 内置字体包装 PNG + 引用/预警/预览 UI
 - [x] **Phase 3**：公开溯源 API + 390px H5 + 扫码统计 + IP 对话边界 + 固定演示快照 + 3D 包装贴图/广告牌/二维码/CatmullRom/卡车
-- [x] 后端测试 43 条 + `ruff check` 零告警
+- [x] 后端测试 44 条 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback）；随后 reset 为固定演示数据
 - [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run、5 条 artifact（含插画）、`ZTDEMO26` H5、扫码/对话
 - [x] Phase 4 · 图像与视觉打磨（图像 Provider / 变体 / 加载态 / 拆包）
-- [ ] Phase 5 · 加固与交付
+- [x] Phase 5 · 加固与交付（Playwright / reset 幂等 / 第二产品夹具 / 60 秒性能 / make dev / runbook）
 
 ## 1. Phase 1 · Walking skeleton（已完成，摘要）
 
@@ -104,15 +104,20 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 
 **Phase 4 验收**：真实 API 512×512 与 768×1024 均 200；Provider 类 768×1024 约 986KB、缓存命中；固定演示 H5 与包装工位显示插画；3 个包装变体可切换且 3D 贴图同步；1280×720 场景 2.5 秒采样 120fps；`SceneBoundary`/Suspense/API 重试/空批次新建已接；路由与 three.js 分包；43 后端测试、ruff、前端 typecheck/lint/build 全绿。长时 60fps、200% zoom 留 Phase 5。
 
-## 5. Phase 5 · 加固与交付（简报）
+## 5. Phase 5 · 加固与交付（已完成）
 
-- [ ] Playwright 冒烟（当前为浏览器手动验收）
-- [ ] `POST /api/demo/reset` 幂等；固定码 `ZTDEMO26` 不变
-- [ ] 第二产品档案测试（麻江蓝莓夹具，证明换档案不改代码）
-- [ ] 字段级审核表单（可选，decisions #58）
-- [ ] Docker/一键启动（可选）
-- [ ] AGENTS / README / decisions / v2 docs 收口
-- [ ] 演示脚本与彩排
+- [x] Playwright 冒烟：桌面 3 条（固定演示批次、包装变体/插画、3D 二维码打开 H5）+ 移动 3 条（390px H5/扫码、320px 无溢出、未知码/超长码 404）
+- [x] `POST /api/demo/reset` 幂等：重复 reset 不产生重复 run/artifact；扫码后 reset 归零；固定码 `ZTDEMO26` 不变
+- [x] 第二产品档案夹具：麻江蓝莓，只建数据；mock 四站跑到 `traced`，`MJ` 溯源码，公开 H5/包装 PNG 可用，输出无昭通/苹果残留
+- [x] 档案化输出：系统提示、Agent brief、mock 文案、定价标签/欢迎语/FAQ、包装品牌字、溯源码前缀均从 `ProductProfile.specs` 读取
+- [x] 长时性能：60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无溢出
+- [x] 一键启动：根 `Makefile` 的 `make dev/test/e2e/perf`；Playwright `webServer` 自动拉起未启动的服务
+- [x] 文档收口：decisions #61–#63、`docs/v2/runbook.md`、AGENTS/README/plan/ui
+- [x] 字段级审核表单：Phase 5 确认不做，保留 JSON 编辑器（#58/#63）
+- [x] Docker：确认不做，继续 uv + pnpm 本地进程（#63）
+- [x] 演示脚本与彩排：见 `docs/v2/runbook.md` §4
+
+**Phase 5 验收**：`pnpm test:e2e` 6 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 44 tests、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 通过；`ZTDEMO26` 与 156% 溢价回归不变。
 
 ## 6. 未验证假设（开工即验证）
 
@@ -122,22 +127,25 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 固定演示码 reset 后仍有完整内容（seed 快照 + 4 run/artifact）
 - [x] H5 390px/320px 无横向溢出；二维码按钮可打开 H5
 - [x] SiliconFlow 图像模型可用：`Tongyi-MAI/Z-Image-Turbo` 512×512/768×1024 均 200，约 ¥0.1/张；默认保留“AI 生成”水印
-- [ ] 3D 场景在目标演示机的长时 60fps（当前 1280×720 已看，未做长时压测）
-- [ ] 手机真机扫码（当前只验了 390px 视口）
-- [ ] 200% zoom 与超长批次码 H5 压测
+- [x] 3D 场景长时 60fps：headless Chromium 1280×720 采样 60 秒 58.3fps，堆内存不增长
+- [ ] 手机真机扫码（当前只验了 390px 视口与 Playwright 移动模拟）
+- [x] 200% 等效视口：640×360 回退桌面提示且无横向溢出；H5 320px/超长码已压测
+- [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站，不改核心代码
 - [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算）
 - [ ] 80–85mm 精选果的同规格、同渠道价格（至少 3 家）
 - [ ] 地理标志公告原文/公告号（当前用协会页 + 云南日报/昭通新闻网）
 
-## 7. 已知缺口（Phase 4 结束时的诚实清单）
+## 7. 已知缺口（Phase 5 结束时的诚实清单）
 
-- 字段级审核表单、Playwright、第二产品档案夹具**还没有**；盒型仍是单一视觉示意，不是真实刀版。
-- 真实图像已接入，但只生成 IP 插画；包装变体已做（仅色板，不含真实盒型/刀版）；生图失败的视觉兜底和缓存清理策略还没做。
+- 字段级审核表单**不做**（#63），保留 JSON 编辑器；盒型仍是单一视觉示意，不是真实刀版。
+- 真实图像只生成 IP 插画；包装变体仅色板，不含真实盒型/刀版；生图失败的视觉兜底和缓存清理策略还没做。
 - 定价 156% 与包装成本 5.7 元/盒是演示测算；页面已标“演示测算”。
 - 故事/内容里的区域事实已尽量引用知识库，但 LLM 仍可能写未引用的概括（FactGuard 对未引用数字只给 warning）；审核时看引用与预警。
 - IP 对话只做了关键词/规则 + LLM 后置校验；没有多轮上下文管理、没有真人客服兜底。
+- 第二产品夹具只验证 mock 流水线；真实 LLM 换档案仍未实跑，提示词已档案化。
+- 手机真机扫码、真实包装厂报价、80–85mm 三家同规格价格、地理标志公告原文仍未补齐。
+- Docker 不做；现场依赖本机 uv + pnpm + SQLite。
 - 前端已分包：initial index 260KB、Scene 950KB 异步；手机 H5 不下载 three.js。
-- 200% zoom、超长批次码、长时 60fps/内存尚未压测。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 
 ## 8. 验收命令（当前）
@@ -155,4 +163,9 @@ cd frontend
 pnpm typecheck
 pnpm lint
 pnpm build
+
+# 一键（仓库根）
+make test
+make e2e
+make perf
 ```

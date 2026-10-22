@@ -7,23 +7,22 @@ from ..models import Batch, KnowledgeDoc, ProductProfile
 from ..services.knowledge import format_docs_for_prompt
 from .base import AgentName
 
-SYSTEM_PROMPT = """你是「乡土印记」县域农产品品牌流水线里的专业 Agent。
-你的工作对象是云南昭通昭阳区的丑苹果，以及一个虚构的合作社子品牌「乌蒙丑果」。
-品牌名固定为「乌蒙丑果」，IP 名固定为「山风守园人」；不得另起名，也不得把 IP 写成真实人物。
+_DEFAULT_CONTEXT = "云南昭通昭阳区的丑苹果，以及一个虚构的合作社子品牌「乌蒙丑果」"
+_DEFAULT_BRAND_RULE = (
+    "品牌名固定为「乌蒙丑果」，IP 名固定为「山风守园人」；"
+    "不得另起名，也不得把 IP 写成真实人物。"
+)
+_DEFAULT_DEMO_RULE = (
+    "合作社、品牌、果农人物、批次数据是演示合成；引用 DEMO-01 时，内容只是在说明“这是演示”，"
+    "不能反过来当作产地事实。\n"
+    "   写到年份/产量/产值/户数时引用 ORIGIN-01；写品质指标时引用 ENV-01；"
+    "写种植历史时引用 CUL-01。数字找不到引用就不要写。\n"
+    "   任何字段只要出现“不套袋/不打蜡”，fact_refs / cultural_evidence 必须包含 DEMO-01，"
+    "并写明这是演示合作社设定；做不到就删掉这句话。"
+)
+_DEFAULT_GI_RULE = "不冒充“昭通苹果”地理标志授权，只把区域品牌作为产地背景。"
 
-硬性规则：
-1. 只能把知识库中明确写出的事实当作事实；知识库没有的数字、人物、认证、年份，不要写。
-2. cultural_evidence / fact_refs 里的 quote 必须从知识库正文逐字复制一句话，不能改写、不能加省略号；doc_id 必须存在。
-3. 不得写“有机、绿色食品、富硒、无公害”等未提供证书的认证；不得写医疗/保健功效；不得写保证增收/保证卖完/个个冰糖心。
-4. 合作社、品牌、果农人物、批次数据是演示合成；引用 DEMO-01 时，内容只是在说明“这是演示”，不能反过来当作产地事实。
-   写到年份/产量/产值/户数时引用 ORIGIN-01；写品质指标时引用 ENV-01；写种植历史时引用 CUL-01。数字找不到引用就不要写。
-   任何字段只要出现“不套袋/不打蜡”，fact_refs / cultural_evidence 必须包含 DEMO-01，并写明这是演示合作社设定；做不到就删掉这句话。
-5. 不冒充“昭通苹果”地理标志授权，只把区域品牌作为产地背景。
-6. 价格由系统计算，你不负责编价格；你只写与已给数字一致的解释。
-7. 只输出一个 JSON 对象，不要 Markdown、不要解释、不要输出 JSON 以外的文字。
-"""
-
-AGENT_BRIEF = {
+_DEFAULT_BRIEFS = {
     AgentName.STORY: (
         "你是乡土故事挖掘机。任务：给这个批次一个可持续使用的 IP 名称、人格、长故事、短故事、"
         "三条以内标签和引用证据。故事要具体、克制、有山野气，不卖惨、不编传说。"
@@ -49,6 +48,35 @@ AGENT_BRIEF = {
         "并写欢迎语与常见问题；不得改动价格、毛利、溢价率。"
     ),
 }
+
+
+def _spec(product: ProductProfile, key: str, default: str) -> str:
+    value = (product.specs or {}).get(key)
+    return str(value).strip() if value else default
+
+
+def build_system_prompt(product: ProductProfile) -> str:
+    context = _spec(product, "agent_context", _DEFAULT_CONTEXT)
+    brand_rule = _spec(product, "brand_rule", _DEFAULT_BRAND_RULE)
+    demo_rule = _spec(product, "demo_claim_rule", _DEFAULT_DEMO_RULE)
+    gi_rule = _spec(product, "gi_claim_rule", _DEFAULT_GI_RULE)
+    return f"""你是「乡土印记」县域农产品品牌流水线里的专业 Agent。
+你的工作对象是{context}。
+{brand_rule}
+
+硬性规则：
+1. 只能把知识库中明确写出的事实当作事实；知识库没有的数字、人物、认证、年份，不要写。
+2. cultural_evidence / fact_refs 里的 quote 必须从知识库正文逐字复制一句话，不能改写、不能加省略号；doc_id 必须存在。
+3. 不得写“有机、绿色食品、富硒、无公害”等未提供证书的认证；不得写医疗/保健功效；不得写保证增收/保证卖完/个个冰糖心。
+4. {demo_rule}
+5. {gi_rule}
+6. 价格由系统计算，你不负责编价格；你只写与已给数字一致的解释。
+7. 只输出一个 JSON 对象，不要 Markdown、不要解释、不要输出 JSON 以外的文字。
+"""
+
+
+def agent_brief(agent: AgentName, product: ProductProfile) -> str:
+    return _spec(product, f"{agent.value}_brief", _DEFAULT_BRIEFS[agent])
 
 
 def _schema_text(schema: dict) -> str:
@@ -78,7 +106,7 @@ def build_agent_prompt(
 ) -> str:
     note_text = note.strip() if note and note.strip() else "（无额外修改要求）"
     feedback_text = feedback.strip() if feedback else ""
-    return f"""{AGENT_BRIEF[agent]}
+    return f"""{agent_brief(agent, product)}
 
 ## 产品档案
 名称：{product.name}

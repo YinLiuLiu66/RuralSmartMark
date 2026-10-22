@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 from typing import Any
 
 from ..models import Batch, Benchmark, KnowledgeDoc, ProductProfile
@@ -36,6 +37,14 @@ async def run_mock_agent(
 ) -> dict[str, Any]:
     """Deterministic demo output used by tests and as a provider fallback."""
     await asyncio.sleep(0.05)
+
+    demo_copy = (product.specs or {}).get("demo_copy")
+    if agent != AgentName.PRICING and isinstance(demo_copy, dict):
+        payload = demo_copy.get(agent.value)
+        if isinstance(payload, dict):
+            output = deepcopy(payload)
+            output.setdefault("demo", True)
+            return output
 
     if agent == AgentName.STORY:
         return {

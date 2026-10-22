@@ -6,7 +6,7 @@
 
 ## 当前状态（2026-10-22）
 
-**Phase 3–4 已完成**：
+**Phase 3–5 已完成**：
 
 - 真实 LLM 四 Agent：故事 → 包装 → 内容 → 定价；Pydantic 结构化输出、失败重试、无 key 或调用失败时降级到演示稿并标注原因。品牌「乌蒙丑果」与 IP「山风守园人」已冻结。
 - 10 篇昭通知识库 Markdown；FactGuard 校验逐字引用、违禁认证/功效/保证、数字预警；审核通过前服务端再校验一次。
@@ -17,13 +17,25 @@
 - 真实图像：SiliconFlow `Tongyi-MAI/Z-Image-Turbo` 生成 IP 插画，审核通过后落 `illustration` artifact，按 prompt hash 缓存；固定演示码使用同 prompt 的快照。
 - 公开溯源：`/trace/:code` 390px H5（故事/IP 插画/包装/价格/时间线/IP 对话）、扫码统计、未知码 404；固定演示码 `ZTDEMO26` 在 reset 后仍有完整内容。
 - 3D 沙盘：包装贴图、内容广告牌、可点击二维码、CatmullRom 批次路径、卡车出库；扫码数随 SSE 更新。
-- 后端 43 测试、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
+- 自动化：Playwright 6 条冒烟（桌面沙盘/包装变体/3D 二维码 + 移动 H5/320px/404）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
+- 性能：1280×720 固定演示批次 60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无横向溢出。
+- 可复制：第二产品档案夹具「麻江蓝莓」只建数据，mock 四站跑到 `traced`、`MJ` 溯源码、公开 H5/包装 PNG 可用，输出无昭通/苹果残留；系统提示、定价标签、包装品牌字、溯源码前缀均从产品档案读取。
+- 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
+- 后端 44 测试、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
-**Phase 5 下一步**：Playwright 冒烟、第二产品档案、长时 60fps/200% zoom、字段级审核表单（可选）、真实价格/包装厂/GI 公告核验。
+**下一步是交付与补证**：手机真机扫码、80–85mm 三家同规格价格、包装厂报价、地理标志公告原文。字段级审核表单与 Docker 已确认不做（decisions #63）。
 
 ## 快速开始
 
 环境：Python ≥ 3.13、uv ≥ 0.13、Node ≥ 20.19、pnpm ≥ 10。**不需要 Docker/Postgres。**
+
+一键启动（仓库根，自动迁移 + seed + 8000 + 5173）：
+
+```bash
+make dev
+```
+
+分开启动：
 
 ### 后端
 
@@ -41,6 +53,7 @@ uv run ruralsmartmark     # http://127.0.0.1:8000
 ```bash
 cd frontend
 pnpm install
+pnpm exec playwright install chromium   # 首次跑 e2e/perf 时
 pnpm dev                  # http://127.0.0.1:5173
 ```
 
@@ -53,25 +66,29 @@ Vite 已把 `/api` 代理到 `127.0.0.1:8000`。`OPENAI_API_KEY` 留空时四个
 ## 目录结构
 
 ```
+Makefile                    # make dev/test/e2e/perf
 backend/
   src/ruralsmartmark/       # FastAPI、ORM、四 Agent、知识库/FactGuard、定价/包装
     assets/fonts/           # 内置 Noto Serif/Sans SC + OFL，约 40MB
   migrations/               # Alembic
-  tests/                    # health / seed / pipeline / knowledge / guard / pricing / engine / fonts
+  tests/                    # 44 测试 + fixtures/majiang 第二产品夹具
 data/
   knowledge/zhaotong/       # 10 篇事实源 Markdown（入库）
 frontend/
   src/three/                # R3F 等距场景
   src/components/           # StationCard / ReviewDialog
-    src/routes/               # Sandbox / Trace H5
-    src/api/                  # client / pipeline / trace
-    src/stores/               # Zustand
+  src/routes/               # Sandbox / Trace H5
+  src/api/                  # client / pipeline / trace
+  src/stores/               # Zustand
   src/styles/               # Tailwind v4 + 山野编辑部 token
+  e2e/                      # Playwright 冒烟 + perf
+  playwright.config.ts      # 桌面/移动/perf projects + webServer
 docs/
   decisions.md              # 决策（v2 #32 起）
   v2/plan.md                # v2 产品/架构方案
   v2/ui.md                  # 前端设计契约
   v2/sources.md             # 昭通事实待核验清单
+  v2/runbook.md             # 启动/演示/验收/新增档案/排障
   05-next-steps.md          # 当前进度与下一步
 ```
 
@@ -79,15 +96,19 @@ docs/
 
 | 位置 | 命令 | 说明 |
 | --- | --- | --- |
-| backend | `uv run ruralsmartmark` | 启动开发服务（热重载） |
+| 根 | `make dev` | 迁移 + seed + 后端 8000 + 前端 5173 |
+| 根 | `make test` | 后端 44 tests/ruff + 前端 typecheck/lint/build |
+| 根 | `make e2e` / `make perf` | Playwright 冒烟 / 60 秒性能 |
+| backend | `uv run ruralsmartmark` | 启动开发服务 |
 | backend | `uv run pytest` | 后端测试（临时 SQLite） |
 | backend | `uv run ruff check .` | 静态检查 |
 | backend | `uv run alembic upgrade head` | 迁移 |
 | backend | `uv run python -m ruralsmartmark.seed` | 幂等 seed |
 | frontend | `pnpm dev` | 开发服 |
 | frontend | `pnpm typecheck` / `pnpm lint` / `pnpm build` | 前端检查/构建 |
+| frontend | `pnpm test:e2e` / `pnpm test:perf` | 6 条冒烟 / 2 条性能用例 |
 
-## 接口（Phase 3）
+## 接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -102,8 +123,9 @@ docs/
 | POST | `/api/batches/{id}/agents/{agent}/run` | 重跑当前 Agent |
 | POST | `/api/batches/{id}/agents/{agent}/approve` | 审核通过（服务端二次 FactGuard/定价重算） |
 | POST | `/api/batches/{id}/agents/{agent}/reject` | 驳回 |
-| GET | `/api/batches/{id}/agents/packaging/preview` | 包装 PNG 预览（服务端渲染） |
-| GET | `/api/artifacts/{id}/file` | 审核后的包装 PNG |
+| GET | `/api/batches/{id}/agents/packaging/preview` | 包装 PNG 预览（服务端渲染，`?variant=`） |
+| GET | `/api/batches/{id}/agents/packaging/variants` | 包装变体权威列表 |
+| GET | `/api/artifacts/{id}/file` | 审核后的包装 PNG / IP 插画 |
 | GET | `/api/batches/{id}/events` | SSE 实时事件 |
 | GET | `/api/batches/by-code/{code}` | 按批次码查 |
 | GET | `/api/trace/{code}` | 公开溯源数据（故事/包装/价格/时间线/扫码数） |
@@ -126,5 +148,6 @@ docs/
 - [docs/v2/plan.md](docs/v2/plan.md) — 完整方案
 - [docs/v2/ui.md](docs/v2/ui.md) — 前端设计契约
 - [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
+- [docs/v2/runbook.md](docs/v2/runbook.md) — 启动、演示动线、验收与排障
 - [docs/decisions.md](docs/decisions.md) — 决策记录
 - [docs/05-next-steps.md](docs/05-next-steps.md) — 当前进度与下一步

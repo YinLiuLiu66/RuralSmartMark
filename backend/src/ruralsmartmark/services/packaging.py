@@ -105,6 +105,16 @@ def _copy(output: dict) -> dict[str, str]:
     }
 
 
+def _display(product: ProductProfile) -> dict[str, str]:
+    specs = product.specs or {}
+    return {
+        "brand": str(specs.get("brand_name") or "乌蒙丑果"),
+        "hero": str(specs.get("packaging_hero") or "丑"),
+        "tagline": str(specs.get("packaging_tagline") or "长得丑，甜得认真"),
+        "footer": str(specs.get("trace_footer") or "扫码看这箱苹果的旅程"),
+    }
+
+
 def _structure(output: dict) -> dict[str, str]:
     raw = output.get("structure") or {}
     return {
@@ -160,6 +170,7 @@ def build_label_svg(
     primary, kraft, leaf, paper = colors[:4]
     copy = _copy(output)
     structure = _structure(output)
+    display = _display(product)
     concept = str(output.get("concept", "牛皮纸礼盒"))
     trace_url = _trace_url(batch, public_base_url)
     qr_uri = _qr_data_uri(trace_url)
@@ -182,9 +193,9 @@ def build_label_svg(
   <circle cx="410" cy="120" r="150" fill="{kraft}" opacity="0.28"/>
   <circle cx="80" cy="930" r="190" fill="{leaf}" opacity="0.22"/>
   <text x="58" y="96" font-family="{_FONT_NAME}" font-size="38" fill="{paper}">乡土印记</text>
-  <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">乌蒙丑果 · 演示品牌</text>
-  <text x="52" y="520" font-family="{_FONT_NAME}" font-size="310" fill="{paper}">丑</text>
-  <text x="58" y="600" font-family="{_SANS_NAME}" font-size="24" fill="{paper}" opacity="0.9">长得丑，甜得认真</text>
+  <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">{safe(display["brand"])} · 演示品牌</text>
+  <text x="52" y="520" font-family="{_FONT_NAME}" font-size="310" fill="{paper}">{safe(display["hero"])}</text>
+  <text x="58" y="600" font-family="{_SANS_NAME}" font-size="24" fill="{paper}" opacity="0.9">{safe(display["tagline"])}</text>
   <text x="58" y="900" font-family="{_SANS_NAME}" font-size="19" fill="{paper}" opacity="0.82">{safe(product.county)}</text>
   <text x="58" y="934" font-family="{_SANS_NAME}" font-size="17" fill="{paper}" opacity="0.72">演示包装 · 非印刷稿</text>
 
@@ -200,7 +211,7 @@ def build_label_svg(
   {inside_svg}
   <rect x="1240" y="690" width="250" height="250" rx="16" fill="#FFFFFF" stroke="{kraft}" stroke-width="3"/>
   <image x="1258" y="708" width="214" height="214" href="{qr_uri}"/>
-  <text x="1365" y="972" text-anchor="middle" font-family="{_SANS_NAME}" font-size="18" fill="#6B6F66">扫码看这箱苹果的旅程</text>
+  <text x="1365" y="972" text-anchor="middle" font-family="{_SANS_NAME}" font-size="18" fill="#6B6F66">{safe(display["footer"])}</text>
 </svg>"""
 
 
@@ -321,6 +332,7 @@ def _render_label_image(
     primary, kraft, leaf, paper = colors[:4]
     copy = _copy(output)
     structure = _structure(output)
+    display = _display(product)
     concept = str(output.get("concept", "牛皮纸礼盒"))
     trace_url = _trace_url(batch, public_base_url)
 
@@ -336,9 +348,9 @@ def _render_label_image(
     sans_24 = _font(24)
 
     draw.text((58, 54), "乡土印记", font=serif_title, fill=paper)
-    draw.text((58, 112), "乌蒙丑果 · 演示品牌", font=sans_20, fill=paper)
-    draw.text((52, 210), "丑", font=serif_big, fill=paper)
-    draw.text((58, 570), "长得丑，甜得认真", font=sans_24, fill=paper)
+    draw.text((58, 112), f"{display['brand']} · 演示品牌", font=sans_20, fill=paper)
+    draw.text((52, 210), display["hero"], font=serif_big, fill=paper)
+    draw.text((58, 570), display["tagline"], font=sans_24, fill=paper)
     county_font = _fit_font(draw, product.county, 400, 20, min_size=14)
     draw.text((58, 880), product.county, font=county_font, fill=paper)
     draw.text((58, 916), "演示包装 · 非印刷稿", font=sans_20, fill=paper)
@@ -395,7 +407,7 @@ def _render_label_image(
     )
     draw.rounded_rectangle([1240, 690, 1490, 940], radius=16, fill="white", outline=kraft, width=3)
     image.paste(qr, (1258, 708))
-    draw.text((1365, 950), "扫码看这箱苹果的旅程", font=sans_20, fill="#6B6F66", anchor="ma")
+    draw.text((1365, 950), display["footer"], font=sans_20, fill="#6B6F66", anchor="ma")
     return image
 
 

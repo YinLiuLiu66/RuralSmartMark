@@ -15,7 +15,7 @@ from ..services.knowledge import list_knowledge_docs
 from ..services.pricing import calculate_pricing
 from .base import AgentName
 from .mock import run_mock_agent
-from .prompts import SYSTEM_PROMPT, build_agent_prompt, build_pricing_narrative_prompt
+from .prompts import build_agent_prompt, build_pricing_narrative_prompt, build_system_prompt
 from .runtime import AgentRuntime
 from .schemas import (
     OUTPUT_MODELS,
@@ -223,7 +223,7 @@ async def _generate_pricing(
         prompt = build_pricing_narrative_prompt(base, allowed)
         try:
             response = await runtime.llm.complete(
-                SYSTEM_PROMPT,
+                build_system_prompt(product),
                 prompt,
                 temperature=_TEMPERATURE[AgentName.PRICING],
                 json_mode=True,
@@ -325,7 +325,7 @@ async def generate_output(
         )
         try:
             response = await runtime.llm.complete(
-                SYSTEM_PROMPT,
+                build_system_prompt(product),
                 prompt,
                 temperature=_TEMPERATURE[agent],
                 json_mode=True,
