@@ -65,6 +65,43 @@ def _guard_payload(error: AgentGenerationError) -> dict | None:
     return error.guard.as_dict() if error.guard else None
 
 
+async def _store_illustration(
+    session: AsyncSession,
+    batch: Batch,
+    run: AgentRun,
+    content: dict,
+    runtime: AgentRuntime,
+) -> Artifact | None:
+    if runtime.image_provider_name == "mock":
+        return None
+    prompt = str(content.get("ip_image_prompt") or "").strip()
+    if not prompt:
+        return None
+
+    path = runtime.artifact_dir / f"batch-{batch.id}" / f"illustration-{run.id}.png"
+    payload: dict = {"prompt": prompt, "model": runtime.settings.image_model}
+    file_path: str | None = None
+    try:
+        png = await runtime.image.generate(prompt, width=768, height=1024)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(png)
+        payload["demo"] = False
+        file_path = str(path)
+    except Exception as exc:  # noqa: BLE001 - 生图失败不应阻塞包装审核
+        payload.update({"demo": True, "error": str(exc)[:300]})
+
+    artifact = Artifact(
+        batch_id=batch.id,
+        agent_run_id=run.id,
+        kind="illustration",
+        content_json=payload,
+        file_path=file_path,
+        approved_at=_now(),
+    )
+    session.add(artifact)
+    return artifact
+
+
 async def run_agent(
     session: AsyncSession,
     batch: Batch,
@@ -295,6 +332,10 @@ async def approve_agent(
     )
     session.add(artifact)
 
+    illustration: Artifact | None = None
+    if agent == AgentName.PACKAGING:
+        illustration = await _store_illustration(session, batch, run, content, runtime)
+
     if agent == AgentName.PRICING:
         batch.trace_code = pending_trace_code or batch.trace_code
         batch.state = "traced"
@@ -323,6 +364,12 @@ async def approve_agent(
 
     await session.commit()
     await session.refresh(artifact)
+    if illustration is not None:
+        await session.refresh(illustration)
+        await bus.publish(
+            "artifact.ready",
+            {"batch_id": batch.id, "agent": "illustration", "artifact_id": illustration.id},
+        )
     await session.refresh(batch)
     await bus.publish(
         "artifact.ready",

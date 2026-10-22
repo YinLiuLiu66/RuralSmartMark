@@ -15,8 +15,8 @@
 - **Phase 1 已完成**：mock 四 Agent 流水线（story→packaging→marketing→pricing）、`AgentRun`/`Artifact`/workspace、人工审核/驳回/重跑、SSE、站点卡、批次移动。
 - **Phase 2 已完成**：真实 LLM Agent（结构化输出 + 失败重试 + mock 兜底）、10 篇知识库 Markdown、FactGuard（逐字引用/违禁词/数字预警）、确定性定价计算器、内置 Noto Serif/Sans + 服务端 PNG 预览、引用/预警/包装预览 UI。
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
-- **下一步 Phase 4**：真实图像 Provider、包装变体、空态/错误态/性能与代码分割。
-- **尚未实现**：真实图像 Provider、字段级审核表单（当前 JSON 编辑器）、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格与包装厂真实报价、地理标志公告原文。别假设它们存在。
+- **Phase 4 进行中**：真实图像 Provider 已接入（默认 `Tongyi-MAI/Z-Image-Turbo`，审核通过后生成 `illustration` artifact，SHA-256 缓存）；下一步包装变体、空态/错误态、性能与代码分割。
+- **尚未实现**：包装变体、字段级审核表单（当前 JSON 编辑器）、Playwright、第二产品档案夹具、长时 60fps/内存压测、80–85mm 三家价格与包装厂真实报价、地理标志公告原文。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
 
@@ -26,14 +26,15 @@
 - `.env`：`backend/.env.example` 复制为 `.env`；`OPENAI_API_KEY` 可空，空则走 Mock；
   `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
   `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
+  图像：`IMAGE_MODEL=Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`），`IMAGE_SIZE` 空=按调用尺寸自动选 512×512/1024×576/768×1024，`IMAGE_BASE_URL` 空=复用 `OPENAI_BASE_URL`，`IMAGE_TIMEOUT_SECONDS=120`。
 - 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。
 - 包装字体 `backend/src/ruralsmartmark/assets/fonts/` 内置 Noto Serif/Sans SC（OFL，约 40MB）；PNG 不再依赖系统字体。
-  运行期包装 PNG 在 `backend/data/artifacts/`（gitignore）。
+  运行期包装 PNG 与 IP 插画在 `backend/data/artifacts/`；生图缓存 `backend/data/image-cache/`（均 gitignore）。
 - `uv run pytest` **不需要 PG**；测试用临时 SQLite；单函数一样跑。
 - 前端没有测试框架；只有 `pnpm typecheck` / `pnpm lint` / `pnpm build` 兜底；别假设有 vitest/jest。
 - 3D 只在桌面端（≥1024px）；手机只走 `/trace/:code`。3D 构建方式对齐 WareTrack：
   代码拼 Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + Texture；广告牌/二维码用 Html 覆盖层；不引 GLB/写实资产。
-- 固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26`；`seed/demo_batch.json` 存真实 V4.1 内容快照，seed/reset 时写入四章产出、4 条 approved run/artifact 和确定性定价；reset 后 H5 仍有完整内容。
+- 固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26`；`seed/demo_batch.json` 存真实 V4.1 内容快照，`seed/demo_illustration.png` 存 Z-Image-Turbo IP 插画快照；seed/reset 时写入四章产出、4 条 approved run、5 条 artifact（含插画）和确定性定价；reset 后 H5 仍有完整内容。
 - 前端 Vite 代理 `/api` → `http://127.0.0.1:8000`。
 
 ## 技能包同步（每个 Agent 开工必做）
@@ -74,16 +75,16 @@ backend/
     routes/ health.py products.py batches.py demo.py pipeline.py
            knowledge.py artifacts.py trace.py   # 知识库 / 包装文件 / 公开溯源
     agents/ base.py schemas.py prompts.py engine.py runtime.py mock.py orchestrator.py
-    providers/ llm.py image.py      # Provider 接口 + Mock
+    providers/ llm.py image.py      # LLM + SiliconFlow 生图 + Mock
     services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
              trace.py trace_chat.py # 公开溯源聚合 + IP 对话边界
     assets/fonts/                  # 内置 Noto Serif/Sans + OFL
-    seed/ __init__.py __main__.py demo_batch.json  # 幂等 seed + 固定演示快照
+    seed/ __init__.py __main__.py demo_batch.json demo_illustration.png  # 幂等 seed + 固定演示快照
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
          test_knowledge.py test_fact_guard.py test_pricing.py test_engine.py
-         test_llm.py test_packaging.py test_trace.py
+         test_llm.py test_packaging.py test_trace.py test_image.py
 data/knowledge/zhaotong/*.md        # 事实源；已入库
 frontend/
   src/api/client.ts                 # fetch 封装 + Product/Batch/Knowledge 类型

@@ -422,6 +422,19 @@ export default function Trace() {
           <blockquote className="mt-4 border-l-2 border-apple pl-4 font-display text-xl leading-9 text-ink">
             {trace.story.story_short}
           </blockquote>
+          {trace.story.illustration_url && (
+            <figure className="mt-4 overflow-hidden rounded-card border border-line bg-surface">
+              <img
+                src={trace.story.illustration_url}
+                alt={`${trace.story.ip_name} IP 插画`}
+                className="aspect-[3/4] w-full object-cover"
+                loading="lazy"
+              />
+              <figcaption className="border-t border-line px-4 py-2 text-[10px] text-ink-faint">
+                AI 生成演示插画 · {trace.fixed_demo ? "固定快照" : "服务端生成"} · 非真实人物
+              </figcaption>
+            </figure>
+          )}
           <p className="mt-4 whitespace-pre-line break-words text-[15px] leading-8 text-ink-muted">
             {trace.story.story_long}
           </p>

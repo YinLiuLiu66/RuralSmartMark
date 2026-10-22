@@ -51,6 +51,7 @@ export interface Trace {
     story_short: string;
     taglines: string[];
     evidence: TraceEvidence[];
+    illustration_url: string | null;
   };
   packaging: {
     concept: string;

@@ -151,6 +151,13 @@ async def load_trace(session: AsyncSession, code: str) -> TraceOut | None:
     for artifact in artifacts:
         latest[artifact.kind] = artifact
 
+    illustration = latest.get("illustration")
+    illustration_url = (
+        f"/api/artifacts/{illustration.id}/file"
+        if illustration is not None and illustration.file_path
+        else None
+    )
+
     scan_count = int(
         await session.scalar(
             select(func.count()).select_from(ScanEvent).where(ScanEvent.batch_id == batch.id)
@@ -210,6 +217,7 @@ async def load_trace(session: AsyncSession, code: str) -> TraceOut | None:
             story_short=str(story.get("story_short") or ""),
             taglines=[str(item) for item in story.get("taglines") or []],
             evidence=_evidence(_citations(story, packaging, pricing), docs),
+            illustration_url=illustration_url,
         ),
         packaging=TracePackagingOut(
             concept=str(packaging.get("concept") or ""),

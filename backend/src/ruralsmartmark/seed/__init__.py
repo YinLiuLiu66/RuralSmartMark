@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -80,6 +81,7 @@ BENCHMARKS = [
 ]
 
 DEMO_SNAPSHOT_FILE = Path(__file__).with_name("demo_batch.json")
+DEMO_ILLUSTRATION_FILE = Path(__file__).with_name("demo_illustration.png")
 
 BATCHES = [
     {
@@ -150,82 +152,132 @@ async def _seed_demo_snapshot(
     product: ProductProfile,
     *,
     public_base_url: str,
+    artifact_dir: Path | None = None,
 ) -> None:
     demo = await session.scalar(select(Batch).where(Batch.code == DEMO_BATCH_CODE))
-    if demo is None or demo.story_json is not None:
+    if demo is None:
         return
 
-    snapshot = json.loads(DEMO_SNAPSHOT_FILE.read_text(encoding="utf-8"))
-    story = snapshot["story"]
-    packaging = snapshot["packaging"]
-    marketing = snapshot["marketing"]
-
-    docs = await list_knowledge_docs(session, product.id)
-    benchmarks = list(
-        (
-            await session.execute(
-                select(Benchmark).where(Benchmark.product_id == product.id).order_by(Benchmark.id)
-            )
-        )
-        .scalars()
-        .all()
-    )
-    pricing = calculate_pricing(
-        product,
-        demo,
-        packaging,
-        benchmarks,
-        docs,
-        public_base_url=public_base_url,
-        story=story,
-        trace_code=DEMO_TRACE_CODE,
-    )
-
-    demo.story_json = story
-    demo.packaging_json = packaging
-    demo.marketing_json = marketing
-    demo.pricing_json = pricing
-    demo.state = "traced"
-    demo.current_station = "trace"
-    demo.trace_code = DEMO_TRACE_CODE
-    await session.flush()
-
     now = datetime.now(UTC)
-    for agent, data in (
-        (AgentName.STORY, story),
-        (AgentName.PACKAGING, packaging),
-        (AgentName.MARKETING, marketing),
-        (AgentName.PRICING, pricing),
-    ):
-        guard = check_output(
-            data,
-            docs,
-            allowed_numbers=_guard_allowed_numbers(agent, product, demo, docs, data),
-        )
-        run = AgentRun(
-            batch_id=demo.id,
-            agent=agent.value,
-            status="approved",
-            input_json={"provider": "seed-snapshot"},
-            output_json=data,
-            guard_json=guard.as_dict(),
-            model="seed-snapshot",
-            tokens=0,
-            started_at=now,
-            finished_at=now,
-        )
-        session.add(run)
-        await session.flush()
-        session.add(
-            Artifact(
-                batch_id=demo.id,
-                agent_run_id=run.id,
-                kind=agent.value,
-                content_json=data,
-                file_path=None,
-                approved_at=now,
+    runs: dict[AgentName, AgentRun] = {}
+
+    if demo.story_json is None:
+        snapshot = json.loads(DEMO_SNAPSHOT_FILE.read_text(encoding="utf-8"))
+        story = snapshot["story"]
+        packaging = snapshot["packaging"]
+        marketing = snapshot["marketing"]
+
+        docs = await list_knowledge_docs(session, product.id)
+        benchmarks = list(
+            (
+                await session.execute(
+                    select(Benchmark)
+                    .where(Benchmark.product_id == product.id)
+                    .order_by(Benchmark.id)
+                )
             )
+            .scalars()
+            .all()
         )
+        pricing = calculate_pricing(
+            product,
+            demo,
+            packaging,
+            benchmarks,
+            docs,
+            public_base_url=public_base_url,
+            story=story,
+            trace_code=DEMO_TRACE_CODE,
+        )
+
+        demo.story_json = story
+        demo.packaging_json = packaging
+        demo.marketing_json = marketing
+        demo.pricing_json = pricing
+        demo.state = "traced"
+        demo.current_station = "trace"
+        demo.trace_code = DEMO_TRACE_CODE
+        await session.flush()
+
+        for agent, data in (
+            (AgentName.STORY, story),
+            (AgentName.PACKAGING, packaging),
+            (AgentName.MARKETING, marketing),
+            (AgentName.PRICING, pricing),
+        ):
+            guard = check_output(
+                data,
+                docs,
+                allowed_numbers=_guard_allowed_numbers(agent, product, demo, docs, data),
+            )
+            run = AgentRun(
+                batch_id=demo.id,
+                agent=agent.value,
+                status="approved",
+                input_json={"provider": "seed-snapshot"},
+                output_json=data,
+                guard_json=guard.as_dict(),
+                model="seed-snapshot",
+                tokens=0,
+                started_at=now,
+                finished_at=now,
+            )
+            session.add(run)
+            await session.flush()
+            runs[agent] = run
+            session.add(
+                Artifact(
+                    batch_id=demo.id,
+                    agent_run_id=run.id,
+                    kind=agent.value,
+                    content_json=data,
+                    file_path=None,
+                    approved_at=now,
+                )
+            )
+    else:
+        packaging = demo.packaging_json or {}
+
+    if artifact_dir is None or not DEMO_ILLUSTRATION_FILE.is_file():
+        return
+    existing = await session.scalar(
+        select(Artifact).where(
+            Artifact.batch_id == demo.id,
+            Artifact.kind == "illustration",
+        )
+    )
+    if existing is not None:
+        return
+
+    prompt = str(packaging.get("ip_image_prompt") or "").strip()
+    if not prompt:
+        return
+    packaging_run = runs.get(AgentName.PACKAGING)
+    if packaging_run is None:
+        packaging_run = await session.scalar(
+            select(AgentRun)
+            .where(AgentRun.batch_id == demo.id, AgentRun.agent == AgentName.PACKAGING.value)
+            .order_by(AgentRun.id.desc())
+        )
+
+    target = artifact_dir / f"batch-{demo.id}" / "illustration-demo.png"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(DEMO_ILLUSTRATION_FILE, target)
+    session.add(
+        Artifact(
+            batch_id=demo.id,
+            agent_run_id=packaging_run.id if packaging_run else None,
+            kind="illustration",
+            content_json={
+                "prompt": prompt,
+                "model": "Tongyi-MAI/Z-Image-Turbo",
+                "demo": True,
+                "source": "seed-snapshot",
+            },
+            file_path=str(target),
+            approved_at=now,
+        )
+    )
 
 
 async def seed_demo(
@@ -233,6 +285,7 @@ async def seed_demo(
     *,
     reset: bool = False,
     public_base_url: str | None = None,
+    artifact_dir: Path | None = None,
 ) -> dict[str, int]:
     """Idempotent seed; reset clears batches and their children but keeps product/docs/benchmarks."""
     product = await _upsert_product(session)
@@ -244,6 +297,7 @@ async def seed_demo(
         session,
         product,
         public_base_url=public_base_url or get_settings().public_base_url,
+        artifact_dir=artifact_dir,
     )
     await session.commit()
     return {"products": 1, "batches": len(BATCHES)}

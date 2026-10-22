@@ -152,3 +152,9 @@
 **理由**：Phase 3 的重点是扫码闭环与 3D 联动；四个 Agent 的 JSON 契约刚稳定，此时做字段级表单容易返工；JSON 编辑器能完整表达所有字段，现场审核可用。
 **验证**：Phase 3 真实批次与固定演示批次均通过 JSON 审核/seed 快照进入 `traced`；字段级表单缺口已记入 `05-next-steps.md`。
 **拍板时间**：2026-10-22
+
+### #59 · 真实图像 Provider 与 IP 插画
+**结论**：接入 SiliconFlow `POST /v1/images/generations`，默认模型 `Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`）；竖版生图用 768×1024，按调用尺寸自动落到 512×512 / 1024×576 / 768×1024，可用 `IMAGE_SIZE` 覆盖；带负向提示词，保留服务端默认“AI 生成”水印。生成结果下载后转 PNG，按 `model+prompt+size+negative_prompt` 的 SHA-256 缓存到 `backend/data/image-cache/`。包装审核通过后先生成 `illustration` artifact，失败只记录 `demo=true/error`，不阻塞审核。固定演示批次提交一张同 prompt 的 Z-Image-Turbo 快照 `seed/demo_illustration.png`，H5 故事区和包装工位展示。
+**理由**：Z-Image-Turbo 约 ¥0.1/张、实测约 3 秒，中文与画面文字渲染好；审核通过后再生图，避免未通过稿浪费额度；缓存避免重跑重复扣费；固定演示码需要离线可复现，所以提交一张快照而不是现场依赖网络。
+**验证**：真实 API 512×512 与 768×1024 均 200；Provider 类实测 768×1024、约 986KB、缓存命中；`seed/demo_illustration.png` 为 768×1024、保留“AI 生成”水印；H5 与包装工位均显示；43 后端测试、ruff、前端 typecheck/lint/build 全绿。
+**拍板时间**：2026-10-22

@@ -59,6 +59,7 @@ async def test_demo_reset_keeps_fixed_demo_trace(client):
     data = trace.json()
     assert data["fixed_demo"] is True
     assert data["story"]["ip_name"] == "山风守园人"
+    assert data["story"]["illustration_url"]
     assert data["pricing"]["premium_pct"] == 156.0
     assert [item["step"] for item in data["timeline"][1:]] == [
         "故事定稿",
@@ -68,12 +69,21 @@ async def test_demo_reset_keeps_fixed_demo_trace(client):
     ]
     assert (await client.get("/api/trace/ZTDEMO26/packaging.png")).status_code == 200
     assert (await client.get("/api/trace/ZTDEMO26/qr.png")).status_code == 200
+    illustration = await client.get(data["story"]["illustration_url"])
+    assert illustration.status_code == 200
+    assert illustration.content.startswith(b"\x89PNG")
 
     batches = (await client.get("/api/batches")).json()
     demo = next(batch for batch in batches if batch["code"] == "ZT-DEMO-001")
     workspace = (await client.get(f"/api/batches/{demo['id']}/workspace")).json()
     assert len(workspace["runs"]) == 4
-    assert len(workspace["artifacts"]) == 4
+    assert {artifact["kind"] for artifact in workspace["artifacts"]} == {
+        "story",
+        "packaging",
+        "marketing",
+        "pricing",
+        "illustration",
+    }
 
 
 async def test_trace_unknown_code_is_404(client):

@@ -13,7 +13,7 @@ async def main() -> None:
     await init_db(engine)
     maker = async_sessionmaker(engine, expire_on_commit=False)
     async with maker() as session:
-        counts = await seed_demo(session)
+        counts = await seed_demo(session, artifact_dir=settings.artifact_path)
     await engine.dispose()
     print(f"seeded: {counts}")
 

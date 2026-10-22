@@ -1,6 +1,6 @@
 import { ArrowLeft, ExternalLink, Play, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
-import type { AgentKey, BatchWorkspace } from "../api/pipeline";
+import type { AgentKey, Artifact, BatchWorkspace } from "../api/pipeline";
 import type { KnowledgeDoc } from "../api/client";
 import {
   agentStatus,
@@ -129,10 +129,12 @@ function PackagingPreview({
   batchId,
   runId,
   output,
+  illustration,
 }: {
   batchId: number;
   runId: number | null;
   output: Record<string, unknown>;
+  illustration: Artifact | null;
 }) {
   const copy = (output.packaging_copy ?? {}) as Record<string, unknown>;
   const structure = (output.structure ?? {}) as Record<string, unknown>;
@@ -153,6 +155,23 @@ function PackagingPreview({
         <span>侧面：{String(copy.side ?? "—")}</span>
         <span className="col-span-2">盒型：{String(structure.box_type ?? "—")}</span>
       </div>
+      {illustration?.file_url && (
+        <div className="mt-3 overflow-hidden rounded-control border border-line bg-surface-2">
+          <img
+            src={illustration.file_url}
+            alt="IP 插画（AI 生成）"
+            className="aspect-[3/4] w-full object-cover"
+          />
+          <p className="border-t border-line px-2 py-1.5 text-[10px] text-ink-muted">
+            IP 插画 · {String(illustration.content_json?.model ?? "Z-Image-Turbo")} · 演示合成
+          </p>
+        </div>
+      )}
+      {Boolean(illustration?.content_json?.error) && (
+        <p className="mt-2 text-[10px] leading-4 text-amber">
+          插画生成失败，包装审核不受影响；可稍后重跑包装。
+        </p>
+      )}
     </div>
   );
 }
@@ -225,15 +244,24 @@ function OutputPreview({
   batchId,
   runId,
   output,
+  illustration,
 }: {
   agent: AgentKey;
   batchId: number;
   runId: number | null;
   output: Record<string, unknown>;
+  illustration: Artifact | null;
 }) {
   if (agent === "story") return <StoryPreview output={output} />;
   if (agent === "packaging") {
-    return <PackagingPreview batchId={batchId} runId={runId} output={output} />;
+    return (
+      <PackagingPreview
+        batchId={batchId}
+        runId={runId}
+        output={output}
+        illustration={illustration}
+      />
+    );
   }
   if (agent === "marketing") return <MarketingPreview output={output} />;
   return <PricingPreview output={output} />;
@@ -259,6 +287,8 @@ export default function StationCard({
   const status = agentStatus(workspace, agent.key);
   const run = latestRun(workspace, agent.key);
   const output = outputForAgent(workspace, agent.key);
+  const illustration =
+    workspace.artifacts.find((artifact) => artifact.kind === "illustration") ?? null;
   const canRun =
     nextAgent(workspace.batch.state) === agent.key ||
     workspace.batch.state === `${agent.key}_review`;
@@ -316,6 +346,7 @@ export default function StationCard({
             batchId={workspace.batch.id}
             runId={run?.id ?? null}
             output={output}
+            illustration={illustration}
           />
         ) : (
           "还没有产出。运行后在这里预览；审核时可编辑 JSON。"

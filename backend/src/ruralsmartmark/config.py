@@ -23,7 +23,11 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.siliconflow.cn/v1"
     openai_model: str = "deepseek-ai/DeepSeek-V4.1-Flash"
-    image_model: str = "Kwai-Kolors/Kolors"
+    image_model: str = "Tongyi-MAI/Z-Image-Turbo"
+    image_base_url: str = ""
+    image_size: str = ""
+    image_negative_prompt: str = "真实人物肖像, 照片, 品牌logo, 低清晰度"
+    image_timeout_seconds: float = 120.0
     public_base_url: str = "http://127.0.0.1:5173"
     auto_approve: bool = False
     llm_fallback_to_mock: bool = True
@@ -38,6 +42,14 @@ class Settings(BaseSettings):
     @property
     def artifact_path(self) -> Path:
         return BACKEND_DIR / "data" / "artifacts"
+
+    @property
+    def image_cache_path(self) -> Path:
+        return BACKEND_DIR / "data" / "image-cache"
+
+    @property
+    def resolved_image_base_url(self) -> str:
+        return (self.image_base_url or self.openai_base_url).rstrip("/")
 
 
 @lru_cache

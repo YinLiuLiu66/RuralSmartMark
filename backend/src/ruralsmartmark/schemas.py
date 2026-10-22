@@ -163,6 +163,7 @@ class TraceStoryOut(BaseModel):
     story_short: str
     taglines: list[str]
     evidence: list[TraceEvidenceOut]
+    illustration_url: str | None = None
 
 
 class TracePackagingCopy(BaseModel):

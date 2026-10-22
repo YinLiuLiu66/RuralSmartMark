@@ -189,7 +189,7 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 `TraceHero`、`StorySection`、`Timeline`、`PriceCard`、`ChatPanel`、`ScanBadge`（实现位于 `src/routes/Trace.tsx` 的局部组件）。
 
-- 移动优先 390px（max-width 430，320px 压测）；首屏是品牌/IP/批次 + 包装图 + IP 问候；随后是四 Agent 审核章、故事与引用折叠、包装文案、旅程/审核时间线、价格卡（档位/溢价/公式/成本）、小红书内容卡、IP 对话、扫码计数。
+- 移动优先 390px（max-width 430，320px 压测）；首屏是品牌/IP/批次 + 包装图 + IP 问候；随后是四 Agent 审核章、故事与引用折叠（故事区有 IP 插画时显示 768×1024 图）、包装文案、旅程/审核时间线、价格卡（档位/溢价/公式/成本）、小红书内容卡、IP 对话、扫码计数。
 - 价格卡以礼盒价和溢价为 lead value；三档价格并排，公式/成本放原生 `<details>`；所有价格标“演示测算”。
 - 对话：FAQ 推荐问题、用户/助手气泡、失败重试；输入框 16px 防 iOS 缩放；composer 在对话区内 `sticky bottom-0`，不遮前面内容；安全区 padding。
 - 状态：首屏骨架、未知码（含 `ZTDEMO26` 入口）、网络错误重试；无横向滚动。
@@ -255,8 +255,16 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 - 溯源 H5：390px 单列、430px 上限；首屏包装图 + IP 问候；四 Agent 审核章；故事 + 8 条引用折叠；包装四面文案；旅程 + 审核时间线；价格卡（礼盒价/溢价/三档/公式/成本）；小红书内容卡；IP 对话 + FAQ 推荐问题；扫码计数；骨架/404/错误重试。
 - 3D：礼盒正/背面贴已通过包装 PNG；内容工坊广告牌显示小红书标题；云仓二维码按钮打开 H5；批次沿 CatmullRom 路径移动；traced 后卡车驶出；左栏扫码数通过 `GET /trace/{code}/scan` 初始化并随 SSE 更新。
-- 固定演示快照：`ZTDEMO26` reset 后仍有 4 条 approved 产出与完整 H5；扫码/对话可用。
+- 固定演示快照：`ZTDEMO26` reset 后仍有 4 条 approved run、5 条 artifact（含插画）与完整 H5；扫码/对话可用。
 - 视觉验收：390×844 首屏/价格/对话截图；320px 无横向溢出；1280×720 沙盘固定演示批次截图；二维码按钮打开新标签。
 - 修复：二维码被 Tailwind preflight 的 `max-width:100%` 压成 14px，改为 `maxWidth:none`；广告牌中文在 CanvasTexture 远端不可读，改用 Html 卡片；StrictMode 下提前释放纹理导致礼盒贴图空白，改用 `useTexture` + Suspense。
-- 已知缺口：各 Agent 字段级表单、真实图像 Provider、Playwright、200% zoom、长时 60fps/内存压测；bundle 约 1.27MB，Phase 4 拆包；包装 PNG 已内置 Noto 字体，SVG 仍依赖查看端字体，只作导出用途。
+- Phase 3 结束时已知缺口：各 Agent 字段级表单、Playwright、200% zoom、长时 60fps/内存压测；bundle 约 1.27MB，Phase 4 拆包；包装 PNG 已内置 Noto 字体，SVG 仍依赖查看端字体，只作导出用途。
+
+### Phase 4（进行中）
+
+- 真实图像：包装审核通过后生成 `illustration` artifact（默认 Z-Image-Turbo，768×1024）；H5 故事区显示插画与“AI 生成演示插画 · 固定快照/服务端生成 · 非真实人物”说明；包装工位显示插画。
+- 固定演示码使用 `seed/demo_illustration.png`，保留 SiliconFlow“AI 生成”水印；不把水印裁掉，避免看起来像真实摄影。
+- 生图失败不阻塞审核：包装工位显示“插画生成失败，包装审核不受影响”；缓存按 prompt hash 存 `backend/data/image-cache/`。
+- 验证：390×844 H5 插画区截图；1280×720 包装工位插画截图；真实 API 512×512/768×1024 均 200。
+- 未做：包装变体/盒型、生图失败的视觉兜底、缓存清理、空态/错误态、60fps 长时压测、代码分割。
 

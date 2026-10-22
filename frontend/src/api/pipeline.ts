@@ -1,6 +1,7 @@
 import type { Batch } from "./client";
 
 export type AgentKey = "story" | "packaging" | "marketing" | "pricing";
+export type ArtifactKind = AgentKey | "illustration";
 
 export interface BatchFull extends Batch {
   story_json: Record<string, unknown> | null;
@@ -42,7 +43,7 @@ export interface AgentRun {
 export interface Artifact {
   id: number;
   batch_id: number;
-  kind: AgentKey;
+  kind: ArtifactKind;
   content_json: Record<string, unknown> | null;
   file_path: string | null;
   file_url: string | null;
