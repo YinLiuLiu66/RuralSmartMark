@@ -531,7 +531,7 @@ export default function Sandbox() {
             </div>
           </aside>
 
-          <main className="relative min-h-0 bg-paper">
+          <main className="relative isolate min-h-0 overflow-hidden bg-paper">
             <SceneBoundary>
               <Suspense fallback={<SceneLoading />}>
                 <Scene
