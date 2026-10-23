@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "re
 import {
   BadgePercent,
   BookOpen,
-  ChevronDown,
   Megaphone,
   Play,
   Plus,
@@ -403,7 +402,6 @@ export default function Sandbox() {
                 </option>
               ))}
             </select>
-            <ChevronDown size={14} />
           </label>
           <button
             type="button"
@@ -432,7 +430,6 @@ export default function Sandbox() {
                 </option>
               ))}
             </select>
-            <ChevronDown size={14} />
           </label>
 
           <div className="ml-auto flex items-center gap-2">
