@@ -10,7 +10,14 @@ from sqlalchemy import select
 
 from ..agents.base import AgentName
 from ..agents.controller import ControllerUnavailable, run_controller_turn
-from ..agents.orchestrator import approve_agent, reject_agent
+from ..agents.orchestrator import (
+    approve_agent,
+    next_agent,
+    reject_agent,
+)
+from ..agents.orchestrator import (
+    run_agent as run_pipeline_agent,
+)
 from ..agents.runtime import RuntimeDep
 from ..deps import SessionDep, SessionFactoryDep
 from ..models import Batch, ControllerMessage, ControllerSession, ProductProfile
@@ -308,6 +315,25 @@ async def _execute_pending(
     if kind == "approve_agent":
         await approve_agent(session, batch, agent, runtime)
         result = f"已通过 {agent.value}。"
+        upcoming = next_agent(batch)
+        if upcoming is None:
+            if batch.state == "traced":
+                result += f" 批次已进入溯源状态，溯源码 {batch.trace_code}。"
+        else:
+            try:
+                next_run = await run_pipeline_agent(session, batch, upcoming, runtime)
+            except Exception as exc:  # noqa: BLE001 - 审核已完成，下一站失败不回滚
+                result += (
+                    f" 下一站 {upcoming.value} 启动失败：{str(exc)[:200]}。"
+                    "可到对应工位重跑。"
+                )
+            else:
+                if next_run.status == "waiting_review":
+                    result += f" 已自动运行 {upcoming.value}，产出待审核。"
+                elif next_run.status == "approved":
+                    result += f" 已自动运行并通过 {upcoming.value}。"
+                else:
+                    result += f" 已自动运行 {upcoming.value}，当前状态 {next_run.status}。"
     elif kind == "reject_agent":
         await reject_agent(session, batch, agent, pending.get("note") or None)
         result = f"已驳回 {agent.value}。"

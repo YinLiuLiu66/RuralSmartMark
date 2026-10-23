@@ -181,3 +181,68 @@ async def test_fresh_session_skips_existing_blank_session(session, client):
     again = await client.post("/api/controller/sessions", json={})
     assert again.status_code == 200
     assert again.json()["id"] == created["id"]
+
+
+async def test_confirm_approve_continues_next_station(session, client, monkeypatch):
+    product = ProductProfile(
+        slug="auto-continue-fruit",
+        name="自动继续水果",
+        county="测试县",
+        province="测试省",
+        category="鲜果",
+        form="1kg 礼盒",
+    )
+    session.add(product)
+    await session.flush()
+    batch = Batch(
+        product_id=product.id,
+        code="AC-001",
+        state="story_review",
+        current_station="story",
+    )
+    session.add(batch)
+    await session.commit()
+    await session.refresh(batch)
+
+    item = ControllerSession(
+        product_id=product.id,
+        batch_id=batch.id,
+        pending_action_json={
+            "id": "act-approve",
+            "kind": "approve_agent",
+            "summary": "通过故事并自动运行包装设计",
+            "agent": "story",
+        },
+    )
+    session.add(item)
+    await session.commit()
+    await session.refresh(item)
+
+    calls: dict[str, str] = {}
+
+    async def fake_approve(_session, target_batch, agent, _runtime):
+        calls["approved"] = agent.value
+        target_batch.state = "story_approved"
+
+    async def fake_run(_session, target_batch, agent, _runtime, _note=None):
+        calls["next"] = agent.value
+        target_batch.state = "packaging_review"
+
+        class _Run:
+            status = "waiting_review"
+
+        return _Run()
+
+    monkeypatch.setattr("ruralsmartmark.routes.controller.approve_agent", fake_approve)
+    monkeypatch.setattr(
+        "ruralsmartmark.routes.controller.run_pipeline_agent", fake_run
+    )
+
+    response = await client.post(
+        f"/api/controller/sessions/{item.id}/confirm",
+        json={"action_id": "act-approve", "decision": "confirm"},
+    )
+    assert response.status_code == 200, response.text
+    assert calls == {"approved": "story", "next": "packaging"}
+    assert "已自动运行 packaging" in response.json()["reply"]
+    assert "待审核" in response.json()["reply"]

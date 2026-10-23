@@ -1,7 +1,7 @@
 # 总控与多产品 · 设计契约
 
 > 状态：已批准，已完成（2026-10-22）
-> 决策：`docs/decisions.md` #68–#73
+> 决策：`docs/decisions.md` #68–#74
 > 目标：用户只面对一个输入框，完成“调研建档 → 四站流水线 → 修改/通过/回退”。
 
 ## 1. 角色
@@ -30,6 +30,7 @@
 - 回复走 SSE 流式：正文按 token 增长；`reasoning_content` 显示为「思考过程」，默认折叠，展开后一行一条。
 - 工具执行期间显示中文状态（检索、抓页、调用 Agent、准备确认卡）。
 - 对话里的确认卡负责危险动作；普通消息不弹窗。
+- 运行流水线的节奏：你说“开始运行”，总控跑当前站并汇报；你说“审核通过”，总控生成确认卡；确认后后端通过并自动运行下一站，下一站仍停在待审核。
 
 示例：
 - “我想做贵州麻江蓝莓，帮我查产地和价格。”
@@ -49,7 +50,7 @@
 ### 必须确认
 `commit_product`、`approve_agent`、`reject_agent`、`rewind_to_agent`。
 
-确认由后端生成 `pending_action_json`，`confirm` 接口执行；模型不直接执行危险动作。
+确认由后端生成 `pending_action_json`，`confirm` 接口执行；模型不直接执行危险动作。`approve_agent` 确认通过后自动启动下一站并停在待审核；定价通过后直接进入 `traced`。每站仍需用户再次确认，不做连续自动通过。
 
 ## 4. 限额
 
@@ -104,7 +105,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 - `GET /api/controller/sessions/{id}`：消息、草案、pending action。
 - `POST /api/controller/sessions/{id}/messages`：非流式发消息（测试/兼容用）。
 - `POST /api/controller/sessions/{id}/messages/stream`：SSE 流式发消息，事件 `user` → `thinking` / `delta` / `tool` → `done`；失败发 `error`。`done.turn` 与 `/messages` 响应同构，包含 `session / reply / thinking / questions / pending_action / events`。
-- `POST /api/controller/sessions/{id}/confirm`：`{action_id, decision}` 执行/取消危险动作。
+- `POST /api/controller/sessions/{id}/confirm`：`{action_id, decision}` 执行/取消危险动作；`approve_agent` 确认时自动运行下一站。
 
 所有写操作复用现有 `run_agent/approve_agent/reject_agent`。SSE worker 使用独立数据库会话，客户端断开时取消本轮模型调用；已落库的用户消息保留。
 
@@ -122,4 +123,4 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 - 从 UI 能完成：新建空白会话 → 调研 → 草案 → 确认建档 → 跑故事 → 对话修改 → 通过 → 回退。
 - 发消息后用户气泡立即出现；思维链默认折叠、可展开；正文流式出现。
 - 无 Firecrawl key 时提示贴资料，不静默失败；网络失败提示可重试/贴链接。
-- 后端 56 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。
+- 后端 57 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。

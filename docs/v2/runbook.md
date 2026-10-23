@@ -48,6 +48,7 @@ make lan
 - 发送后用户消息立即出现；回答逐字流式增长。需要看总控为什么查/停时，点「思考过程」展开思维链（默认折叠）。
 - 草案出齐后，在确认卡点「确认建档」；新产品出现在顶栏「产品」下拉，批次自动选中。
 - 之后可以直接说“运行故事”“包装改克制一点”“通过故事”“回到包装重做”。
+- 说“审核通过”会先出确认卡；确认后通过并自动运行下一站，下一站仍停在待审核。
 - 建档/通过/驳回/回退都会先弹确认卡；查资料/读状态不会。
 - 真实搜索需要 Firecrawl key；没有 key 时贴官网/报道链接或原文。检索连接中断会自动重试，仍失败时直接贴链接即可。
 
@@ -76,7 +77,7 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 56 passed + 2 skipped + ruff；前端 typecheck/lint/build
+make test    # 后端 57 passed + 2 skipped + ruff；前端 typecheck/lint/build
 make e2e     # Playwright 9 条冒烟（桌面 6 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度

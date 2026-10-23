@@ -20,7 +20,7 @@ import {
 
 const ACTION_LABEL: Record<string, string> = {
   commit_product: "确认建档",
-  approve_agent: "确认通过",
+  approve_agent: "确认通过并继续下一站",
   reject_agent: "确认驳回",
   rewind_to_agent: "确认回退并重跑",
 };
