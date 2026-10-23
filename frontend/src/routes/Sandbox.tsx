@@ -6,7 +6,6 @@ import {
   Play,
   Plus,
   QrCode,
-  Settings,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -388,7 +387,7 @@ export default function Sandbox() {
             </span>
           </div>
 
-          <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted">
+          <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
             <span>产品</span>
             <select
               value={selectedProduct?.id ?? ""}
@@ -416,7 +415,7 @@ export default function Sandbox() {
             <Plus size={15} />
           </button>
 
-          <label className="flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted">
+          <label className="flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
             <span>批次</span>
             <select
               value={selectedBatch?.id ?? ""}
@@ -468,18 +467,12 @@ export default function Sandbox() {
               总控
             </button>
             <button
-              className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
               onClick={handleHeader}
               disabled={headerDisabled}
             >
               {canReview ? <ShieldCheck size={14} /> : <Play size={14} />}
               {headerLabel}
-            </button>
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted"
-              title="设置（暂未接入）"
-            >
-              <Settings size={16} />
             </button>
           </div>
         </header>
@@ -569,7 +562,7 @@ export default function Sandbox() {
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="shrink-0 underline underline-offset-4"
+                    className="shrink-0 underline underline-offset-4 hover:text-apple"
                   >
                     重试
                   </button>
@@ -637,7 +630,7 @@ export default function Sandbox() {
                     type="button"
                     onClick={() => void handleCreateBatch()}
                     disabled={creating}
-                    className="mt-3 w-full rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+                    className="mt-3 w-full rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
                   >
                     {creating ? "新建中…" : "新建演示批次"}
                   </button>
@@ -723,10 +716,10 @@ export default function Sandbox() {
                   <button
                     key={agent.key}
                     onClick={() => selectAgent(agent.key)}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] ${
+                    className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       selectedAgent === agent.key
                         ? "border-apple/30 bg-apple-weak text-apple"
-                        : "border-line text-ink-muted"
+                        : "border-line text-ink-muted hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple"
                     }`}
                   >
                     {agent.short} {count}
@@ -735,7 +728,7 @@ export default function Sandbox() {
               })}
               <Link
                 to={`/trace/${traceCode ?? "ZTDEMO26"}`}
-                className="rounded-full border border-line px-3 py-1.5 text-[11px] text-ink-muted"
+                className="rounded-full border border-line px-3 py-1.5 text-[11px] text-ink-muted transition-colors hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple"
               >
                 {traceCode ? "溯源" : "演示溯源"}
               </Link>

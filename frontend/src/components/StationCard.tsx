@@ -170,10 +170,10 @@ function PackagingPreview({
               type="button"
               title={item.description}
               onClick={() => onVariantChange(item.key)}
-              className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] ${
+              className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] transition-colors ${
                 item.key === variant
                   ? "border-apple/40 bg-apple-weak text-apple"
-                  : "border-line bg-paper text-ink-muted"
+                  : "border-line bg-paper text-ink-muted hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple"
               }`}
             >
               <span className="flex -space-x-1">
@@ -472,7 +472,7 @@ export default function StationCard({
         {reviewable && (
           <button
             onClick={onReview}
-            className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-60"
             disabled={busy}
           >
             <ShieldCheck size={14} />
@@ -483,7 +483,7 @@ export default function StationCard({
         {canRun && status !== "running" && !reviewable && (
           <button
             onClick={onRun}
-            className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-60"
             disabled={busy}
           >
             {status === "failed" ? <RefreshCw size={14} /> : <Play size={14} />}
@@ -494,7 +494,7 @@ export default function StationCard({
         {reviewable && canRun && (
           <button
             onClick={onRun}
-            className="flex items-center gap-1.5 rounded-control border border-line px-3 py-2 text-xs text-ink-muted disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-control border border-line px-3 py-2 text-xs text-ink-muted transition-colors hover:border-apple/40 hover:text-apple disabled:opacity-60"
             disabled={busy}
           >
             <RefreshCw size={14} />

@@ -23,7 +23,7 @@ export class SceneBoundary extends Component<{ children: ReactNode }, SceneBound
             <button
               type="button"
               onClick={() => this.setState({ hasError: false })}
-              className="mt-4 rounded-control bg-apple px-4 py-2 text-xs font-medium text-white"
+              className="mt-4 rounded-control bg-apple px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover"
             >
               重试 3D
             </button>

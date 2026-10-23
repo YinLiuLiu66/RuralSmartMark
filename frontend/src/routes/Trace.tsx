@@ -233,7 +233,7 @@ function ErrorPanel({
               </Link>
               <Link
                 to="/"
-                className="rounded-control border border-line px-4 py-3 text-sm text-ink-muted"
+                className="rounded-control border border-line px-4 py-3 text-sm text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
               >
                 返回桌面沙盘
               </Link>
@@ -242,7 +242,7 @@ function ErrorPanel({
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-control bg-apple px-4 py-3 text-sm font-medium text-white"
+              className="rounded-control bg-apple px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-apple-hover"
             >
               重新加载
             </button>
@@ -655,7 +655,7 @@ export default function Trace() {
                   <button
                     type="button"
                     onClick={retryChat}
-                    className="underline underline-offset-4"
+                    className="underline underline-offset-4 hover:text-apple"
                   >
                     重试
                   </button>
@@ -672,7 +672,7 @@ export default function Trace() {
                 type="button"
                 onClick={() => void sendMessage(question)}
                 disabled={busy}
-                className="rounded-full border border-line bg-surface px-3 py-1.5 text-[11px] text-ink-muted disabled:opacity-50"
+                className="rounded-full border border-line bg-surface px-3 py-1.5 text-[11px] text-ink-muted transition-colors hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple disabled:opacity-50"
               >
                 {question}
               </button>
@@ -704,7 +704,7 @@ export default function Trace() {
               type="submit"
               disabled={busy || !input.trim()}
               aria-label="发送问题"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-apple text-white disabled:opacity-40"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-apple text-white transition-colors hover:bg-apple-hover disabled:opacity-40"
             >
               <Send size={17} />
             </button>

@@ -338,7 +338,7 @@ function QrSign({ traceCode, onOpen }: { traceCode: string; onOpen?: () => void 
           }}
           aria-label="打开溯源页"
           title="打开溯源页"
-          className="cursor-pointer rounded-sm border border-line bg-white p-1.5 shadow-card"
+          className="cursor-pointer rounded-sm border border-line bg-white p-1.5 shadow-card transition-all hover:-translate-y-0.5 hover:border-apple/40 hover:shadow-lg"
         >
           <img
             src={`/api/trace/${traceCode}/qr.png`}

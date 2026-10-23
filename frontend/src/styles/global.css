@@ -47,6 +47,19 @@
     font: inherit;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  summary,
+  a[href] {
+    cursor: pointer;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+
   ::selection {
     background: var(--color-apple-weak);
   }

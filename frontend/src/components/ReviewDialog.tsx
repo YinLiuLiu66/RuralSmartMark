@@ -190,7 +190,7 @@ export default function ReviewDialog({
           </div>
           <button
             onClick={() => dialogRef.current?.close()}
-            className="rounded-control border border-line px-2 py-1 text-[11px] text-ink-muted"
+            className="rounded-control border border-line px-2 py-1 text-[11px] text-ink-muted transition-colors hover:border-apple/40 hover:text-apple disabled:opacity-50"
             disabled={busy}
           >
             关闭
@@ -242,14 +242,14 @@ export default function ReviewDialog({
         <footer className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
           <button
             onClick={() => void handleReject()}
-            className="rounded-control border border-danger/30 px-3 py-2 text-xs text-danger disabled:opacity-60"
+            className="rounded-control border border-danger/30 px-3 py-2 text-xs text-danger transition-colors hover:border-danger/50 hover:bg-danger/5 disabled:opacity-60"
             disabled={busy}
           >
             驳回
           </button>
           <button
             onClick={() => void handleApprove()}
-            className="rounded-control bg-apple px-4 py-2 text-xs font-medium text-white disabled:opacity-60"
+            className="rounded-control bg-apple px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-60"
             disabled={busy}
           >
             {busy ? "处理中…" : "通过并进入下一站"}

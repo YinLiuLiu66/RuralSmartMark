@@ -346,7 +346,7 @@ export default function ControllerPanel({
             type="button"
             onClick={onClose}
             aria-label="关闭总控"
-            className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted"
+            className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
           >
             <X size={15} />
           </button>
@@ -372,7 +372,7 @@ export default function ControllerPanel({
                   key={item}
                   type="button"
                   onClick={() => void send(item)}
-                  className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] text-ink-muted"
+                  className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] text-ink-muted transition-colors hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple"
                 >
                   {item}
                 </button>
@@ -469,7 +469,7 @@ export default function ControllerPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void confirm("confirm")}
-                className="flex-1 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+                className="flex-1 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
               >
                 确认
               </button>
@@ -477,7 +477,7 @@ export default function ControllerPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void confirm("cancel")}
-                className="rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted disabled:opacity-50"
+                className="rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50"
               >
                 取消
               </button>
@@ -521,7 +521,7 @@ export default function ControllerPanel({
           type="submit"
           disabled={busy || !input.trim() || !session}
           aria-label="发送给总控"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-apple text-white disabled:opacity-40"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-apple text-white transition-colors hover:bg-apple-hover disabled:opacity-40"
         >
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
