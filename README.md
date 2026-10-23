@@ -20,16 +20,16 @@
 - 公开溯源：`/trace/:code` 390px H5（故事/IP 插画/包装/价格/时间线/IP 对话）、扫码统计、未知码 404；固定演示码 `ZTDEMO26` 在 reset 后仍有完整内容。
 - 3D 沙盘：包装贴图、内容广告牌、可点击二维码、CatmullRom 批次路径、卡车出库；扫码数随 SSE 更新。
 - 多产品工作台：产品下拉 + 批次按产品过滤；新产品由总控调研/确认后写入，不 seed；旧产品数据保留。
-- 单入口总控：右侧「总控」抽屉与 `/controller`；可调研、追问、调用四 Agent、修改/通过/回退；建档/通过/驳回/回退有确认卡（decisions #69）。回复走 SSE 流式，思维链默认折叠、展开后一行一条；用户消息发送后立即显示（#72）。
+- 单入口总控：右侧「总控」抽屉与 `/controller`；可调研、追问、调用四 Agent、修改/通过/回退；建档/通过/驳回/回退有确认卡（decisions #69）。顶栏「+」/面板「新建」开空白会话从零做新产品，不继承当前产品上下文。回复走 SSE 流式，思维链默认折叠、展开后一行一条；用户消息发送后立即显示（#72）。
 - 调研链路：Firecrawl 异步搜索/抓页 + PydanticAI 工具循环；引用逐字校验；缺字段提问；无 key 时提示贴资料（#70）。检索网络失败自动重试并给中文提示；默认绕过会拖垮长连接的系统代理（`FIRECRAWL_TRUST_ENV=false`）。本机已用真实 Firecrawl 跑通搜索/抓页与麻江蓝莓草案（1 条来源、价格缺失转为追问）。
 - 早期站回退：确认后作废下游产出/Artifact，回到目标站重跑，历史 run 保留（#71）。
-- 自动化：Playwright 10 条冒烟（含总控面板、独立总控页、流式用户消息/思维链折叠、插画失败兜底）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
+- 自动化：Playwright 11 条冒烟（含总控面板、独立总控页、空白会话新建产品、流式用户消息/思维链折叠、插画失败兜底）、2 条性能用例；`POST /api/demo/reset` 幂等，扫码数归零且固定码内容不变。
 - 性能：1280×720 固定演示批次 60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无横向溢出。
 - 可复制：第二产品档案夹具「麻江蓝莓」只建数据，mock 四站与真实 V4.1-Flash 四站都跑到 `traced`、`MJ` 溯源码、公开 H5/包装 PNG 可用，真实运行无 fallback、输出无昭通/苹果残留；系统提示、定价标签、包装品牌字、溯源码前缀均从产品档案读取。
 - 来源补证：地理标志公告第1478号/登记编号已补；80–85mm 精选果公开挂牌价补了 4 个惠农网页面（5斤 25/36/40 元，10斤 6.2 元/斤）；包装厂只找到 1000 个起订线索，仍无书面报价。
 - 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
 - 生图失败兜底：包装工位显示「插画这次没有生成 / 包装审核不受影响」；`python -m ruralsmartmark.maintenance image-cache --dry-run` 可预演 30 天/512MB 缓存清理。
-- 后端 55 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
+- 后端 56 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
 **下一步是交付与补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版。公开挂牌价与地理标志公告号已补，成交价/同渠道长期价可继续跟。字段级审核表单与 Docker 已确认不做（decisions #63）。
 
@@ -119,7 +119,7 @@ docs/
 | 根 | `make test` | 后端 52 tests/ruff + 前端 typecheck/lint/build |
 | 根 | `make e2e` / `make perf` | Playwright 冒烟 / 60 秒性能 |
 | backend | `uv run ruralsmartmark` | 启动开发服务 |
-| backend | `uv run pytest` | 后端测试（临时 SQLite；52 passed + 2 skipped） |
+| backend | `uv run pytest` | 后端测试（临时 SQLite；56 passed + 2 skipped） |
 | backend | `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` | 生图缓存清理预演（30 天/512MB） |
 | backend | `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` | 可选真实 LLM 第二产品冒烟（消耗额度） |
 | backend | `RSM_REAL_SEARCH=1 uv run pytest tests/test_search_real.py` | 可选真实 Firecrawl 搜索/抓页（消耗 credits） |

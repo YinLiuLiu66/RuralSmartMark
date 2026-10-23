@@ -10,6 +10,7 @@ export default function Controller() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [productSlug, setProductSlug] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<number | null>(null);
+  const [freshToken, setFreshToken] = useState<number | undefined>(undefined);
 
   async function load(selectNewest = false) {
     const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
@@ -33,8 +34,10 @@ export default function Controller() {
     <div className="min-h-dvh bg-paper">
       <ControllerPanel
         inline
-        productSlug={productSlug}
-        batchId={batchId}
+        productSlug={freshToken !== undefined ? null : productSlug}
+        batchId={freshToken !== undefined ? null : batchId}
+        freshToken={freshToken}
+        onNewProduct={() => setFreshToken(Date.now())}
         onClose={() => navigate("/")}
         onDataChanged={() => void load(true)}
       />

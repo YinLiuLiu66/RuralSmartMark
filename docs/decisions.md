@@ -236,3 +236,9 @@
 **理由**：总控一轮可能包含搜索、抓页、多个工具调用，非流式下用户几十秒看不到任何反馈；先显示自己发的话是聊天界面的基本预期。DeepSeek 的思维链能帮助用户判断总控为什么查/为什么停，但不应作为事实来源，所以只展示、不写入知识库。
 **验证**：真实模型流式测试收到 thinking/delta 事件并保存思考行；`curl -N` 验证 SSE 顺序为 user → thinking/delta → done；Playwright 新增“先显示用户消息、思维链默认折叠”用例；真实 Firecrawl 搜索/抓页在绕过系统代理后通过。后端 55 passed + 2 skipped，Playwright 10 条。
 **拍板时间**：2026-10-22
+
+### #73 · 新建产品使用空白总控会话
+**结论**：`POST /api/controller/sessions` 增加 `fresh` 参数；顶栏「+」、总控面板「新建」与 `/controller` 页的「新建」都创建 `product_id=null, batch_id=null` 的空白会话，不再复用当前产品/批次的会话。确认建档后，会话自动绑定新产品与首批次；默认 `fresh=false` 仍按 `(product_id, batch_id)` 复用最近会话。
+**理由**：原入口只是打开当前产品会话，模型上下文带着昭通苹果，用户做新产品时容易被旧批次干扰；空白会话把“新产品调研”和“当前批次修改”彻底分开。
+**验证**：`test_fresh_session_skips_existing_blank_session` 覆盖强制新建与默认复用；Playwright 新增“新建产品打开空白总控会话”，断言请求体 `fresh=true` 且产品/批次为 null。后端 56 passed + 2 skipped，Playwright 11 条。
+**拍板时间**：2026-10-23

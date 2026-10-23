@@ -141,12 +141,17 @@ async function streamRequest(
 }
 
 export const controllerApi = {
-  createSession: (productSlug?: string | null, batchId?: number | null) =>
+  createSession: (
+    productSlug?: string | null,
+    batchId?: number | null,
+    fresh = false,
+  ) =>
     request<ControllerSession>("/controller/sessions", {
       method: "POST",
       body: JSON.stringify({
         product_slug: productSlug ?? null,
         batch_id: batchId ?? null,
+        fresh,
       }),
     }),
   getSession: (sessionId: number) =>

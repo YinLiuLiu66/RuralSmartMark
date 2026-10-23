@@ -78,6 +78,36 @@ test("独立总控页可打开", async ({ page }) => {
   await expect(page.getByText("调研 · 运行 · 修改 · 审核", { exact: false })).toBeVisible();
 });
 
+test("新建产品打开空白总控会话", async ({ page }) => {
+  const now = "2026-10-22T12:00:00";
+  let createBody: Record<string, unknown> | null = null;
+  await page.route("**/api/controller/sessions", async (route) => {
+    createBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 42,
+        product_id: null,
+        batch_id: null,
+        draft_json: null,
+        pending_action_json: null,
+        messages: [],
+        created_at: now,
+        updated_at: now,
+      }),
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "新建产品" }).click();
+
+  await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
+  await expect
+    .poll(() => createBody)
+    .toEqual({ product_slug: null, batch_id: null, fresh: true });
+});
+
 test("总控先显示用户消息，思维链默认折叠", async ({ page }) => {
   const now = "2026-10-22T12:00:00";
   const session = {

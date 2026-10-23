@@ -96,6 +96,9 @@ export default function Sandbox() {
   const [scanCount, setScanCount] = useState(0);
   const [creating, setCreating] = useState(false);
   const [controllerOpen, setControllerOpen] = useState(false);
+  const [controllerFreshToken, setControllerFreshToken] = useState<number | undefined>(
+    undefined,
+  );
 
   const {
     products,
@@ -406,7 +409,10 @@ export default function Sandbox() {
             type="button"
             aria-label="新建产品"
             title="新建产品"
-            onClick={() => setControllerOpen(true)}
+            onClick={() => {
+              setControllerFreshToken(Date.now());
+              setControllerOpen(true);
+            }}
             className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-apple/40 hover:text-apple"
           >
             <Plus size={15} />
@@ -455,7 +461,10 @@ export default function Sandbox() {
             <button
               type="button"
               aria-label="打开总控"
-              onClick={() => setControllerOpen(true)}
+              onClick={() => {
+                setControllerFreshToken(undefined);
+                setControllerOpen(true);
+              }}
               className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted hover:border-apple/40 hover:text-apple"
             >
               <Sparkles size={14} />
@@ -752,8 +761,12 @@ export default function Sandbox() {
 
       {controllerOpen && (
         <ControllerPanel
-          productSlug={selectedProduct?.slug ?? null}
-          batchId={selectedBatch?.id ?? null}
+          productSlug={
+            controllerFreshToken !== undefined ? null : selectedProduct?.slug ?? null
+          }
+          batchId={controllerFreshToken !== undefined ? null : selectedBatch?.id ?? null}
+          freshToken={controllerFreshToken}
+          onNewProduct={() => setControllerFreshToken(Date.now())}
           onClose={() => setControllerOpen(false)}
           onDataChanged={() => void handleControllerDataChanged()}
         />

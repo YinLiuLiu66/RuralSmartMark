@@ -295,6 +295,7 @@ class ResearchDraft(BaseModel):
 class ControllerSessionCreate(BaseModel):
     product_slug: str | None = None
     batch_id: int | None = None
+    fresh: bool = False
 
 
 class ControllerMessageIn(BaseModel):

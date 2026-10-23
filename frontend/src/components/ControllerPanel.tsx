@@ -4,6 +4,7 @@ import {
   Brain,
   ChevronRight,
   Loader2,
+  Plus,
   Send,
   ShieldCheck,
   Sparkles,
@@ -143,12 +144,16 @@ interface StreamState {
 export default function ControllerPanel({
   productSlug,
   batchId,
+  freshToken,
+  onNewProduct,
   onClose,
   onDataChanged,
   inline = false,
 }: {
   productSlug: string | null;
   batchId: number | null;
+  freshToken?: number;
+  onNewProduct?: () => void;
   onClose: () => void;
   onDataChanged: () => void;
   inline?: boolean;
@@ -168,7 +173,7 @@ export default function ControllerPanel({
     setPendingUser(null);
     setStream(null);
     controllerApi
-      .createSession(productSlug, batchId)
+      .createSession(productSlug, batchId, freshToken !== undefined)
       .then((result) => {
         if (!cancelled) setSession(result);
       })
@@ -180,7 +185,7 @@ export default function ControllerPanel({
     return () => {
       cancelled = true;
     };
-  }, [productSlug, batchId]);
+  }, [productSlug, batchId, freshToken]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -324,14 +329,28 @@ export default function ControllerPanel({
             调研 · 运行 · 修改 · 审核，都在这里说
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="关闭总控"
-          className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted"
-        >
-          <X size={15} />
-        </button>
+        <div className="flex items-center gap-2">
+          {onNewProduct && (
+            <button
+              type="button"
+              onClick={onNewProduct}
+              aria-label="新建产品"
+              title="新建产品"
+              className="flex h-8 items-center gap-1 rounded-control border border-line px-2 text-[10px] text-ink-muted hover:border-apple/40 hover:text-apple"
+            >
+              <Plus size={12} />
+              新建
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="关闭总控"
+            className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted"
+          >
+            <X size={15} />
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">

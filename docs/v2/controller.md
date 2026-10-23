@@ -1,7 +1,7 @@
 # 总控与多产品 · 设计契约
 
 > 状态：已批准，已完成（2026-10-22）
-> 决策：`docs/decisions.md` #68–#72
+> 决策：`docs/decisions.md` #68–#73
 > 目标：用户只面对一个输入框，完成“调研建档 → 四站流水线 → 修改/通过/回退”。
 
 ## 1. 角色
@@ -23,7 +23,8 @@
 ## 2. 交互
 
 - 桌面沙盘右栏 Tab：「站点 / 总控」；顶栏「总控」打开抽屉。
-- `/controller` 是同一面板的独立路由，供窄屏或直达使用。
+- 顶栏「+」与总控面板里的「新建」创建**空白会话**（不绑定当前产品/批次），用于从零调研新产品；建档后会话自动绑定新产品与首批次。「总控」按钮则回到当前产品/批次会话。
+- `/controller` 是同一面板的独立路由，供窄屏或直达使用；页内同样可点「新建」开空白会话。
 - 首次没有产品时，直接打开「新建产品」对话。
 - 用户消息发送后立即显示（服务端落库后回填真实 id），不等整轮结束。
 - 回复走 SSE 流式：正文按 token 增长；`reasoning_content` 显示为「思考过程」，默认折叠，展开后一行一条。
@@ -99,7 +100,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 
 ## 8. API
 
-- `POST /api/controller/sessions`：创建/获取会话。
+- `POST /api/controller/sessions`：创建/获取会话。`fresh=true` 时跳过复用，强制新建空白会话；默认按 `(product_id, batch_id)` 复用最近一条。
 - `GET /api/controller/sessions/{id}`：消息、草案、pending action。
 - `POST /api/controller/sessions/{id}/messages`：非流式发消息（测试/兼容用）。
 - `POST /api/controller/sessions/{id}/messages/stream`：SSE 流式发消息，事件 `user` → `thinking` / `delta` / `tool` → `done`；失败发 `error`。`done.turn` 与 `/messages` 响应同构，包含 `session / reply / thinking / questions / pending_action / events`。
@@ -118,7 +119,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 ## 10. 验收
 
 - 两个产品可复用同一 `doc_key`；切换产品批次正确。
-- 从 UI 能完成：新建产品 → 调研 → 草案 → 确认建档 → 跑故事 → 对话修改 → 通过 → 回退。
+- 从 UI 能完成：新建空白会话 → 调研 → 草案 → 确认建档 → 跑故事 → 对话修改 → 通过 → 回退。
 - 发消息后用户气泡立即出现；思维链默认折叠、可展开；正文流式出现。
 - 无 Firecrawl key 时提示贴资料，不静默失败；网络失败提示可重试/贴链接。
-- 后端 55 passed + 2 skipped，Playwright 10 条，构建通过；真实 Firecrawl 小样本可选通过。
+- 后端 56 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。

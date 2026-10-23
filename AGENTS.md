@@ -25,7 +25,7 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）。后端 55 passed + 2 skipped，Playwright 10 条。Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）。后端 56 passed + 2 skipped，Playwright 11 条。Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
 - **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
@@ -78,7 +78,7 @@
 - `uv run python -m ruralsmartmark.seed` → 种演示数据（幂等）
 - `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` → 生图缓存清理预演（默认 30 天/512MB）
 - `uv run ruralsmartmark` → 起服务，端口 8000
-- `uv run pytest` → 全测试（52 passed + 2 条默认跳过的真实外部冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
+- `uv run pytest` → 全测试（56 passed + 2 条默认跳过的真实外部冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
 - `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` → 可选真实 LLM 第二产品冒烟，会消耗额度
 - `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化
 

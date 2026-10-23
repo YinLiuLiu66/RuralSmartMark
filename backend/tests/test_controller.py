@@ -159,3 +159,25 @@ async def test_controller_message_streams_events(session, client, monkeypatch):
     messages = refreshed.json()["messages"]
     assert [message["role"] for message in messages] == ["user", "assistant"]
     assert messages[1]["content"] == "你好，我在。"
+
+
+async def test_fresh_session_skips_existing_blank_session(session, client):
+    existing = ControllerSession()
+    session.add(existing)
+    await session.commit()
+    await session.refresh(existing)
+
+    response = await client.post(
+        "/api/controller/sessions",
+        json={"fresh": True},
+    )
+    assert response.status_code == 200, response.text
+    created = response.json()
+    assert created["id"] != existing.id
+    assert created["product_id"] is None
+    assert created["batch_id"] is None
+    assert created["messages"] == []
+
+    again = await client.post("/api/controller/sessions", json={})
+    assert again.status_code == 200
+    assert again.json()["id"] == created["id"]

@@ -66,14 +66,16 @@ async def create_controller_session(
             raise HTTPException(status_code=404, detail="product not found")
         product_id = product.id
 
-    existing = await session.scalar(
-        select(ControllerSession)
-        .where(
-            ControllerSession.product_id == product_id,
-            ControllerSession.batch_id == payload.batch_id,
+    existing = None
+    if not payload.fresh:
+        existing = await session.scalar(
+            select(ControllerSession)
+            .where(
+                ControllerSession.product_id == product_id,
+                ControllerSession.batch_id == payload.batch_id,
+            )
+            .order_by(ControllerSession.id.desc())
         )
-        .order_by(ControllerSession.id.desc())
-    )
     if existing is not None:
         return await _session_out(session, existing)
 

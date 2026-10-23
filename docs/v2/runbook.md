@@ -43,7 +43,7 @@ make lan
 
 ### 2.2 总控 / 新产品
 
-- 桌面右上「总控」打开抽屉；或直接打开 `/controller`。
+- 桌面右上「总控」打开抽屉；或直接打开 `/controller`。要做新产品时点顶栏「+」或面板里的「新建」，会开一个不绑定当前产品/批次的空白会话。
 - 输入“帮我做一个新产品，我想做贵州麻江蓝莓”，总控会搜索/追问并生成档案草案。
 - 发送后用户消息立即出现；回答逐字流式增长。需要看总控为什么查/停时，点「思考过程」展开思维链（默认折叠）。
 - 草案出齐后，在确认卡点「确认建档」；新产品出现在顶栏「产品」下拉，批次自动选中。
@@ -76,7 +76,7 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 52 passed + 2 skipped + ruff；前端 typecheck/lint/build
+make test    # 后端 56 passed + 2 skipped + ruff；前端 typecheck/lint/build
 make e2e     # Playwright 9 条冒烟（桌面 6 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度
