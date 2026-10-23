@@ -656,11 +656,14 @@ export default function Sandbox() {
                   return (
                     <button
                       key={agent.key}
+                      type="button"
                       onClick={() => selectAgent(agent.key)}
-                      className={`flex w-full items-center justify-between rounded-control border px-3 py-2 text-left text-xs ${
+                      aria-pressed={active}
+                      title={`查看${agent.name}产出`}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-control border px-3 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple/30 ${
                         active
-                          ? "border-apple/30 bg-apple-weak"
-                          : "border-transparent bg-paper"
+                          ? "border-apple/40 bg-apple-weak shadow-[inset_3px_0_0_var(--color-apple)]"
+                          : "border-transparent bg-paper hover:border-apple/20 hover:bg-apple-weak/40"
                       }`}
                     >
                       <span className="flex items-center gap-2 text-ink">
