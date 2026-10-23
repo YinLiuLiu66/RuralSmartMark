@@ -37,9 +37,12 @@ export default function Controller() {
         productSlug={freshToken !== undefined ? null : productSlug}
         batchId={freshToken !== undefined ? null : batchId}
         freshToken={freshToken}
-        onNewProduct={() => setFreshToken(Date.now())}
+        onNewProduct={() => setFreshToken((current) => current ?? Date.now())}
         onClose={() => navigate("/")}
-        onDataChanged={() => void load(true)}
+        onDataChanged={() => {
+          setFreshToken(undefined);
+          void load(true);
+        }}
       />
       {products.length === 0 && batches.length === 0 && (
         <div className="mx-auto max-w-[720px] px-6 py-4 text-center text-xs text-ink-faint">

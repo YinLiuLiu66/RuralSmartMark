@@ -78,11 +78,11 @@ test("独立总控页可打开", async ({ page }) => {
   await expect(page.getByText("调研 · 运行 · 修改 · 审核", { exact: false })).toBeVisible();
 });
 
-test("新建产品打开空白总控会话", async ({ page }) => {
+test("新建产品先进入空沙盘，重复点击保持同一空沙盘", async ({ page }) => {
   const now = "2026-10-22T12:00:00";
-  let createBody: Record<string, unknown> | null = null;
+  const createBodies: Record<string, unknown>[] = [];
   await page.route("**/api/controller/sessions", async (route) => {
-    createBody = route.request().postDataJSON() as Record<string, unknown>;
+    createBodies.push(route.request().postDataJSON() as Record<string, unknown>);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -103,9 +103,16 @@ test("新建产品打开空白总控会话", async ({ page }) => {
   await page.getByRole("button", { name: "新建产品" }).click();
 
   await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
+  await expect(page.getByText("这里还空着")).toBeVisible();
+  await expect(page.getByRole("combobox").first()).toHaveValue("");
+  await expect(page.getByRole("combobox").nth(1)).toHaveValue("");
   await expect
-    .poll(() => createBody)
+    .poll(() => createBodies[0])
     .toEqual({ product_slug: null, batch_id: null, fresh: true });
+
+  await page.getByRole("button", { name: "新建产品" }).first().click();
+  await expect(page.getByText("这里还空着")).toBeVisible();
+  await expect(page.getByRole("combobox").first()).toHaveValue("");
 });
 
 test("总控先显示用户消息，思维链默认折叠", async ({ page }) => {

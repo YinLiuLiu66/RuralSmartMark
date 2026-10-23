@@ -1,7 +1,7 @@
 # 总控与多产品 · 设计契约
 
 > 状态：已批准，已完成（2026-10-22）
-> 决策：`docs/decisions.md` #68–#74
+> 决策：`docs/decisions.md` #68–#75
 > 目标：用户只面对一个输入框，完成“调研建档 → 四站流水线 → 修改/通过/回退”。
 
 ## 1. 角色
@@ -23,8 +23,8 @@
 ## 2. 交互
 
 - 桌面沙盘右栏 Tab：「站点 / 总控」；顶栏「总控」打开抽屉。
-- 顶栏「+」与总控面板里的「新建」创建**空白会话**（不绑定当前产品/批次），用于从零调研新产品；建档后会话自动绑定新产品与首批次。「总控」按钮则回到当前产品/批次会话。
-- `/controller` 是同一面板的独立路由，供窄屏或直达使用；页内同样可点「新建」开空白会话。
+- 沙盘顶栏「+」与总控面板里的「新建」先进入**空沙盘**：产品/批次显示“新产品（未建档）/未创建批次”并禁用，不写库；同一时间只保留一个空白沙盘，重复点击复用同一个空白会话。建档后会话绑定新产品与首批次，沙盘切到新批次。「总控」按钮则回到当前产品/批次会话。
+- `/controller` 是同一面板的独立路由，供窄屏或直达使用；页内「新建」复用同一个空白会话，但该页不渲染沙盘。
 - 首次没有产品时，直接打开「新建产品」对话。
 - 用户消息发送后立即显示（服务端落库后回填真实 id），不等整轮结束。
 - 回复走 SSE 流式：正文按 token 增长；`reasoning_content` 显示为「思考过程」，默认折叠，展开后一行一条。
@@ -101,7 +101,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 
 ## 8. API
 
-- `POST /api/controller/sessions`：创建/获取会话。`fresh=true` 时跳过复用，强制新建空白会话；默认按 `(product_id, batch_id)` 复用最近一条。
+- `POST /api/controller/sessions`：创建/获取会话。`fresh=true` 时优先复用现有未建档空白会话，没有才新建；默认按 `(product_id, batch_id)` 复用最近一条。
 - `GET /api/controller/sessions/{id}`：消息、草案、pending action；同时返回服务端实时的 `product_name / batch_code / batch_state`，总控头部据此显示当前上下文。窗口重新聚焦时会重拉会话与 workspace。
 - `POST /api/controller/sessions/{id}/messages`：非流式发消息（测试/兼容用）。
 - `POST /api/controller/sessions/{id}/messages/stream`：SSE 流式发消息，事件 `user` → `thinking` / `delta` / `tool` → `done`；失败发 `error`。`done.turn` 与 `/messages` 响应同构，包含 `session / reply / thinking / questions / pending_action / events`。

@@ -56,6 +56,65 @@ function SceneLoading() {
   );
 }
 
+function EmptySandbox({
+  controllerOpen,
+  canCancel,
+  onCancel,
+}: {
+  controllerOpen: boolean;
+  canCancel: boolean;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className={`absolute inset-0 z-20 flex items-center justify-center overflow-hidden bg-paper px-8 ${
+        controllerOpen ? "pr-[470px]" : ""
+      }`}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, var(--color-line) 1px, transparent 0)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+      <div className="relative max-w-md text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-line-strong bg-surface text-apple">
+          <Plus size={24} />
+        </div>
+        <p className="mt-5 text-[10px] uppercase tracking-[0.24em] text-ink-faint">
+          新沙盘 · 未建档
+        </p>
+        <h2 className="mt-2 font-display text-3xl text-ink">这里还空着</h2>
+        <p className="mt-3 text-sm leading-7 text-ink-muted">
+          已经为你腾出一个新产品的位置。告诉右侧总控产品名、产地和品类；调研建档后，这里会出现新的批次、四站点和溯源页。
+        </p>
+        <div className="mt-6 grid grid-cols-3 gap-2 text-[10px] text-ink-faint">
+          {["调研资料", "确认建档", "运行四站"].map((step, index) => (
+            <div
+              key={step}
+              className="rounded-control border border-dashed border-line bg-surface/70 px-2 py-3"
+            >
+              <div className="text-apple">0{index + 1}</div>
+              <div className="mt-1">{step}</div>
+            </div>
+          ))}
+        </div>
+        {canCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-6 rounded-control border border-line bg-surface px-4 py-2 text-xs text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
+          >
+            返回现有产品
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Metric({
   label,
   value,
@@ -97,6 +156,7 @@ export default function Sandbox() {
   const [controllerFreshToken, setControllerFreshToken] = useState<number | undefined>(
     undefined,
   );
+  const [newProductMode, setNewProductMode] = useState(false);
 
   const {
     products,
@@ -362,7 +422,24 @@ export default function Sandbox() {
     }
   }
 
+  function startNewProduct() {
+    if (!newProductMode) {
+      setNewProductMode(true);
+      setControllerFreshToken(Date.now());
+      selectAgent(null);
+      setReviewOpen(false);
+    }
+    setControllerOpen(true);
+  }
+
+  function exitNewProduct() {
+    setNewProductMode(false);
+    setControllerFreshToken(undefined);
+  }
+
   async function handleControllerDataChanged() {
+    setNewProductMode(false);
+    setControllerFreshToken(undefined);
     const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
     const newest = productList[productList.length - 1] ?? null;
     setProducts(productList);
@@ -390,51 +467,78 @@ export default function Sandbox() {
           <div className="flex items-baseline gap-2">
             <span className="font-display text-xl tracking-wide text-ink">智农云链</span>
             <span className="text-[11px] text-ink-muted">
-              多智能体 · {selectedProduct?.name ?? "未选择产品"}
+              多智能体 ·{" "}
+              {newProductMode
+                ? "新产品 · 未建档"
+                : selectedProduct?.name ?? "未选择产品"}
             </span>
           </div>
 
-          <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
+          <label
+            className={`ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors ${
+              newProductMode
+                ? "opacity-70"
+                : "hover:border-line-strong focus-within:border-apple/40"
+            }`}
+          >
             <span>产品</span>
             <select
-              value={selectedProduct?.id ?? ""}
+              value={newProductMode ? "" : selectedProduct?.id ?? ""}
+              disabled={newProductMode}
               onChange={(event) => selectProduct(Number(event.target.value) || null)}
-              className="max-w-[160px] bg-transparent text-ink outline-none"
+              className="max-w-[160px] bg-transparent text-ink outline-none disabled:cursor-default"
             >
-              {products.length === 0 && <option value="">暂无产品</option>}
-              {products.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
+              {newProductMode && <option value="">新产品（未建档）</option>}
+              {!newProductMode && products.length === 0 && (
+                <option value="">暂无产品</option>
+              )}
+              {!newProductMode &&
+                products.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
             </select>
           </label>
           <button
             type="button"
             aria-label="新建产品"
+            aria-pressed={newProductMode}
             title="新建产品"
-            onClick={() => {
-              setControllerFreshToken(Date.now());
-              setControllerOpen(true);
-            }}
-            className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted hover:border-apple/40 hover:text-apple"
+            onClick={startNewProduct}
+            className={`flex h-9 w-9 items-center justify-center rounded-control border transition-colors ${
+              newProductMode
+                ? "border-apple/40 bg-apple-weak text-apple"
+                : "border-line bg-surface text-ink-muted hover:border-apple/40 hover:text-apple"
+            }`}
           >
             <Plus size={15} />
           </button>
 
-          <label className="flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
+          <label
+            className={`flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors ${
+              newProductMode
+                ? "opacity-70"
+                : "hover:border-line-strong focus-within:border-apple/40"
+            }`}
+          >
             <span>批次</span>
             <select
-              value={selectedBatch?.id ?? ""}
+              value={newProductMode ? "" : selectedBatch?.id ?? ""}
+              disabled={newProductMode}
               onChange={(event) => selectBatch(Number(event.target.value) || null)}
-              className="max-w-[180px] bg-transparent text-ink outline-none"
+              className="max-w-[180px] bg-transparent text-ink outline-none disabled:cursor-default"
             >
-              {visibleBatches.length === 0 && <option value="">暂无批次</option>}
-              {visibleBatches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {batch.code}
-                </option>
-              ))}
+              {newProductMode && <option value="">未创建批次</option>}
+              {!newProductMode && visibleBatches.length === 0 && (
+                <option value="">暂无批次</option>
+              )}
+              {!newProductMode &&
+                visibleBatches.map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.code}
+                  </option>
+                ))}
             </select>
           </label>
 
@@ -465,6 +569,7 @@ export default function Sandbox() {
               type="button"
               aria-label="打开总控"
               onClick={() => {
+                setNewProductMode(false);
                 setControllerFreshToken(undefined);
                 setControllerOpen(true);
               }}
@@ -473,18 +578,27 @@ export default function Sandbox() {
               <Sparkles size={14} />
               总控
             </button>
-            <button
-              className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
-              onClick={handleHeader}
-              disabled={headerDisabled}
-            >
-              {canReview ? <ShieldCheck size={14} /> : <Play size={14} />}
-              {headerLabel}
-            </button>
+            {!newProductMode && (
+              <button
+                className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
+                onClick={handleHeader}
+                disabled={headerDisabled}
+              >
+                {canReview ? <ShieldCheck size={14} /> : <Play size={14} />}
+                {headerLabel}
+              </button>
+            )}
           </div>
         </header>
 
-        <div className="shell-main">
+        <div className="shell-main relative">
+          {newProductMode && (
+            <EmptySandbox
+              controllerOpen={controllerOpen}
+              canCancel={products.length > 0}
+              onCancel={exitNewProduct}
+            />
+          )}
           <aside className="border-r border-line bg-paper/70 p-4">
             <section className="card p-4">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-ink-muted">
@@ -687,7 +801,13 @@ export default function Sandbox() {
         </div>
 
         <footer className="border-t border-line bg-surface/85 px-4">
-          <div className="grid h-full grid-cols-[minmax(0,1fr)_360px] items-center gap-4">
+          {newProductMode ? (
+            <div className="flex h-full items-center justify-center gap-3 text-[11px] text-ink-muted">
+              <span className="h-2 w-2 rounded-full bg-apple" />
+              新沙盘 · 等待总控调研建档
+            </div>
+          ) : (
+            <div className="grid h-full grid-cols-[minmax(0,1fr)_360px] items-center gap-4">
             <div className="flex items-center gap-2 overflow-x-auto">
               {STAGES.map((stage, index) => (
                 <div key={stage.key} className="flex min-w-0 flex-1 items-center gap-2">
@@ -741,6 +861,7 @@ export default function Sandbox() {
               </Link>
             </div>
           </div>
+          )}
         </footer>
 
         {reviewMeta && reviewRun && (
@@ -766,7 +887,7 @@ export default function Sandbox() {
           }
           batchId={controllerFreshToken !== undefined ? null : selectedBatch?.id ?? null}
           freshToken={controllerFreshToken}
-          onNewProduct={() => setControllerFreshToken(Date.now())}
+          onNewProduct={startNewProduct}
           onClose={() => setControllerOpen(false)}
           onDataChanged={() => void handleControllerDataChanged()}
         />

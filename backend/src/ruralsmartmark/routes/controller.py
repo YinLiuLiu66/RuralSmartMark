@@ -79,7 +79,17 @@ async def create_controller_session(
         product_id = product.id
 
     existing = None
-    if not payload.fresh:
+    if payload.fresh and product_id is None and payload.batch_id is None:
+        # 空白沙盘只保留一个：再次点「新建」回到尚未建档的那个会话。
+        existing = await session.scalar(
+            select(ControllerSession)
+            .where(
+                ControllerSession.product_id.is_(None),
+                ControllerSession.batch_id.is_(None),
+            )
+            .order_by(ControllerSession.id.desc())
+        )
+    elif not payload.fresh:
         existing = await session.scalar(
             select(ControllerSession)
             .where(

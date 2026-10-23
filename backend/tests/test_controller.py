@@ -161,7 +161,7 @@ async def test_controller_message_streams_events(session, client, monkeypatch):
     assert messages[1]["content"] == "你好，我在。"
 
 
-async def test_fresh_session_skips_existing_blank_session(session, client):
+async def test_fresh_session_reuses_single_blank_session(session, client):
     existing = ControllerSession()
     session.add(existing)
     await session.commit()
@@ -172,15 +172,35 @@ async def test_fresh_session_skips_existing_blank_session(session, client):
         json={"fresh": True},
     )
     assert response.status_code == 200, response.text
-    created = response.json()
-    assert created["id"] != existing.id
-    assert created["product_id"] is None
-    assert created["batch_id"] is None
-    assert created["messages"] == []
+    reused = response.json()
+    assert reused["id"] == existing.id
+    assert reused["product_id"] is None
+    assert reused["batch_id"] is None
+    assert reused["messages"] == []
 
-    again = await client.post("/api/controller/sessions", json={})
+    again = await client.post("/api/controller/sessions", json={"fresh": True})
     assert again.status_code == 200
-    assert again.json()["id"] == created["id"]
+    assert again.json()["id"] == existing.id
+
+    product = ProductProfile(
+        slug="fresh-after-commit",
+        name="建档后新产品",
+        county="测试县",
+        province="测试省",
+        category="鲜果",
+        form="1kg 礼盒",
+    )
+    session.add(product)
+    await session.flush()
+    existing.product_id = product.id
+    await session.commit()
+
+    after_commit = await client.post(
+        "/api/controller/sessions",
+        json={"fresh": True},
+    )
+    assert after_commit.status_code == 200
+    assert after_commit.json()["id"] != existing.id
 
 
 async def test_confirm_approve_continues_next_station(session, client, monkeypatch):
