@@ -1,7 +1,7 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 6 已完成（2026-10-22，真实 Firecrawl 已验）；外部实物补证待做
-> 更新时间：2026-10-22
+> 状态：🟢 Phase 6 已完成（2026-10-23，真实 Firecrawl / 流式总控已验）；外部实物补证待做
+> 更新时间：2026-10-23
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
 
@@ -14,7 +14,7 @@
 - [x] **Phase 0/1**：沙盘骨架、四 Agent 状态机、审核/驳回/重跑、SSE、工位卡、批次移动
 - [x] **Phase 2**：真实 LLM Agent + 知识库 + FactGuard + 确定性定价 + 内置字体包装 PNG + 引用/预警/预览 UI
 - [x] **Phase 3**：公开溯源 API + 390px H5 + 扫码统计 + IP 对话边界 + 固定演示快照 + 3D 包装贴图/广告牌/二维码/CatmullRom/卡车
-- [x] 后端测试 52 条常跑 + 2 条默认跳过的真实外部冒烟 + `ruff check` 零告警
+- [x] 后端测试 55 条常跑 + 2 条默认跳过的真实外部冒烟 + `ruff check` 零告警
 - [x] 前端 React 19 + R3F 9 + Tailwind 4；`pnpm typecheck/lint/build` 全绿
 - [x] V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（故事/包装/营销/定价 tokens 4925/12667/9059/4126，均无 fallback）；随后 reset 为固定演示数据
 - [x] 固定演示批次 `ZT-DEMO-001` 在 reset 后仍有完整四章产出、4 条 approved run、5 条 artifact（含插画）、`ZTDEMO26` H5、扫码/对话
