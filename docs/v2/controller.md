@@ -102,7 +102,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 ## 8. API
 
 - `POST /api/controller/sessions`：创建/获取会话。`fresh=true` 时跳过复用，强制新建空白会话；默认按 `(product_id, batch_id)` 复用最近一条。
-- `GET /api/controller/sessions/{id}`：消息、草案、pending action。
+- `GET /api/controller/sessions/{id}`：消息、草案、pending action；同时返回服务端实时的 `product_name / batch_code / batch_state`，总控头部据此显示当前上下文。窗口重新聚焦时会重拉会话与 workspace。
 - `POST /api/controller/sessions/{id}/messages`：非流式发消息（测试/兼容用）。
 - `POST /api/controller/sessions/{id}/messages/stream`：SSE 流式发消息，事件 `user` → `thinking` / `delta` / `tool` → `done`；失败发 `error`。`done.turn` 与 `/messages` 响应同构，包含 `session / reply / thinking / questions / pending_action / events`。
 - `POST /api/controller/sessions/{id}/confirm`：`{action_id, decision}` 执行/取消危险动作；`approve_agent` 确认时自动运行下一站。

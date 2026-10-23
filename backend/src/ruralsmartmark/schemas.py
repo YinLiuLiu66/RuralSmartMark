@@ -316,6 +316,9 @@ class ControllerSessionOut(BaseModel):
     id: int
     product_id: int | None = None
     batch_id: int | None = None
+    product_name: str | None = None
+    batch_code: str | None = None
+    batch_state: str | None = None
     draft_json: dict | None = None
     pending_action_json: dict | None = None
     messages: list[ControllerMessageOut] = Field(default_factory=list)

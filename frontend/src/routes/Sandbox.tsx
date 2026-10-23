@@ -209,6 +209,13 @@ export default function Sandbox() {
     return () => source.close();
   }, [selectedBatchId, refresh]);
 
+  useEffect(() => {
+    if (!selectedBatchId) return;
+    const reload = () => void refresh(selectedBatchId, true);
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [selectedBatchId, refresh]);
+
   const visibleBatches = selectedProductId
     ? batches.filter((batch) => batch.product_id === selectedProductId)
     : batches;

@@ -17,6 +17,7 @@ import {
   type ControllerSession,
   type ControllerStreamEvent,
 } from "../api/controller";
+import { STATUS_LABEL } from "../agents";
 
 const ACTION_LABEL: Record<string, string> = {
   commit_product: "确认建档",
@@ -188,6 +189,18 @@ export default function ControllerPanel({
   }, [productSlug, batchId, freshToken]);
 
   useEffect(() => {
+    if (!session) return;
+    const reload = () => {
+      void controllerApi
+        .getSession(session.id)
+        .then((next) => setSession(next))
+        .catch(() => undefined);
+    };
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [session?.id]);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [
     session?.messages.length,
@@ -328,6 +341,24 @@ export default function ControllerPanel({
           <p className="mt-0.5 text-[10px] text-ink-faint">
             调研 · 运行 · 修改 · 审核，都在这里说
           </p>
+          {session && (
+            <p
+              className="mt-0.5 max-w-[250px] truncate text-[10px] text-ink-muted"
+              title={`${session.product_name ?? "新产品"} · ${
+                session.batch_code ?? "未绑定批次"
+              }${
+                session.batch_state
+                  ? ` · ${STATUS_LABEL[session.batch_state] ?? session.batch_state}`
+                  : ""
+              }`}
+            >
+              {session.product_name ?? "新产品"} ·{" "}
+              {session.batch_code ?? "未绑定批次"}
+              {session.batch_state
+                ? ` · ${STATUS_LABEL[session.batch_state] ?? session.batch_state}`
+                : ""}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {onNewProduct && (

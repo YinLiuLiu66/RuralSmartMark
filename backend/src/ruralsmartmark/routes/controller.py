@@ -48,10 +48,15 @@ async def _messages(session: SessionDep, session_id: int) -> list[ControllerMess
 
 async def _session_out(session: SessionDep, item: ControllerSession) -> ControllerSessionOut:
     messages = await _messages(session, item.id)
+    product = await session.get(ProductProfile, item.product_id) if item.product_id else None
+    batch = await session.get(Batch, item.batch_id) if item.batch_id else None
     return ControllerSessionOut(
         id=item.id,
         product_id=item.product_id,
         batch_id=item.batch_id,
+        product_name=product.name if product else None,
+        batch_code=batch.code if batch else None,
+        batch_state=batch.state if batch else None,
         draft_json=item.draft_json,
         pending_action_json=item.pending_action_json,
         messages=[ControllerMessageOut.model_validate(message) for message in messages],

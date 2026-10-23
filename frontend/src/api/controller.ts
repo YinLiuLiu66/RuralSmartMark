@@ -33,6 +33,9 @@ export interface ControllerSession {
   id: number;
   product_id: number | null;
   batch_id: number | null;
+  product_name?: string | null;
+  batch_code?: string | null;
+  batch_state?: string | null;
   draft_json: ControllerDraft | null;
   pending_action_json: PendingAction | null;
   messages: ControllerMessage[];
