@@ -171,3 +171,21 @@ async def test_provider_error_falls_back_to_mock(session, tmp_path):
     assert result.demo is True
     assert result.model == "mock"
     assert "timed out" in (result.fallback_reason or "")
+
+
+async def test_generate_output_refreshes_expired_batch(session, tmp_path):
+    product, batch, benchmarks, docs = await _context(session)
+    valid = await _valid_story(product, batch, docs, benchmarks)
+    session.expire(batch)
+    fake = FakeLLM([json.dumps(valid, ensure_ascii=False)])
+    runtime = AgentRuntime(
+        settings=get_settings(),
+        llm=fake,
+        artifact_dir=tmp_path / "artifacts",
+        allow_mock_fallback=False,
+    )
+
+    result = await generate_output(session, runtime, AgentName.STORY, product, batch)
+
+    assert result.output["ip_name"] == "山风守园人"
+    assert result.model == "fake-model"

@@ -283,6 +283,9 @@ async def generate_output(
     batch: Batch,
     note: str | None = None,
 ) -> GenerationResult:
+    # 同步 prompt 构建会直接读 ORM 属性；先 refresh，避免过期实例在 greenlet 外触发懒加载。
+    await session.refresh(product)
+    await session.refresh(batch)
     docs = await list_knowledge_docs(session, product.id)
     if not docs:
         raise AgentGenerationError("知识库为空，请先运行 seed 写入知识库")

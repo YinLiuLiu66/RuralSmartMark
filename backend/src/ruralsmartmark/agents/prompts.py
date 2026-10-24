@@ -21,6 +21,15 @@ _DEFAULT_DEMO_RULE = (
     "并写明这是演示合作社设定；做不到就删掉这句话。"
 )
 _DEFAULT_GI_RULE = "不冒充“昭通苹果”地理标志授权，只把区域品牌作为产地背景。"
+_GENERIC_DEMO_RULE = (
+    "合作社、品牌、人物、批次数据是演示合成；引用 DEMO-01 时，内容只是在说明“这是演示”，"
+    "不能反过来当作产地事实。\n"
+    "   写到年份/产量/产值/户数、品质指标、种植历史时，必须引用知识库中对应 doc；"
+    "数字找不到引用就不要写。\n"
+    "   任何字段只要涉及演示设定，fact_refs / cultural_evidence 必须包含 DEMO-01。"
+)
+_GENERIC_GI_RULE = "不冒充任何地理标志授权，只把区域品牌作为产地背景。"
+_ZHAOTONG_SLUG = "zhaotong-ugly-apple"
 
 _DEFAULT_BRIEFS = {
     AgentName.STORY: (
@@ -55,11 +64,75 @@ def _spec(product: ProductProfile, key: str, default: str) -> str:
     return str(value).strip() if value else default
 
 
+def _brand_name(product: ProductProfile) -> str:
+    return _spec(product, "brand_name", f"{product.name}演示品牌")
+
+
+def _ip_name(product: ProductProfile) -> str:
+    return _spec(product, "ip_name", "山野记录者")
+
+
+def _is_zhaotong(product: ProductProfile) -> bool:
+    return product.slug == _ZHAOTONG_SLUG
+
+
+def _product_brief(agent: AgentName, product: ProductProfile) -> str:
+    brand = _brand_name(product)
+    ip = _ip_name(product)
+    if agent == AgentName.STORY:
+        return (
+            "你是乡土故事挖掘机。任务：给这个批次一个可持续使用的 IP 名称、人格、长故事、"
+            "短故事、三条以内标签和引用证据。故事要具体、克制、有山野气，不卖惨、不编传说。"
+            "story_long 写 300–600 个汉字，story_short 写 12–30 个汉字。"
+            f"ip_name 必须逐字写「{ip}」；品牌为「{brand}」。"
+            "persona 写这一产品/产地的品牌角色（演示合成），不要写成真实人物或真实果农。"
+            f"只能使用{product.name}的知识库；不得出现其他产品的品牌、IP、产地或事实。"
+        )
+    if agent == AgentName.PACKAGING:
+        return (
+            f"你是包装设计智能体。任务：基于已通过的故事，为{product.name}（{product.form}）"
+            "给出一个可落地的礼盒方案：概念、色板、字体、正面/背面/侧面/盒内文案、结构、"
+            "成本估算、衍生品建议。"
+            f"品牌「{brand}」，IP「{ip}」。文案要短，能放进版面；"
+            "成本 total 必须等于 box+tray+print。"
+        )
+    if agent == AgentName.MARKETING:
+        return (
+            f"你是农产品营销官。任务：基于{product.name}的故事与包装，产出小红书、抖音、"
+            "朋友圈三套内容，以及客服问答和 KOL Brief。"
+            f"品牌「{brand}」，IP「{ip}」；语气与 IP 一致；不写功效、不写绝对化承诺。"
+            "fact_refs 至少一条，引用必须来自本产品知识库；"
+            "不得出现其他产品的品牌、IP、产地或事实。"
+        )
+    return (
+        f"你是溢价核算与溯源 Agent。价格数字由确定性计算器给出，你的任务只是把"
+        f"{product.name}的价格解释清楚，并写欢迎语与常见问题；"
+        "不得改动价格、毛利、溢价率，不得使用其他产品事实。"
+    )
+
+
 def build_system_prompt(product: ProductProfile) -> str:
-    context = _spec(product, "agent_context", _DEFAULT_CONTEXT)
-    brand_rule = _spec(product, "brand_rule", _DEFAULT_BRAND_RULE)
-    demo_rule = _spec(product, "demo_claim_rule", _DEFAULT_DEMO_RULE)
-    gi_rule = _spec(product, "gi_claim_rule", _DEFAULT_GI_RULE)
+    brand = _brand_name(product)
+    ip = _ip_name(product)
+    if _is_zhaotong(product):
+        context = _spec(product, "agent_context", _DEFAULT_CONTEXT)
+        brand_rule = _spec(product, "brand_rule", _DEFAULT_BRAND_RULE)
+        demo_rule = _spec(product, "demo_claim_rule", _DEFAULT_DEMO_RULE)
+        gi_rule = _spec(product, "gi_claim_rule", _DEFAULT_GI_RULE)
+    else:
+        context = _spec(
+            product,
+            "agent_context",
+            f"{product.county}的{product.name}，以及一个虚构的合作社子品牌「{brand}」",
+        )
+        brand_rule = _spec(
+            product,
+            "brand_rule",
+            f"品牌名固定为「{brand}」，IP 名固定为「{ip}」；"
+            "不得另起名，也不得把 IP 写成真实人物。",
+        )
+        demo_rule = _spec(product, "demo_claim_rule", _GENERIC_DEMO_RULE)
+        gi_rule = _spec(product, "gi_claim_rule", _GENERIC_GI_RULE)
     return f"""你是「智农云链」县域农产品品牌数字化重构系统里的专业 Agent。
 你的工作对象是{context}。
 {brand_rule}
@@ -76,7 +149,12 @@ def build_system_prompt(product: ProductProfile) -> str:
 
 
 def agent_brief(agent: AgentName, product: ProductProfile) -> str:
-    return _spec(product, f"{agent.value}_brief", _DEFAULT_BRIEFS[agent])
+    custom = _spec(product, f"{agent.value}_brief", "")
+    if custom:
+        return custom
+    if _is_zhaotong(product):
+        return _DEFAULT_BRIEFS[agent]
+    return _product_brief(agent, product)
 
 
 def _schema_text(schema: dict) -> str:

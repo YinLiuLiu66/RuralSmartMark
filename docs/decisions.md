@@ -261,3 +261,15 @@
 **理由**：#75 的“先查后建”在 StrictMode 双请求、多标签并发下仍可能同时查不到而各建一条；前端取消请求也不能保证后端不落库。唯一索引是最终兜底，接口重查保证并发请求都拿到同一条会话。
 **验证**：`test_blank_session_unique_constraint` 断言第二条空白插入被拒；两个并发 `POST /api/controller/sessions {fresh:true}` 返回同一 id，空白会话计数保持 1；常规 `uv run pytest` 58 passed + 2 skipped。迁移在当前 SQLite 上执行成功，旧的两条空白会话被清理为一条。
 **拍板时间**：2026-10-24
+
+### #77 · 新产品提示词按产品档案生成
+**结论**：非昭通产品的四站提示词不再回落「乌蒙丑果 / 山风守园人」默认值，而是从产品档案的 `brand_name` / `ip_name` / `county` / `name` / `form` 生成品牌规则、系统上下文和四站 brief；昭通案例继续使用原有精调默认提示词。产品 specs 里显式的 `agent_context` / `brand_rule` / `demo_claim_rule` / `gi_claim_rule` / `*_brief` 仍优先。
+**理由**：`prompts.py` 之前把昭通品牌/IP 写死，建档时只写 `brand_name/ip_name`，导致麻江蓝莓的故事输出仍叫「山风守园人」。按产品档案动态生成，既修复跨产品泄漏，又保留昭通已调好的文案规则。
+**验证**：`test_non_zhaotong_prompts_use_own_brand_and_ip` 断言麻江蓝莓提示词含自身品牌/IP、不含乌蒙丑果/山风守园人/昭通；`test_zhaotong_prompts_keep_tuned_defaults` 断言昭通仍用精调 brief；实际产品 2 的 prompt 检查通过。后端 63 passed + 2 skipped。
+**拍板时间**：2026-10-24
+
+### #78 · P1 写操作链路健壮性修复
+**结论**：①总控提示词和 `request_action` 工具说明逐字列出 `commit_product / approve_agent / reject_agent / rewind_to_agent`，并明确建档动作名；②包装文案、概念、结构在渲染前统一压成单行，避免 PIL 对多行文本 `textlength` 抛 `ValueError`；审核渲染同时捕获 `ValueError`；③四站生成前和总控会话输出前显式 `refresh` 产品/批次，避免过期 ORM 实例在同步 prompt 构建中触发 `MissingGreenlet`。
+**理由**：P1 测试暴露建档动作名不可达（P0）、包装换行导致审核 500、建档后首轮总控 500。三处都是真实用户路径上的阻断或高风险点。
+**验证**：`test_controller_prompt_names_request_action_kinds`、`test_render_png_handles_multiline_copy`、`test_generate_output_refreshes_expired_batch`；常规 `uv run pytest` 63 passed + 2 skipped，ruff 通过。
+**拍板时间**：2026-10-24

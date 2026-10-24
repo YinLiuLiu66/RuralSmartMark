@@ -77,7 +77,7 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 58 passed + 2 skipped + ruff；前端 typecheck/lint/build
+make test    # 后端 63 passed + 2 skipped + ruff；前端 typecheck/lint/build
 make e2e     # Playwright 9 条冒烟（桌面 6 + 移动 3）
 make perf    # 60 秒帧率/堆内存 + 200% 等效视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度

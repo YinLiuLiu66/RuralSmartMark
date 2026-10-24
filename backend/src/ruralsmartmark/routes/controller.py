@@ -51,6 +51,10 @@ async def _session_out(session: SessionDep, item: ControllerSession) -> Controll
     messages = await _messages(session, item.id)
     product = await session.get(ProductProfile, item.product_id) if item.product_id else None
     batch = await session.get(Batch, item.batch_id) if item.batch_id else None
+    if product is not None:
+        await session.refresh(product)
+    if batch is not None:
+        await session.refresh(batch)
     return ControllerSessionOut(
         id=item.id,
         product_id=item.product_id,
@@ -324,14 +328,19 @@ async def _execute_pending(
             raise HTTPException(status_code=409, detail="没有可提交的产品草案")
         draft = ResearchDraft.model_validate(item.draft_json)
         product, new_batch, docs, benchmarks = await commit_research_draft(session, draft)
+        product_name, product_slug, batch_code = (
+            product.name,
+            product.slug,
+            new_batch.code,
+        )
         item.product_id = product.id
         item.batch_id = new_batch.id
         item.draft_json = None
         item.pending_action_json = None
         await session.commit()
         return (
-            f"已建档：{product.name}（{product.slug}），"
-            f"知识库 {docs} 条、基准价 {benchmarks} 条，批次 {new_batch.code}。"
+            f"已建档：{product_name}（{product_slug}），"
+            f"知识库 {docs} 条、基准价 {benchmarks} 条，批次 {batch_code}。"
         )
 
     batch = await session.get(Batch, item.batch_id) if item.batch_id else None

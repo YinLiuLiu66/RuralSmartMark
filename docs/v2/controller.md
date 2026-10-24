@@ -1,7 +1,7 @@
 # 总控与多产品 · 设计契约
 
 > 状态：已批准，已完成（2026-10-22）
-> 决策：`docs/decisions.md` #68–#76
+> 决策：`docs/decisions.md` #68–#78
 > 目标：用户只面对一个输入框，完成“调研建档 → 四站流水线 → 修改/通过/回退”。
 
 ## 1. 角色
@@ -48,7 +48,7 @@
 `run_agent(agent, note)`、`create_batch(product_slug, quantity_kg)`。
 
 ### 必须确认
-`commit_product`、`approve_agent`、`reject_agent`、`rewind_to_agent`。
+`commit_product`、`approve_agent`、`reject_agent`、`rewind_to_agent`。`request_action` 的 kind 必须逐字使用这四个值；模型提示词里点名“建档用 `commit_product`”，不要发明 `create_product` / `start_batch` / `create_batch`。
 
 确认由后端生成 `pending_action_json`，`confirm` 接口执行；模型不直接执行危险动作。`approve_agent` 确认通过后自动启动下一站并停在待审核；定价通过后直接进入 `traced`。每站仍需用户再次确认，不做连续自动通过。
 
@@ -124,4 +124,4 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 - 从 UI 能完成：新建空白会话 → 调研 → 草案 → 确认建档 → 跑故事 → 对话修改 → 通过 → 回退。
 - 发消息后用户气泡立即出现；思维链默认折叠、可展开；正文流式出现。
 - 无 Firecrawl key 时提示贴资料，不静默失败；网络失败提示可重试/贴链接。
-- 后端 58 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。
+- 后端 63 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。

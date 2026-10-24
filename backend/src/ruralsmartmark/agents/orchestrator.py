@@ -141,6 +141,7 @@ async def run_agent(
     session.add(run)
     await session.commit()
     await session.refresh(run)
+    await session.refresh(batch)
     await bus.publish(
         "agent.started", {"batch_id": batch.id, "agent": agent.value, "run_id": run.id}
     )
@@ -320,7 +321,7 @@ async def approve_agent(
                 path,
                 public_base_url=runtime.settings.public_base_url,
             )
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             raise HTTPException(status_code=500, detail=f"包装图生成失败：{exc}") from exc
         file_path = str(path)
 

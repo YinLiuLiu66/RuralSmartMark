@@ -139,7 +139,9 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 总控确认通过后自动运行下一站，下一站仍停在待审核（#74）
 - [x] 新建先进入空沙盘，空白沙盘单例，重复点击不新建（#75）
 - [x] 空白会话唯一索引 + 并发冲突回滚重查，迁移清理旧重复空白会话（#76）
-- [x] 后端 58 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
+- [x] 新产品提示词按产品档案生成，修复跨产品品牌/IP 泄漏（#77）
+- [x] P1 链路修复：建档动作名、包装多行文案 500、过期 ORM 实例 MissingGreenlet（#78）
+- [x] 后端 63 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
 - [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓草案（本机 key；1 条来源、价格缺失转追问）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 

@@ -29,7 +29,7 @@
 - 来源补证：地理标志公告第1478号/登记编号已补；80–85mm 精选果公开挂牌价补了 4 个惠农网页面（5斤 25/36/40 元，10斤 6.2 元/斤）；包装厂只找到 1000 个起订线索，仍无书面报价。
 - 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
 - 生图失败兜底：包装工位显示「插画这次没有生成 / 包装审核不受影响」；`python -m ruralsmartmark.maintenance image-cache --dry-run` 可预演 30 天/512MB 缓存清理。
-- 后端 58 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
+- 后端 63 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
 **下一步是交付与补证**：手机真机扫码、包装厂书面报价与食品接触合规、真实盒型/刀版。公开挂牌价与地理标志公告号已补，成交价/同渠道长期价可继续跟。字段级审核表单与 Docker 已确认不做（decisions #63）。
 
@@ -119,7 +119,7 @@ docs/
 | 根 | `make test` | 后端 52 tests/ruff + 前端 typecheck/lint/build |
 | 根 | `make e2e` / `make perf` | Playwright 冒烟 / 60 秒性能 |
 | backend | `uv run ruralsmartmark` | 启动开发服务 |
-| backend | `uv run pytest` | 后端测试（临时 SQLite；58 passed + 2 skipped） |
+| backend | `uv run pytest` | 后端测试（临时 SQLite；63 passed + 2 skipped） |
 | backend | `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` | 生图缓存清理预演（30 天/512MB） |
 | backend | `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` | 可选真实 LLM 第二产品冒烟（消耗额度） |
 | backend | `RSM_REAL_SEARCH=1 uv run pytest tests/test_search_real.py` | 可选真实 Firecrawl 搜索/抓页（消耗 credits） |

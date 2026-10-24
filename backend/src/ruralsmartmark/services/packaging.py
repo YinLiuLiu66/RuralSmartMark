@@ -95,32 +95,36 @@ def _palette(product: ProductProfile, variant: str = "kraft") -> list[str]:
     ]
 
 
+def _single_line(value: object) -> str:
+    return " ".join(str(value).replace("\r", " ").replace("\n", " ").split())
+
+
 def _copy(output: dict) -> dict[str, str]:
     raw = output.get("packaging_copy") or {}
     return {
-        "front": str(raw.get("front", "丑得真实，甜得直接")),
-        "back": str(raw.get("back", "来自昭通昭阳区的高海拔果园。")),
-        "side": str(raw.get("side", "5kg · 12 枚 · 80–85mm")),
-        "inside": str(raw.get("inside", "长得丑，是它认真晒太阳的证据。")),
+        "front": _single_line(raw.get("front", "丑得真实，甜得直接")),
+        "back": _single_line(raw.get("back", "来自昭通昭阳区的高海拔果园。")),
+        "side": _single_line(raw.get("side", "5kg · 12 枚 · 80–85mm")),
+        "inside": _single_line(raw.get("inside", "长得丑，是它认真晒太阳的证据。")),
     }
 
 
 def _display(product: ProductProfile) -> dict[str, str]:
     specs = product.specs or {}
     return {
-        "brand": str(specs.get("brand_name") or "乌蒙丑果"),
-        "hero": str(specs.get("packaging_hero") or "丑"),
-        "tagline": str(specs.get("packaging_tagline") or "长得丑，甜得认真"),
-        "footer": str(specs.get("trace_footer") or "扫码看这箱苹果的旅程"),
+        "brand": _single_line(specs.get("brand_name") or "乌蒙丑果"),
+        "hero": _single_line(specs.get("packaging_hero") or "丑"),
+        "tagline": _single_line(specs.get("packaging_tagline") or "长得丑，甜得认真"),
+        "footer": _single_line(specs.get("trace_footer") or "扫码看这箱苹果的旅程"),
     }
 
 
 def _structure(output: dict) -> dict[str, str]:
     raw = output.get("structure") or {}
     return {
-        "box_type": str(raw.get("box_type", "牛皮纸天地盖礼盒")),
-        "dimensions": str(raw.get("dimensions", "360×260×90mm")),
-        "material": str(raw.get("material", "350g 牛皮纸 + 瓦楞内托")),
+        "box_type": _single_line(raw.get("box_type", "牛皮纸天地盖礼盒")),
+        "dimensions": _single_line(raw.get("dimensions", "360×260×90mm")),
+        "material": _single_line(raw.get("material", "350g 牛皮纸 + 瓦楞内托")),
     }
 
 
@@ -171,7 +175,7 @@ def build_label_svg(
     copy = _copy(output)
     structure = _structure(output)
     display = _display(product)
-    concept = str(output.get("concept", "牛皮纸礼盒"))
+    concept = _single_line(output.get("concept", "牛皮纸礼盒"))
     trace_url = _trace_url(batch, public_base_url)
     qr_uri = _qr_data_uri(trace_url)
     safe = html.escape
@@ -237,6 +241,7 @@ def _wrap_lines(
     font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
     max_width: int,
 ) -> list[str]:
+    text = _single_line(text)
     lines: list[str] = []
     current = ""
     for char in text:
@@ -281,6 +286,7 @@ def _fit_font(
     bold: bool = False,
     min_size: int = 14,
 ) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    text = _single_line(text)
     while size > min_size:
         font = _font(size, serif=serif, bold=bold)
         if draw.textlength(text, font=font) <= max_width:
@@ -333,7 +339,7 @@ def _render_label_image(
     copy = _copy(output)
     structure = _structure(output)
     display = _display(product)
-    concept = str(output.get("concept", "牛皮纸礼盒"))
+    concept = _single_line(output.get("concept", "牛皮纸礼盒"))
     trace_url = _trace_url(batch, public_base_url)
 
     image = Image.new("RGB", (1600, 1000), paper)

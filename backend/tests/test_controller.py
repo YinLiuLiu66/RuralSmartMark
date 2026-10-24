@@ -278,3 +278,11 @@ async def test_blank_session_unique_constraint(session):
     with pytest.raises(IntegrityError):
         await session.commit()
     await session.rollback()
+
+
+def test_controller_prompt_names_request_action_kinds():
+    from ruralsmartmark.agents.controller import CONTROLLER_INSTRUCTIONS
+
+    for kind in ("commit_product", "approve_agent", "reject_agent", "rewind_to_agent"):
+        assert kind in CONTROLLER_INSTRUCTIONS
+    assert "request_action('commit_product')" in CONTROLLER_INSTRUCTIONS
