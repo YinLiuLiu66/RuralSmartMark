@@ -99,23 +99,52 @@ def _single_line(value: object) -> str:
     return " ".join(str(value).replace("\r", " ").replace("\n", " ").split())
 
 
-def _copy(output: dict) -> dict[str, str]:
+def _copy(output: dict, product: ProductProfile) -> dict[str, str]:
     raw = output.get("packaging_copy") or {}
+    if product.slug == "zhaotong-ugly-apple":
+        defaults = {
+            "front": "丑得真实，甜得直接",
+            "back": "来自昭通昭阳区的高海拔果园。",
+            "side": "5kg · 12 枚 · 80–85mm",
+            "inside": "长得丑，是它认真晒太阳的证据。",
+        }
+    else:
+        defaults = {
+            "front": "产地直发，认真装箱",
+            "back": f"来自{product.county}的{product.name}。",
+            "side": product.form,
+            "inside": f"{product.name}，从产地到餐桌。",
+        }
     return {
-        "front": _single_line(raw.get("front", "丑得真实，甜得直接")),
-        "back": _single_line(raw.get("back", "来自昭通昭阳区的高海拔果园。")),
-        "side": _single_line(raw.get("side", "5kg · 12 枚 · 80–85mm")),
-        "inside": _single_line(raw.get("inside", "长得丑，是它认真晒太阳的证据。")),
+        "front": _single_line(raw.get("front", defaults["front"])),
+        "back": _single_line(raw.get("back", defaults["back"])),
+        "side": _single_line(raw.get("side", defaults["side"])),
+        "inside": _single_line(raw.get("inside", defaults["inside"])),
     }
 
 
 def _display(product: ProductProfile) -> dict[str, str]:
     specs = product.specs or {}
+    zhaotong = product.slug == "zhaotong-ugly-apple"
     return {
-        "brand": _single_line(specs.get("brand_name") or "乌蒙丑果"),
-        "hero": _single_line(specs.get("packaging_hero") or "丑"),
-        "tagline": _single_line(specs.get("packaging_tagline") or "长得丑，甜得认真"),
-        "footer": _single_line(specs.get("trace_footer") or "扫码看这箱苹果的旅程"),
+        "brand": _single_line(
+            specs.get("brand_name") or ("乌蒙丑果" if zhaotong else f"{product.name}演示品牌")
+        ),
+        "hero": _single_line(
+            specs.get("packaging_hero") or ("丑" if zhaotong else product.name[-1:])
+        ),
+        "tagline": _single_line(
+            specs.get("packaging_tagline")
+            or ("长得丑，甜得认真" if zhaotong else "产地直发，认真装箱")
+        ),
+        "footer": _single_line(
+            specs.get("trace_footer")
+            or (
+                "扫码看这箱苹果的旅程"
+                if zhaotong
+                else f"扫码看这箱{product.name}的旅程"
+            )
+        ),
     }
 
 
@@ -172,7 +201,7 @@ def build_label_svg(
 ) -> str:
     colors = _palette(product)
     primary, kraft, leaf, paper = colors[:4]
-    copy = _copy(output)
+    copy = _copy(output, product)
     structure = _structure(output)
     display = _display(product)
     concept = _single_line(output.get("concept", "牛皮纸礼盒"))
@@ -336,7 +365,7 @@ def _render_label_image(
 ) -> Image.Image:
     colors = _palette(product, variant)
     primary, kraft, leaf, paper = colors[:4]
-    copy = _copy(output)
+    copy = _copy(output, product)
     structure = _structure(output)
     display = _display(product)
     concept = _single_line(output.get("concept", "牛皮纸礼盒"))

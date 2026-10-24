@@ -89,3 +89,25 @@ async def test_render_png_handles_multiline_copy(session):
     )
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
     assert len(data) > 50_000
+
+
+def test_non_zhaotong_packaging_defaults_are_product_aware():
+    from ruralsmartmark.services.packaging import _copy, _display
+
+    product = ProductProfile(
+        slug="ma-jiang-blueberry",
+        name="麻江蓝莓",
+        county="贵州省麻江县",
+        province="贵州省",
+        category="鲜果",
+        form="1.5kg / 6 盒礼盒",
+        specs={"brand_name": "麻江蓝莓演示品牌", "ip_name": "山野记录者"},
+    )
+    display = _display(product)
+    copy = _copy({}, product)
+
+    assert display["brand"] == "麻江蓝莓演示品牌"
+    assert display["hero"] == "莓"
+    assert "苹果" not in display["footer"]
+    assert "昭通" not in copy["back"]
+    assert copy["side"] == "1.5kg / 6 盒礼盒"

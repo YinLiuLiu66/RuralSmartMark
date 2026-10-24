@@ -485,6 +485,6 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 调研：Firecrawl `AsyncFirecrawl` `search`/`scrape` Provider；默认绕过系统代理并做网络重试；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料。真实 Firecrawl 搜索/抓页与麻江蓝莓草案已验证。
 - 回退：清空下游 JSON、删除下游 Artifact/插画、run 标记 failed、回到目标站重跑；历史 run 保留。
 - 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；流式正文/思维链折叠/草案卡/确认卡/消息记录；新建先进入空沙盘，同一时间只有一个空白会话；总控确认通过后自动运行下一站。
-- 验证：后端 63 passed + 2 skipped；Playwright 11 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
+- 验证：后端 64 passed + 2 skipped；Playwright 11 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
 - 真实 Firecrawl：`RSM_REAL_SEARCH=1` 搜索/抓页测试通过；麻江蓝莓真实调研草案拿到 1 条来源（搜狐地理标志报道），价格/包装/品牌转为追问，未编造。
 - 未完成：真实手机扫码、包装厂书面报价、真实盒型/刀版。

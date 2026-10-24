@@ -124,4 +124,4 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 - 从 UI 能完成：新建空白会话 → 调研 → 草案 → 确认建档 → 跑故事 → 对话修改 → 通过 → 回退。
 - 发消息后用户气泡立即出现；思维链默认折叠、可展开；正文流式出现。
 - 无 Firecrawl key 时提示贴资料，不静默失败；网络失败提示可重试/贴链接。
-- 后端 63 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。
+- 后端 64 passed + 2 skipped，Playwright 11 条，构建通过；真实 Firecrawl 小样本可选通过。

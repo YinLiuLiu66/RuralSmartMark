@@ -141,7 +141,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 空白会话唯一索引 + 并发冲突回滚重查，迁移清理旧重复空白会话（#76）
 - [x] 新产品提示词按产品档案生成，修复跨产品品牌/IP 泄漏（#77）
 - [x] P1 链路修复：建档动作名、包装多行文案 500、过期 ORM 实例 MissingGreenlet（#78）
-- [x] 后端 63 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
+- [x] 后端 64 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
 - [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓草案（本机 key；1 条来源、价格缺失转追问）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 
