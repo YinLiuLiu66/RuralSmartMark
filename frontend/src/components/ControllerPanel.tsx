@@ -169,22 +169,29 @@ export default function ControllerPanel({
 
   useEffect(() => {
     let cancelled = false;
+    const abort = new AbortController();
     setSession(null);
     setError(null);
     setPendingUser(null);
     setStream(null);
     controllerApi
-      .createSession(productSlug, batchId, freshToken !== undefined)
+      .createSession(
+        productSlug,
+        batchId,
+        freshToken !== undefined,
+        abort.signal,
+      )
       .then((result) => {
         if (!cancelled) setSession(result);
       })
       .catch((reason: unknown) => {
-        if (!cancelled) {
+        if (!cancelled && !abort.signal.aborted) {
           setError(reason instanceof Error ? reason.message : "总控初始化失败");
         }
       });
     return () => {
       cancelled = true;
+      abort.abort();
     };
   }, [productSlug, batchId, freshToken]);
 

@@ -148,9 +148,11 @@ export const controllerApi = {
     productSlug?: string | null,
     batchId?: number | null,
     fresh = false,
+    signal?: AbortSignal,
   ) =>
     request<ControllerSession>("/controller/sessions", {
       method: "POST",
+      signal,
       body: JSON.stringify({
         product_slug: productSlug ?? null,
         batch_id: batchId ?? null,
