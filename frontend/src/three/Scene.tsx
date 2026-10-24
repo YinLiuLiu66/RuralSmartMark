@@ -310,7 +310,7 @@ function QrSign({ traceCode, onOpen }: { traceCode: string; onOpen?: () => void 
 
   return (
     <group
-      position={[19.5, 0, 5]}
+      position={[21, 0, 7]}
       onClick={(event) => {
         event.stopPropagation();
         onOpen?.();

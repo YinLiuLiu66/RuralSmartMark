@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from ..agents.base import AgentName
 from ..agents.controller import ControllerUnavailable, run_controller_turn
@@ -103,7 +104,22 @@ async def create_controller_session(
 
     item = ControllerSession(product_id=product_id, batch_id=payload.batch_id)
     session.add(item)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        # 空白会话唯一索引兜底：并发请求里另一个已经创建成功。
+        await session.rollback()
+        existing = await session.scalar(
+            select(ControllerSession)
+            .where(
+                ControllerSession.product_id.is_(None),
+                ControllerSession.batch_id.is_(None),
+            )
+            .order_by(ControllerSession.id.desc())
+        )
+        if existing is None:
+            raise
+        return await _session_out(session, existing)
     await session.refresh(item)
     return await _session_out(session, item)
 

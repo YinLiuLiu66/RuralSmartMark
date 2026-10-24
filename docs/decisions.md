@@ -255,3 +255,9 @@
 **理由**：用户点「新建」需要看到“真的腾出了一个新地方”；连续点击不能制造多个空会话/空沙盘，也不能留下无主数据。
 **验证**：`test_fresh_session_reuses_single_blank_session` 覆盖首次复用、再次复用、建档后新建；Playwright 断言点「新建」出现空沙盘、下拉为占位、重复点击仍保持同一空态。后端 57 passed + 2 skipped，Playwright 11 条。
 **拍板时间**：2026-10-23
+
+### #76 · 空白会话唯一索引与并发兜底
+**结论**：`controller_session` 增加 SQLite 部分唯一索引 `uq_controller_session_blank`（`((1)) WHERE product_id IS NULL AND batch_id IS NULL`），从数据库层保证最多一条未建档空白会话。迁移 `d6a1e2f3b4c5` 先清理旧重复空白会话（保留最新一条）再建索引；创建接口遇到 `IntegrityError` 时回滚并重查，返回已存在的那条。
+**理由**：#75 的“先查后建”在 StrictMode 双请求、多标签并发下仍可能同时查不到而各建一条；前端取消请求也不能保证后端不落库。唯一索引是最终兜底，接口重查保证并发请求都拿到同一条会话。
+**验证**：`test_blank_session_unique_constraint` 断言第二条空白插入被拒；两个并发 `POST /api/controller/sessions {fresh:true}` 返回同一 id，空白会话计数保持 1；常规 `uv run pytest` 58 passed + 2 skipped。迁移在当前 SQLite 上执行成功，旧的两条空白会话被清理为一条。
+**拍板时间**：2026-10-24

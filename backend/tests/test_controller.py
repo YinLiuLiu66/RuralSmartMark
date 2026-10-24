@@ -1,4 +1,6 @@
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from ruralsmartmark.agents.controller import ControllerTurn
 from ruralsmartmark.models import Batch, ControllerSession, ProductProfile
@@ -266,3 +268,13 @@ async def test_confirm_approve_continues_next_station(session, client, monkeypat
     assert calls == {"approved": "story", "next": "packaging"}
     assert "已自动运行 packaging" in response.json()["reply"]
     assert "待审核" in response.json()["reply"]
+
+
+async def test_blank_session_unique_constraint(session):
+    session.add(ControllerSession())
+    await session.commit()
+
+    session.add(ControllerSession())
+    with pytest.raises(IntegrityError):
+        await session.commit()
+    await session.rollback()

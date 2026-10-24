@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    DDL,
     JSON,
     Boolean,
     DateTime,
@@ -10,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    event,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -174,6 +176,17 @@ class ControllerSession(TimestampMixin, Base):
     )
     draft_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     pending_action_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+event.listen(
+    ControllerSession.__table__,
+    "after_create",
+    DDL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_controller_session_blank "
+        "ON controller_session ((1)) "
+        "WHERE product_id IS NULL AND batch_id IS NULL"
+    ),
+)
 
 
 class ControllerMessage(Base):

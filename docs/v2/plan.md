@@ -375,7 +375,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#75（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链、空白会话新建产品、确认通过后自动继续下一站、空沙盘与空白会话单例）；本文只引用，不复制结论。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#76（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链、空白会话新建产品、确认通过后自动继续下一站、空沙盘与空白会话单例、空白会话唯一索引）；本文只引用，不复制结论。
 - `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
@@ -485,6 +485,6 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 调研：Firecrawl `AsyncFirecrawl` `search`/`scrape` Provider；默认绕过系统代理并做网络重试；搜索/抓页/草案；引用必须逐字命中抓取正文；无 key 时提示贴资料。真实 Firecrawl 搜索/抓页与麻江蓝莓草案已验证。
 - 回退：清空下游 JSON、删除下游 Artifact/插画、run 标记 failed、回到目标站重跑；历史 run 保留。
 - 前端：产品/批次切换；右栏总控抽屉；`/controller` 独立页；流式正文/思维链折叠/草案卡/确认卡/消息记录；新建先进入空沙盘，同一时间只有一个空白会话；总控确认通过后自动运行下一站。
-- 验证：后端 57 passed + 2 skipped；Playwright 11 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
+- 验证：后端 58 passed + 2 skipped；Playwright 11 passed；typecheck/lint/build 全绿；迁移在全新 SQLite 上通过。
 - 真实 Firecrawl：`RSM_REAL_SEARCH=1` 搜索/抓页测试通过；麻江蓝莓真实调研草案拿到 1 条来源（搜狐地理标志报道），价格/包装/品牌转为追问，未编造。
 - 未完成：真实手机扫码、包装厂书面报价、真实盒型/刀版。
