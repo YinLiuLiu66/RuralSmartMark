@@ -504,6 +504,18 @@ export default function Sandbox() {
     setControllerFreshToken(undefined);
   }
 
+  function handleProductSelect(value: string) {
+    const id = Number(value) || null;
+    if (newProductMode) {
+      setNewProductMode(false);
+      setControllerFreshToken(undefined);
+      setControllerOpen(false);
+      setReviewOpen(false);
+      selectAgent(null);
+    }
+    selectProduct(id);
+  }
+
   async function handleControllerDataChanged() {
     setNewProductMode(false);
     setControllerFreshToken(undefined);
@@ -549,30 +561,22 @@ export default function Sandbox() {
             </span>
           </div>
 
-          <label
-            className={`ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors ${
-              newProductMode
-                ? "opacity-70"
-                : "hover:border-line-strong focus-within:border-apple/40"
-            }`}
-          >
+          <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
             <span>产品</span>
             <select
               value={newProductMode ? "" : selectedProduct?.id ?? ""}
-              disabled={newProductMode}
-              onChange={(event) => selectProduct(Number(event.target.value) || null)}
-              className="max-w-[160px] bg-transparent text-ink outline-none disabled:cursor-default"
+              onChange={(event) => handleProductSelect(event.target.value)}
+              className="max-w-[160px] bg-transparent text-ink outline-none"
             >
               {newProductMode && <option value="">新产品（未建档）</option>}
               {!newProductMode && products.length === 0 && (
                 <option value="">暂无产品</option>
               )}
-              {!newProductMode &&
-                products.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
+              {products.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
             </select>
           </label>
           <button
