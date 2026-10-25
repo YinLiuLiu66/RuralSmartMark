@@ -28,6 +28,10 @@ def _margin(price: float, cost: float) -> float:
     return round((price - cost) / price, 4) if price else 0.0
 
 
+def _is_zhaotong(product: ProductProfile) -> bool:
+    return product.slug == "zhaotong-ugly-apple"
+
+
 def calculate_pricing(
     product: ProductProfile,
     batch: Batch,
@@ -48,9 +52,12 @@ def calculate_pricing(
     box_total = float(cost.get("total", 5.7))
     box_kg = float(specs.get("pack_kg", PACK_KG))
     bulk_kg = float(specs.get("bulk_pack_kg", BULK_PACK_KG))
-    gift_pack = str(specs.get("gift_pack_label") or "5kg / 12 枚")
+    zhaotong = _is_zhaotong(product)
+    default_gift_pack = "5kg / 12 枚" if zhaotong else f"{box_kg:g}kg / 箱"
+    default_bulk_pack = "10 斤/箱" if zhaotong else f"{bulk_kg:g}kg / 箱"
+    gift_pack = str(specs.get("gift_pack_label") or default_gift_pack)
     ecommerce_pack = str(specs.get("ecommerce_pack_label") or gift_pack)
-    bulk_pack = str(specs.get("bulk_pack_label") or "10 斤/箱")
+    bulk_pack = str(specs.get("bulk_pack_label") or default_bulk_pack)
 
     # 演示成本模型：果价 + 损耗 + 分选人工 + 冷链 + 包装 + 平台/营销费。
     fruit = bulk * 0.8
@@ -125,11 +132,17 @@ def calculate_pricing(
     )
 
     trace_url = f"{public_base_url.rstrip('/')}/trace/{trace_code or batch.code}"
-    ip_name = (story or {}).get("ip_name") or "山风守园人"
-    greeting_scene = str(
-        specs.get("persona_greeting_scene")
-        or "这颗苹果从乌蒙山出发，身上有太阳晒出的斑点，也有这一批合作社的分级和装箱记录。"
+    ip_name = (
+        (story or {}).get("ip_name")
+        or str(specs.get("ip_name") or "")
+        or ("山风守园人" if zhaotong else f"{product.name}记录者")
     )
+    default_greeting = (
+        "这颗苹果从乌蒙山出发，身上有太阳晒出的斑点，也有这一批合作社的分级和装箱记录。"
+        if zhaotong
+        else f"这一批{product.name}从{product.county}出发，带着分级、装箱和溯源记录。"
+    )
+    greeting_scene = str(specs.get("persona_greeting_scene") or default_greeting)
     persona_greeting = f"你好呀，我是{ip_name}。{greeting_scene}"
 
     price_doc = next((doc for doc in docs if doc.doc_key == "PRICE-01"), None)
@@ -156,20 +169,36 @@ def calculate_pricing(
         and faq
         and all(isinstance(item, dict) and item.get("q") and item.get("a") for item in faq)
     ):
-        faq = [
-            {
-                "q": "为什么比散装贵？",
-                "a": "价格里包含分级、礼盒包装、内容制作与溯源服务；具体数字是演示测算。",
-            },
-            {
-                "q": "表皮为什么有斑点？",
-                "a": "演示合作社采用不套袋管理（演示设定），外观不代表果肉品质。",
-            },
-            {
-                "q": "怎么保存？",
-                "a": "阴凉通风处保存，冷藏口感更脆；建议按批次标注的时间尽快食用。",
-            },
-        ]
+        if zhaotong:
+            faq = [
+                {
+                    "q": "为什么比散装贵？",
+                    "a": "价格里包含分级、礼盒包装、内容制作与溯源服务；具体数字是演示测算。",
+                },
+                {
+                    "q": "表皮为什么有斑点？",
+                    "a": "演示合作社采用不套袋管理（演示设定），外观不代表果肉品质。",
+                },
+                {
+                    "q": "怎么保存？",
+                    "a": "阴凉通风处保存，冷藏口感更脆；建议按批次标注的时间尽快食用。",
+                },
+            ]
+        else:
+            faq = [
+                {
+                    "q": "为什么礼盒价比散装高？",
+                    "a": "礼盒价包含分级分选、包装、内容制作与溯源服务；具体数字是演示测算，不代表市场报价。",
+                },
+                {
+                    "q": "外观有差异，会影响品质吗？",
+                    "a": "外观差异多来自自然生长与采后处理，页面只作外观描述，不据此判断品质等级。",
+                },
+                {
+                    "q": "收到后怎么保存？",
+                    "a": "按包装标注的方式保存；具体温度与期限以产品包装说明为准，尽快食用。",
+                },
+            ]
 
     return {
         "price_ladder": channel_rows,
@@ -189,12 +218,24 @@ def calculate_pricing(
             {"step": "采摘", "note": f"{product.county} · 演示批次 {batch.code}"},
             {
                 "step": "分选",
-                "note": str(specs.get("sorting_note") or "果径 80–85mm · 12 枚/盒（演示规格）"),
+                "note": str(
+                    specs.get("sorting_note")
+                    or (
+                        "果径 80–85mm · 12 枚/盒（演示规格）"
+                        if zhaotong
+                        else f"按{product.name}外观与规格分级（演示规格）"
+                    )
+                ),
             },
             {
                 "step": "包装",
                 "note": str(
-                    specs.get("packaging_note") or "牛皮纸天地盖礼盒 + 瓦楞纸托（演示规格）"
+                    specs.get("packaging_note")
+                    or (
+                        "牛皮纸天地盖礼盒 + 瓦楞纸托（演示规格）"
+                        if zhaotong
+                        else f"{gift_pack} 包装（演示规格）"
+                    )
                 ),
             },
             {"step": "定价", "note": f"散装基线 {bulk:.1f} 元/kg，礼盒目标 {gift:.1f} 元/kg"},

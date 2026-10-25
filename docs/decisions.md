@@ -273,3 +273,9 @@
 **理由**：P1 测试暴露建档动作名不可达（P0）、包装换行导致审核 500、建档后首轮总控 500。三处都是真实用户路径上的阻断或高风险点。
 **验证**：`test_controller_prompt_names_request_action_kinds`、`test_render_png_handles_multiline_copy`、`test_generate_output_refreshes_expired_batch`；常规 `uv run pytest` 63 passed + 2 skipped，ruff 通过。
 **拍板时间**：2026-10-24
+
+### #79 · 定价与包装默认值按产品档案生成
+**结论**：①定价计算器的包装规格、分选说明、包装说明、欢迎语和 FAQ 在昭通案例保留原精调默认值，非昭通产品改读自身 `pack_kg` / `bulk_pack_kg` / `name` / `county` / `form`，没有档案规格时用“5kg / 箱”“按产品外观与规格分级”等中性表述；②包装色板支持语义键映射，`primary/secondary/text/accent` 依次映射到主色/装饰/文字/底色，非昭通空色板使用中性色而不是昭通红绿；③品牌名已含“演示”时不再重复追加“· 演示品牌”；④左侧标语下移 50px，避免压住大字号品牌字。
+**理由**：P1 复测关闭四个旧 bug 后，验收两批新产品发现定价仍写“果径 80–85mm · 12 枚/盒”“牛皮纸天地盖礼盒”“乌蒙山”，包装仍用昭通红绿并重复“演示品牌”。这些不是事实错误，但会让麻江蓝莓和平泉香菇看起来像昭通换皮，属于跨产品泄漏。
+**验证**：`test_non_zhaotong_pricing_has_no_zhaotong_defaults`、`test_zhaotong_pricing_keeps_tuned_defaults`、`test_palette_maps_semantic_roles_for_non_zhaotong`、`test_palette_uses_neutral_fallback_for_empty_non_zhaotong`、`test_brand_caption_does_not_duplicate_demo_suffix`；后端 69 passed + 2 skipped，ruff 通过。真实批次 PR-2026-001（麻江蓝莓）与 PR-2026-002（平泉香菇）均跑到 traced（PR0003 / PR0004），溯源 API 无昭通残留，包装 PNG 与 H5 均 200，扫码计数写入成功。
+**拍板时间**：2026-10-25

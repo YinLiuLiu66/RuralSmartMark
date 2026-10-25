@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 from ..models import Batch, ProductProfile
 
 DEFAULT_PALETTE = ["#B6402A", "#C9A46A", "#3F6B4F", "#F7F3EA"]
+NEUTRAL_PALETTE = ["#4B4A44", "#C9B79A", "#5E6B4F", "#F5F1E8"]
 
 PACKAGING_VARIANTS: dict[str, dict[str, object]] = {
     "kraft": {
@@ -83,16 +84,22 @@ def _palette(product: ProductProfile, variant: str = "kraft") -> list[str]:
     override = PACKAGING_VARIANTS.get(variant, {}).get("palette")
     if isinstance(override, dict):
         roles.update(override)
+    zhaotong = product.slug == "zhaotong-ugly-apple"
+    fallback = DEFAULT_PALETTE if zhaotong else NEUTRAL_PALETTE
     values = [
-        roles.get("apple", DEFAULT_PALETTE[0]),
-        roles.get("kraft", DEFAULT_PALETTE[1]),
-        roles.get("leaf", DEFAULT_PALETTE[2]),
-        roles.get("paper", DEFAULT_PALETTE[3]),
+        roles.get("apple") or roles.get("primary"),
+        roles.get("kraft") or roles.get("secondary") or roles.get("accent"),
+        roles.get("leaf") or roles.get("text") or roles.get("secondary"),
+        roles.get("paper") or roles.get("accent"),
     ]
     return [
-        item if isinstance(item, str) and _HEX.match(item) else fallback
-        for item, fallback in zip(values, DEFAULT_PALETTE, strict=True)
+        item if isinstance(item, str) and _HEX.match(item) else default
+        for item, default in zip(values, fallback, strict=True)
     ]
+
+
+def _brand_caption(brand: str) -> str:
+    return brand if "演示" in brand else f"{brand} · 演示品牌"
 
 
 def _single_line(value: object) -> str:
@@ -139,11 +146,7 @@ def _display(product: ProductProfile) -> dict[str, str]:
         ),
         "footer": _single_line(
             specs.get("trace_footer")
-            or (
-                "扫码看这箱苹果的旅程"
-                if zhaotong
-                else f"扫码看这箱{product.name}的旅程"
-            )
+            or ("扫码看这箱苹果的旅程" if zhaotong else f"扫码看这箱{product.name}的旅程")
         ),
     }
 
@@ -226,7 +229,7 @@ def build_label_svg(
   <circle cx="410" cy="120" r="150" fill="{kraft}" opacity="0.28"/>
   <circle cx="80" cy="930" r="190" fill="{leaf}" opacity="0.22"/>
   <text x="58" y="96" font-family="{_FONT_NAME}" font-size="38" fill="{paper}">智农云链</text>
-  <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">{safe(display["brand"])} · 演示品牌</text>
+  <text x="58" y="138" font-family="{_SANS_NAME}" font-size="20" fill="{paper}" opacity="0.86">{safe(_brand_caption(display["brand"]))}</text>
   <text x="52" y="520" font-family="{_FONT_NAME}" font-size="310" fill="{paper}">{safe(display["hero"])}</text>
   <text x="58" y="600" font-family="{_SANS_NAME}" font-size="24" fill="{paper}" opacity="0.9">{safe(display["tagline"])}</text>
   <text x="58" y="900" font-family="{_SANS_NAME}" font-size="19" fill="{paper}" opacity="0.82">{safe(product.county)}</text>
@@ -383,9 +386,9 @@ def _render_label_image(
     sans_24 = _font(24)
 
     draw.text((58, 54), "智农云链", font=serif_title, fill=paper)
-    draw.text((58, 112), f"{display['brand']} · 演示品牌", font=sans_20, fill=paper)
+    draw.text((58, 112), _brand_caption(display["brand"]), font=sans_20, fill=paper)
     draw.text((52, 210), display["hero"], font=serif_big, fill=paper)
-    draw.text((58, 570), display["tagline"], font=sans_24, fill=paper)
+    draw.text((58, 620), display["tagline"], font=sans_24, fill=paper)
     county_font = _fit_font(draw, product.county, 400, 20, min_size=14)
     draw.text((58, 880), product.county, font=county_font, fill=paper)
     draw.text((58, 916), "演示包装 · 非印刷稿", font=sans_20, fill=paper)

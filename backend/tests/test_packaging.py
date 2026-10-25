@@ -8,7 +8,10 @@ from ruralsmartmark.models import Batch, ProductProfile
 from ruralsmartmark.seed import seed_demo
 from ruralsmartmark.services.packaging import (
     BUNDLED_FONTS,
+    NEUTRAL_PALETTE,
+    _brand_caption,
     _font,
+    _palette,
     render_label_png_bytes,
 )
 
@@ -111,3 +114,43 @@ def test_non_zhaotong_packaging_defaults_are_product_aware():
     assert "苹果" not in display["footer"]
     assert "昭通" not in copy["back"]
     assert copy["side"] == "1.5kg / 6 盒礼盒"
+
+
+def test_palette_maps_semantic_roles_for_non_zhaotong():
+    product = ProductProfile(
+        slug="ma-jiang-blueberry",
+        name="麻江蓝莓",
+        county="贵州省麻江县",
+        province="贵州省",
+        category="鲜果",
+        form="5kg / 箱",
+        specs={},
+        palette={
+            "primary": "#3B4A8C",
+            "secondary": "#8FA7D8",
+            "accent": "#F2F5FA",
+            "text": "#1F2333",
+        },
+    )
+
+    assert _palette(product) == ["#3B4A8C", "#8FA7D8", "#1F2333", "#F2F5FA"]
+
+
+def test_palette_uses_neutral_fallback_for_empty_non_zhaotong():
+    product = ProductProfile(
+        slug="pingquan-xianggu",
+        name="平泉香菇",
+        county="平泉市",
+        province="河北省",
+        category="食用菌",
+        form="5kg / 箱",
+        specs={},
+        palette={},
+    )
+
+    assert _palette(product) == NEUTRAL_PALETTE
+
+
+def test_brand_caption_does_not_duplicate_demo_suffix():
+    assert _brand_caption("麻江蓝莓演示品牌") == "麻江蓝莓演示品牌"
+    assert _brand_caption("乌蒙丑果") == "乌蒙丑果 · 演示品牌"

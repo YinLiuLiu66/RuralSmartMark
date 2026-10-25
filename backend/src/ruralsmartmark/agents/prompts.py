@@ -9,8 +9,7 @@ from .base import AgentName
 
 _DEFAULT_CONTEXT = "云南昭通昭阳区的丑苹果，以及一个虚构的合作社子品牌「乌蒙丑果」"
 _DEFAULT_BRAND_RULE = (
-    "品牌名固定为「乌蒙丑果」，IP 名固定为「山风守园人」；"
-    "不得另起名，也不得把 IP 写成真实人物。"
+    "品牌名固定为「乌蒙丑果」，IP 名固定为「山风守园人」；不得另起名，也不得把 IP 写成真实人物。"
 )
 _DEFAULT_DEMO_RULE = (
     "合作社、品牌、果农人物、批次数据是演示合成；引用 DEMO-01 时，内容只是在说明“这是演示”，"
@@ -128,8 +127,7 @@ def build_system_prompt(product: ProductProfile) -> str:
         brand_rule = _spec(
             product,
             "brand_rule",
-            f"品牌名固定为「{brand}」，IP 名固定为「{ip}」；"
-            "不得另起名，也不得把 IP 写成真实人物。",
+            f"品牌名固定为「{brand}」，IP 名固定为「{ip}」；不得另起名，也不得把 IP 写成真实人物。",
         )
         demo_rule = _spec(product, "demo_claim_rule", _GENERIC_DEMO_RULE)
         gi_rule = _spec(product, "gi_claim_rule", _GENERIC_GI_RULE)
@@ -220,7 +218,7 @@ def build_pricing_narrative_prompt(base: dict[str, Any], allowed_numbers: set[st
     return f"""下面是系统已经算好的定价结果。请只写三部分解释：
 - rationale：120–220 字，说明基线、礼盒价、成本与毛利，必须明确“演示测算”。
 - persona_greeting：30–80 字，用 IP 人格欢迎扫码者。
-- faq：3 条问答，回答价格、斑点、保存。
+- faq：3 条问答，回答价格差异、外观/品相差异、保存方式；只按该产品的实际形态写，不套用其它品类。
 
 允许出现的数字只有：{numbers}
 不得新增、修改或四舍五入这些数字；不得写保证增收/保证卖完/有机/绿色食品/富硒/功效。

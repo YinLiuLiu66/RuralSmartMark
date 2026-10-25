@@ -267,6 +267,7 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 固定演示码使用 `seed/demo_illustration.png`，保留 SiliconFlow“AI 生成”水印；不把水印裁掉，避免看起来像真实摄影。
 - 生图失败不阻塞审核：包装工位显示“插画生成失败，包装审核不受影响”；缓存按 prompt hash 存 `backend/data/image-cache/`。
 - 包装变体：工位显示「经典牛皮纸 / 山野红 / 夜绿」色板 chips，选中后预览图、溯源图与 3D 礼盒贴图同步；只改色板，不改文案/结构/事实。
+- 非昭通包装按产品档案色板渲染：优先 `apple/leaf/kraft/paper`，否则映射 `primary/secondary/text/accent`；档案色板为空用中性色，不回落昭通红绿。品牌名已含“演示”时不重复追加“· 演示品牌”。
 - 加载/错误/空态：路由 Suspense 骨架；`SceneBoundary` 捕获 WebGL/懒加载失败并可重试；API 错误横幅带重试；无批次时给“新建演示批次”。
 - 代码分割：路由 lazy + Scene lazy；H5 不下载 three.js；`Scene` chunk 950KB 异步，initial index 260KB。
 - 验证：390×844 H5 插画区截图；1280×720 包装工位插画/变体截图；2.5 秒采样 120fps；真实 API 512×512/768×1024 均 200。
