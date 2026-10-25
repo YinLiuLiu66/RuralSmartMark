@@ -182,7 +182,7 @@ test("总控先显示用户消息，思维链默认折叠", async ({ page }) => 
   await page.getByRole("button", { name: "发送给总控" }).click();
 
   await expect(page.getByText("你好", { exact: true })).toBeVisible();
-  const summary = page.getByText(/思考过程 · 2 行/);
+  const summary = page.getByText("思考过程", { exact: true });
   await expect(summary).toBeVisible();
   await expect(page.getByText("先确认用户意图。")).toBeHidden();
   await expect(page.getByText("你好，我是总控。")).toBeVisible();

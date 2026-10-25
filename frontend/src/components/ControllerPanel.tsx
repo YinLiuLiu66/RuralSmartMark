@@ -95,7 +95,7 @@ function ThinkingBlock({
         ) : (
           <Brain size={11} />
         )}
-        {streaming ? "思考中" : "思考过程"} · {lines.length} 行
+        {streaming ? "思考中" : "思考过程"}
       </summary>
       <div className="mt-2 space-y-1.5 border-t border-line/60 pt-2">
         {lines.map((line, index) => (
