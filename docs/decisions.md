@@ -279,3 +279,9 @@
 **理由**：P1 复测关闭四个旧 bug 后，验收两批新产品发现定价仍写“果径 80–85mm · 12 枚/盒”“牛皮纸天地盖礼盒”“乌蒙山”，包装仍用昭通红绿并重复“演示品牌”。这些不是事实错误，但会让麻江蓝莓和平泉香菇看起来像昭通换皮，属于跨产品泄漏。
 **验证**：`test_non_zhaotong_pricing_has_no_zhaotong_defaults`、`test_zhaotong_pricing_keeps_tuned_defaults`、`test_palette_maps_semantic_roles_for_non_zhaotong`、`test_palette_uses_neutral_fallback_for_empty_non_zhaotong`、`test_brand_caption_does_not_duplicate_demo_suffix`；后端 69 passed + 2 skipped，ruff 通过。真实批次 PR-2026-001（麻江蓝莓）与 PR-2026-002（平泉香菇）均跑到 traced（PR0003 / PR0004），溯源 API 无昭通残留，包装 PNG 与 H5 均 200，扫码计数写入成功。
 **拍板时间**：2026-10-25
+
+### #80 · 溯源 FAQ 直达已审核答案
+**结论**：H5 对话收到的问题若与 `pricing.faq` 中的问题在去除空白/标点后完全匹配或互相包含，直接返回该 FAQ 的已审核答案，优先于 LLM 回答与模板兜底；价格模板补充“价差 / 差价 / 礼盒价 / 散装价”关键词。
+**理由**：H5 建议问题取自 `pricing.faq`，但“为什么礼盒价和散装价差这么多？”不含“价格”一词，模板未命中；LLM 那次又未通过校验，最终落到“我是……你可以问我产地、包装、价格或保存”的通用兜底。FAQ 本来就是已审核内容，按钮问题应直达答案，不能让用户点了却答非所问。
+**验证**：`test_chat_faq_question_returns_approved_answer` 覆盖原问题与“请问 + 原问题”；真实 PR0004 三个建议问题均返回 FAQ 原文，`source=template`；后端 70 passed + 2 skipped，ruff 通过。
+**拍板时间**：2026-10-25

@@ -161,3 +161,23 @@ async def test_chat_uses_safe_template_without_provider(session, client):
 
     empty = await client.post(f"/api/trace/{code}/chat", json={"message": ""})
     assert empty.status_code == 422
+
+
+async def test_chat_faq_question_returns_approved_answer(session, client):
+    code = await _traced_batch(client, session)
+    trace = (await client.get(f"/api/trace/{code}")).json()
+    faq = next(
+        item for item in trace["pricing"]["faq"] if "礼盒" in item["q"] or "散装" in item["q"]
+    )
+
+    exact = await client.post(f"/api/trace/{code}/chat", json={"message": faq["q"]})
+    assert exact.status_code == 200
+    assert exact.json()["reply"] == faq["a"]
+    assert exact.json()["source"] == "template"
+
+    decorated = await client.post(
+        f"/api/trace/{code}/chat",
+        json={"message": f"请问{faq['q']}"},
+    )
+    assert decorated.status_code == 200
+    assert decorated.json()["reply"] == faq["a"]

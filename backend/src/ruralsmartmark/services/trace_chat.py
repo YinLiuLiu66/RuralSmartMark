@@ -9,6 +9,7 @@ from ..schemas import TraceChatOut, TraceOut
 from .fact_guard import find_banned_claim
 
 _NUMBER = re.compile(r"\d+(?:\.\d+)?")
+_QUESTION_NOISE = re.compile(r"[\s，。！？、,.!?：:；;\"'“”‘’（）()【】\[\]]+")
 
 _SYSTEM = """你是县域农产品溯源页里的 IP 对话角色。只使用我给出的事实包回答消费者。
 硬性规则：
@@ -86,9 +87,38 @@ def _faq(trace: TraceOut, *keywords: str) -> str | None:
     return None
 
 
+def _normalize_question(value: str) -> str:
+    return _QUESTION_NOISE.sub("", value)
+
+
+def _faq_reply(message: str, trace: TraceOut) -> str | None:
+    target = _normalize_question(message)
+    if len(target) < 4:
+        return None
+    for item in trace.pricing.faq:
+        question = _normalize_question(item.q)
+        if len(question) >= 4 and (target == question or question in target or target in question):
+            return item.a
+    return None
+
+
 def _template_reply(message: str, trace: TraceOut) -> str:
     text = message.strip()
-    if any(keyword in text for keyword in ("贵", "价格", "溢价", "多少钱", "128", "元")):
+    if any(
+        keyword in text
+        for keyword in (
+            "贵",
+            "价格",
+            "溢价",
+            "多少钱",
+            "128",
+            "元",
+            "价差",
+            "差价",
+            "礼盒价",
+            "散装价",
+        )
+    ):
         return f"{trace.pricing.rationale} 以上是演示测算。"
     if any(keyword in text for keyword in ("斑点", "丑", "表皮", "外观", "果皮", "果粉", "白霜")):
         return (
@@ -138,6 +168,10 @@ async def answer_trace_question(
         refusal = _safe_refusal(issue.rule, trace)
         if refusal:
             return TraceChatOut(reply=refusal, source="template")
+
+    faq_reply = _faq_reply(text, trace)
+    if faq_reply:
+        return TraceChatOut(reply=faq_reply, source="template")
 
     fallback = _template_reply(text, trace)
     if runtime.provider_name == "mock":

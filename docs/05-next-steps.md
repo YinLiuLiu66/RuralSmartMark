@@ -144,7 +144,8 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] P1 链路修复：建档动作名、包装多行文案 500、过期 ORM 实例 MissingGreenlet（#78）
 - [x] P1 四项修复独立会话复测通过：麻江蓝莓故事换回本产品 IP，包装换行审核不再 500，平泉香菇建档卡可自发出现，建档后首轮不报 MissingGreenlet
 - [x] 定价/包装默认值按产品档案生成：非昭通不再出现 80–85mm、12 枚/盒、牛皮纸天地盖、乌蒙山等昭通残留；包装按语义色板渲染（#79）
-- [x] 后端 69 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
+- [x] 溯源 H5 建议问题直达 FAQ 已审核答案；价格模板补充价差/差价关键词（#80）
+- [x] 后端 70 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
 - [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓/平泉香菇草案（本机 key；来源与抓取失败均如实标注，价格缺口转追问）
 - [x] 两批新产品审核收尾：麻江蓝莓 `PR0003`、平泉香菇 `PR0004` 均 traced；溯源 API/包装 PNG/二维码/H5 200，扫码计数写入
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
