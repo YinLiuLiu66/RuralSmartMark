@@ -1,4 +1,14 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import {
   BadgePercent,
   BookOpen,
@@ -24,6 +34,7 @@ import {
   type StationStatus,
 } from "../agents";
 import { api, type KnowledgeDoc } from "../api/client";
+import type { AgentKey } from "../api/pipeline";
 import { traceApi } from "../api/trace";
 import ControllerPanel from "../components/ControllerPanel";
 import ReviewDialog from "../components/ReviewDialog";
@@ -44,6 +55,15 @@ const STAGES = [
   { key: "pricing", label: "定价上架" },
   { key: "trace", label: "扫码溯源" },
 ];
+
+const RAIL_WIDTH_KEY = "rsm.rightRailWidth";
+const DEFAULT_RAIL_WIDTH = 460;
+const MIN_RAIL_WIDTH = 340;
+const MAX_RAIL_WIDTH = 600;
+
+function clampRailWidth(value: number) {
+  return Math.min(MAX_RAIL_WIDTH, Math.max(MIN_RAIL_WIDTH, Math.round(value)));
+}
 
 function SceneLoading() {
   return (
@@ -157,6 +177,15 @@ export default function Sandbox() {
     undefined,
   );
   const [newProductMode, setNewProductMode] = useState(false);
+  const [railWidth, setRailWidth] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_RAIL_WIDTH;
+    const stored = Number(window.localStorage.getItem(RAIL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored > 0 ? clampRailWidth(stored) : DEFAULT_RAIL_WIDTH;
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(RAIL_WIDTH_KEY, String(railWidth));
+  }, [railWidth]);
 
   const {
     products,
@@ -398,9 +427,47 @@ export default function Sandbox() {
     void run(currentBatch.id, selectedAgent);
   }
 
+  function handleSelectAgent(agent: AgentKey) {
+    setControllerOpen(false);
+    selectAgent(agent);
+  }
+
   function handleSelectStation(stationId: string) {
     const agent = AGENTS.find((item) => item.stationId === stationId);
-    if (agent) selectAgent(agent.key);
+    if (agent) handleSelectAgent(agent.key);
+  }
+
+  function handleRailResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = railWidth;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function finish() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+    }
+
+    function move(moveEvent: PointerEvent) {
+      setRailWidth(clampRailWidth(startWidth + startX - moveEvent.clientX));
+    }
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  }
+
+  function handleRailResizeKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const delta = event.key === "ArrowLeft" ? 20 : -20;
+    setRailWidth((width) => clampRailWidth(width + delta));
   }
 
   function handleOpenTrace() {
@@ -462,7 +529,10 @@ export default function Sandbox() {
         </div>
       </div>
 
-      <div className="shell">
+      <div
+        className="shell"
+        style={{ "--rail-width": `${railWidth}px` } as CSSProperties}
+      >
         <header className="flex items-center gap-4 border-b border-line bg-surface/85 px-5 backdrop-blur">
           <div className="flex items-baseline gap-2">
             <span className="font-display text-xl tracking-wide text-ink">智农云链</span>
@@ -692,7 +762,23 @@ export default function Sandbox() {
             )}
           </main>
 
-          <aside className="right-rail overflow-y-auto border-l border-line bg-surface/60 p-4">
+          <aside className="right-rail relative z-10 border-l border-line bg-surface/60">
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="调整右栏宽度"
+              aria-valuemin={MIN_RAIL_WIDTH}
+              aria-valuemax={MAX_RAIL_WIDTH}
+              aria-valuenow={railWidth}
+              tabIndex={0}
+              title="拖动调整右栏宽度"
+              onPointerDown={handleRailResizeStart}
+              onKeyDown={handleRailResizeKeyDown}
+              className="group absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple/40"
+            >
+              <span className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-line transition-colors group-hover:bg-apple/60 group-focus-visible:bg-apple/60" />
+            </div>
+            <div className="h-full overflow-y-auto p-4">
             {selectedMeta && workspace ? (
               <StationCard
                 agent={selectedMeta}
@@ -771,7 +857,7 @@ export default function Sandbox() {
                     <button
                       key={agent.key}
                       type="button"
-                      onClick={() => selectAgent(agent.key)}
+                      onClick={() => handleSelectAgent(agent.key)}
                       aria-pressed={active}
                       title={`查看${agent.name}产出`}
                       className={`relative flex w-full cursor-pointer items-center justify-between rounded-control border px-3 py-2 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple/30 ${
@@ -803,6 +889,7 @@ export default function Sandbox() {
                 })}
               </div>
             </section>
+            </div>
           </aside>
         </div>
 
@@ -813,7 +900,7 @@ export default function Sandbox() {
               新沙盘 · 等待总控调研建档
             </div>
           ) : (
-            <div className="grid h-full grid-cols-[minmax(0,1fr)_360px] items-center gap-4">
+            <div className="rail-footer h-full">
             <div className="flex items-center gap-2 overflow-x-auto">
               {STAGES.map((stage, index) => (
                 <div key={stage.key} className="flex min-w-0 flex-1 items-center gap-2">
@@ -848,7 +935,7 @@ export default function Sandbox() {
                 return (
                   <button
                     key={agent.key}
-                    onClick={() => selectAgent(agent.key)}
+                    onClick={() => handleSelectAgent(agent.key)}
                     className={`rounded-full border px-3 py-1.5 text-[11px] transition-colors ${
                       selectedAgent === agent.key
                         ? "border-apple/30 bg-apple-weak text-apple"
