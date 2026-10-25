@@ -778,7 +778,7 @@ export default function Sandbox() {
             >
               <span className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-line transition-colors group-hover:bg-apple/60 group-focus-visible:bg-apple/60" />
             </div>
-            <div className="h-full overflow-y-auto p-4">
+            <div className="h-full overflow-y-auto overflow-x-hidden p-4">
             {selectedMeta && workspace ? (
               <StationCard
                 agent={selectedMeta}
