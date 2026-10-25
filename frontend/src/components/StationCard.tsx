@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ExternalLink, Play, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import {
@@ -112,15 +112,73 @@ function Citations({
   );
 }
 
+const CLAMP_CLASS: Record<2 | 3 | 4, string> = {
+  2: "line-clamp-2",
+  3: "line-clamp-3",
+  4: "line-clamp-4",
+};
+
+function ExpandableText({
+  text,
+  lines,
+  className = "",
+}: {
+  text: string;
+  lines: 2 | 3 | 4;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    setExpanded(false);
+  }, [text]);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || expanded) return;
+    setOverflowing(node.scrollHeight > node.clientHeight + 1);
+  }, [text, expanded, lines]);
+
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  return (
+    <div>
+      <p
+        ref={ref}
+        className={`${className} whitespace-pre-line break-words ${
+          expanded ? "" : CLAMP_CLASS[lines]
+        }`}
+      >
+        {trimmed}
+      </p>
+      {overflowing && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-1 text-[10px] text-leaf transition-colors hover:text-apple"
+        >
+          {expanded ? "收起" : "展开全文"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function StoryPreview({ output }: { output: Record<string, unknown> }) {
   const taglines = Array.isArray(output.taglines) ? output.taglines : [];
   return (
     <div>
       <div className="font-display text-xl text-ink">{String(output.ip_name ?? "故事")}</div>
       <p className="mt-1 text-xs text-apple">{String(output.story_short ?? "")}</p>
-      <p className="mt-2 line-clamp-4 text-[11px] leading-5 text-ink-muted">
-        {String(output.story_long ?? "")}
-      </p>
+      <ExpandableText
+        text={String(output.story_long ?? "")}
+        lines={4}
+        className="mt-2 text-[11px] leading-5 text-ink-muted"
+      />
       <div className="mt-2 flex flex-wrap gap-1">
         {taglines.slice(0, 3).map((tagline) => (
           <span key={String(tagline)} className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] text-ink-muted">
@@ -248,9 +306,11 @@ function MarketingPreview({ output }: { output: Record<string, unknown> }) {
     <div>
       <div className="text-[10px] uppercase tracking-[0.18em] text-ink-muted">小红书</div>
       <div className="mt-1 text-sm font-medium text-ink">{String(xhs.title ?? "—")}</div>
-      <p className="mt-1 line-clamp-3 text-[11px] leading-5 text-ink-muted">
-        {String(xhs.body ?? "")}
-      </p>
+      <ExpandableText
+        text={String(xhs.body ?? "")}
+        lines={3}
+        className="mt-1 text-[11px] leading-5 text-ink-muted"
+      />
       <div className="mt-1.5 flex flex-wrap gap-1">
         {tags.slice(0, 4).map((tag) => (
           <span key={String(tag)} className="rounded-full bg-leaf-weak px-2 py-0.5 text-[10px] text-leaf">
@@ -261,9 +321,11 @@ function MarketingPreview({ output }: { output: Record<string, unknown> }) {
       <div className="mt-3 border-t border-line pt-2 text-[10px] uppercase tracking-[0.18em] text-ink-muted">
         抖音钩子
       </div>
-      <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-ink-muted">
-        {String(douyin.hook ?? "—")}
-      </p>
+      <ExpandableText
+        text={String(douyin.hook ?? "—")}
+        lines={2}
+        className="mt-1 text-[11px] leading-5 text-ink-muted"
+      />
     </div>
   );
 }
