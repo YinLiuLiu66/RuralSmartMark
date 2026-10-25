@@ -1,5 +1,5 @@
 import { Html, OrbitControls, RoundedBox, useCursor, useTexture } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
@@ -461,6 +461,25 @@ function SceneContent({
   );
 }
 
+const CAMERA_WORLD_HEIGHT = 35;
+
+function OrthographicViewport() {
+  const { camera, size } = useThree();
+
+  useEffect(() => {
+    if (!(camera instanceof THREE.OrthographicCamera)) return;
+    const aspect = size.width / Math.max(size.height, 1);
+    const halfHeight = CAMERA_WORLD_HEIGHT / 2;
+    camera.left = -halfHeight * aspect;
+    camera.right = halfHeight * aspect;
+    camera.top = halfHeight;
+    camera.bottom = -halfHeight;
+    camera.updateProjectionMatrix();
+  }, [camera, size.width, size.height]);
+
+  return null;
+}
+
 export function Scene({
   batchCode,
   batchStation,
@@ -499,9 +518,13 @@ export function Scene({
         near: 0.1,
         far: 1000,
       }}
-      onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+      onCreated={({ camera }) => {
+        (camera as THREE.OrthographicCamera & { manual?: boolean }).manual = true;
+        camera.lookAt(0, 0, 0);
+      }}
       style={{ background: "#F7F3EA" }}
     >
+      <OrthographicViewport />
       <hemisphereLight args={["#FFF6E5", "#B7C4A8", 0.75]} />
       <ambientLight intensity={0.35} />
       <directionalLight

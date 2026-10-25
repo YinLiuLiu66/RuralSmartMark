@@ -531,7 +531,12 @@ export default function Sandbox() {
 
       <div
         className="shell"
-        style={{ "--rail-width": `${railWidth}px` } as CSSProperties}
+        style={
+          {
+            "--rail-width": `${railWidth}px`,
+            "--rail-min-width": `${MIN_RAIL_WIDTH}px`,
+          } as CSSProperties
+        }
       >
         <header className="flex items-center gap-4 border-b border-line bg-surface/85 px-5 backdrop-blur">
           <div className="flex items-baseline gap-2">
@@ -722,7 +727,7 @@ export default function Sandbox() {
             </div>
           </aside>
 
-          <main className="relative isolate min-h-0 overflow-hidden bg-paper">
+          <main className="canvas-layer relative isolate min-h-0 overflow-hidden bg-paper">
             <SceneBoundary>
               <Suspense fallback={<SceneLoading />}>
                 <Scene
@@ -762,7 +767,10 @@ export default function Sandbox() {
             )}
           </main>
 
-          <aside className="right-rail relative z-10 border-l border-line bg-surface/60">
+          <aside
+            className="right-rail absolute inset-y-0 right-0 z-10 border-l border-line bg-surface/60 shadow-[-18px_0_50px_rgba(31,42,36,0.10)]"
+            style={{ width: railWidth }}
+          >
             <div
               role="separator"
               aria-orientation="vertical"

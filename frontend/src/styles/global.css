@@ -80,9 +80,13 @@
 
   .shell-main {
     display: grid;
-    grid-template-columns: 280px minmax(0, 1fr) var(--rail-width, 360px);
+    grid-template-columns: 280px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
+  }
+
+  .canvas-layer {
+    width: calc(100% - var(--rail-min-width, 340px));
   }
 
   .rail-footer {
@@ -111,6 +115,10 @@
   @media (max-width: 1279px) {
     .shell-main {
       grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .canvas-layer {
+      width: 100%;
     }
 
     .rail-footer {
