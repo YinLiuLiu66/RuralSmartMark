@@ -32,6 +32,7 @@ from ..schemas import (
     ControllerTurnOut,
     ResearchDraft,
 )
+from ..services.batch_delete import BatchDeleteError, delete_batch
 from ..services.products import commit_research_draft
 from ..services.rewind import rewind_to_agent
 
@@ -341,6 +342,23 @@ async def _execute_pending(
         return (
             f"已建档：{product_name}（{product_slug}），"
             f"知识库 {docs} 条、基准价 {benchmarks} 条，批次 {batch_code}。"
+        )
+
+    if kind == "delete_batch":
+        batch = await session.get(Batch, item.batch_id) if item.batch_id else None
+        if batch is None:
+            raise HTTPException(status_code=409, detail="当前没有批次")
+        try:
+            stats = await delete_batch(session, batch)
+        except BatchDeleteError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        item.batch_id = None
+        item.pending_action_json = None
+        await session.commit()
+        return (
+            f"已删除批次 {stats['code']}：清理 {stats['runs']} 条运行记录、"
+            f"{stats['artifacts']} 个产物（删除 {stats['files']} 个文件）。"
+            "会话已不再绑定批次，可切换批次或新建。"
         )
 
     batch = await session.get(Batch, item.batch_id) if item.batch_id else None

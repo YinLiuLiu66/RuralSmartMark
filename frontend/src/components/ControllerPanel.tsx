@@ -24,6 +24,7 @@ const ACTION_LABEL: Record<string, string> = {
   approve_agent: "确认通过并继续下一站",
   reject_agent: "确认驳回",
   rewind_to_agent: "确认回退并重跑",
+  delete_batch: "确认删除批次",
 };
 
 const TOOL_LABEL: Record<string, string> = {
