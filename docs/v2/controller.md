@@ -72,6 +72,24 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 - 超限返回当前草案与“继续”，不丢数据。
 - 这些是延迟/费用/防循环保护，不是业务常数。实测 4/8 对 PydanticAI 的“工具调用 + 最终结果”不够；控制器调到 10/12，研究 Agent 调到 10/16，并对搜索 3 次/抓取 4 页做显式封顶；仍可配置，超限返回中间结果。
 
+## 4.1 上下文与压缩（decisions #89）
+
+每轮请求是真多轮 messages，不是把历史压成一段文本：
+
+```
+[system]   CONTROLLER_INSTRUCTIONS（永远在最前，逐字节稳定）
+[user]     【对话压缩档案】……（仅有压缩历史时出现，≤800 字）
+[user]/[assistant]  压缩点之后的原始消息，逐条映射
+[user]     【当前上下文】JSON 快照 + 本轮用户消息   ← 易变内容只在最后一条
+```
+
+- 不再用 `-12` 硬窗口；历史长度由压缩机制管。前缀稳定是为了吃满硅基流动的前缀缓存。
+- 发送前估算 token（CJK≈0.7/字、其余≈0.28/字符）；达到 `CONTROLLER_CONTEXT_TOKENS × CONTROLLER_COMPRESS_RATIO`（默认 1024000×0.8）时调用 `LLM_COMPRESS_MODEL`（默认 `XingChenAGI/Xing4.0-29B`，复用 `OPENAI_BASE_URL`/`OPENAI_API_KEY`）把「既有摘要 + 未压消息」压成交接档案。
+- 档案必须保留：任务目标与最新意图、绑定产品/批次与流水线状态、已执行动作与确认结论、用户偏好与禁令、未决问题。
+- 摘要存 `controller_session.summary_json = {text, upto_message_id}`；`ControllerMessage` 原始消息**永不删除**（审计与历史回看依赖它）。加载历史 = 摘要 + `upto_message_id` 之后的真实消息。
+- 压缩失败不阻塞对话：本轮退化为丢弃最旧一半历史（不入库），下一轮重试；用户无感知，仅体现为该轮等待变长，后端日志记一行。
+- 四站流水线 Agent 是单轮全量（system + 知识库 + 上游产出），量级远低于阈值，不走压缩。
+
 ## 5. 数据模型
 
 ### `knowledge_doc`

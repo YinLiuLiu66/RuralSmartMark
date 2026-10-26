@@ -127,3 +127,25 @@ def get_llm_provider(settings: Settings) -> LLMProvider:
     if settings.openai_api_key:
         return OpenAIProvider(settings)
     return MockLLMProvider()
+
+
+async def compress_history(settings: Settings, system: str, transcript: str) -> str:
+    """用独立的压缩模型把总控历史压成交接档案；失败由调用方兜底。"""
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url,
+        timeout=settings.llm_timeout_seconds,
+        max_retries=0,
+    )
+    response = await client.chat.completions.create(
+        model=settings.llm_compress_model,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": transcript},
+        ],
+        temperature=0.2,
+        max_tokens=2048,
+    )
+    return (response.choices[0].message.content or "").strip()

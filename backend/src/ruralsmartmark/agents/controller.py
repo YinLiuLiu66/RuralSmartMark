@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -9,12 +10,16 @@ from pydantic_ai import Agent, AgentRunResultEvent, RunContext
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
     PartDeltaEvent,
     PartStartEvent,
     TextPart,
     TextPartDelta,
     ThinkingPart,
     ThinkingPartDelta,
+    UserPromptPart,
 )
 from pydantic_ai.usage import UsageLimits
 from sqlalchemy import select
@@ -22,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import Settings
 from ..models import Batch, ControllerSession, ProductProfile
+from ..providers.llm import compress_history
 from ..providers.search import SearchProvider
 from ..schemas import ResearchDraft
 from ..services.batch_delete import BatchDeleteError, ensure_deletable
@@ -35,6 +41,101 @@ from .runtime import AgentRuntime
 
 class ControllerUnavailable(RuntimeError):
     """总控无法调用模型；前端显示可操作提示。"""
+
+
+logger = logging.getLogger(__name__)
+
+SUMMARY_TAG = "【对话压缩档案】"
+CONTEXT_TAG = "【当前上下文】"
+
+COMPRESS_SYSTEM = (
+    "你是「智农云链」总控的对话压缩器。把输入的控制器对话压缩成一份交接档案，"
+    "供后续对话在看不到原始记录的情况下继续工作。必须保留："
+    "1) 任务目标与用户最新意图（以末尾几条为准）；"
+    "2) 当前绑定的产品/批次与流水线状态（各站通过/待审核/被驳回）；"
+    "3) 已执行的动作及结果（建档、开批次、通过、驳回、回退、删除批次等，含确认卡结论）；"
+    "4) 用户明确的偏好、禁令与修改要求；"
+    "5) 未决问题与下一步。"
+    "丢弃寒暄、重复内容、已被后续修正的旧信息。"
+    "输出 800 字以内的纯文本分点档案，用「-」分点，不要 Markdown 加粗或标题。"
+)
+
+
+def _estimate_tokens(text: str) -> int:
+    cjk = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+    other = len(text) - cjk
+    return int(cjk * 0.7 + other * 0.28) + 1
+
+
+def _summary_payload(controller_session: ControllerSession) -> tuple[str, int]:
+    data = controller_session.summary_json or {}
+    return str(data.get("text") or ""), int(data.get("upto_message_id") or 0)
+
+
+def _build_chat_messages(
+    summary_text: str, history_rows: list[tuple[int, str, str]]
+) -> list[ModelMessage]:
+    messages: list[ModelMessage] = []
+    if summary_text:
+        messages.append(
+            ModelRequest(
+                parts=[
+                    UserPromptPart(
+                        content=f"{SUMMARY_TAG}以下摘要覆盖更早的原始对话：\n{summary_text}"
+                    )
+                ]
+            )
+        )
+    for _row_id, role, content in history_rows:
+        if role == "user":
+            messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+        else:
+            messages.append(ModelResponse(parts=[TextPart(content=content)]))
+    return messages
+
+
+async def _prepare_history(
+    session: AsyncSession,
+    controller_session: ControllerSession,
+    runtime: AgentRuntime,
+    history_rows: list[tuple[int, str, str]],
+) -> list[ModelMessage]:
+    """按阈值压缩历史后返回多轮消息；原始消息永不删除。"""
+    summary_text, upto = _summary_payload(controller_session)
+    rows = [row for row in history_rows if row[0] > upto]
+    budget = int(
+        runtime.settings.controller_context_tokens
+        * runtime.settings.controller_compress_ratio
+    )
+    corpus = CONTROLLER_INSTRUCTIONS + summary_text + "".join(r[2] for r in rows)
+    if rows and _estimate_tokens(corpus) >= budget:
+        transcript = "\n".join(f"{role}: {content}" for _, role, content in rows)
+        if summary_text:
+            transcript = (
+                f"{SUMMARY_TAG}既有摘要：\n{summary_text}\n\n之后的新对话：\n{transcript}"
+            )
+        try:
+            compressed = await compress_history(
+                runtime.settings, COMPRESS_SYSTEM, transcript
+            )
+            if not compressed:
+                raise ValueError("压缩模型返回空档案")
+        except Exception as exc:  # noqa: BLE001 - 压缩失败不阻塞对话
+            logger.warning("总控历史压缩失败，本轮退化为硬截断: %s", exc)
+            rows = rows[len(rows) // 2 :]
+        else:
+            controller_session.summary_json = {
+                "text": compressed,
+                "upto_message_id": rows[-1][0],
+            }
+            await session.commit()
+            logger.info(
+                "总控历史已压缩：估算 %d tokens -> 摘要 %d 字",
+                _estimate_tokens(corpus),
+                len(compressed),
+            )
+            return _build_chat_messages(compressed, [])
+    return _build_chat_messages(summary_text, rows)
 
 
 @dataclass(slots=True)
@@ -132,7 +233,7 @@ async def run_controller_turn(
     message: str,
     *,
     search: SearchProvider,
-    history: list[tuple[str, str]] | None = None,
+    history: list[tuple[int, str, str]] | None = None,
     emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurn:
     if not runtime.settings.openai_api_key:
@@ -337,16 +438,11 @@ async def run_controller_turn(
             else None
         ),
     }
-    transcript = "\n".join(f"{role}: {content}" for role, content in (history or [])[-12:])
-    prompt = f"""当前上下文：
-{json.dumps(context, ensure_ascii=False)}
-
-最近对话：
-{transcript or "（无）"}
-
-用户消息：
-{message}
-"""
+    chat_history = await _prepare_history(session, controller_session, runtime, history or [])
+    prompt = (
+        f"{CONTEXT_TAG}\n{json.dumps(context, ensure_ascii=False)}\n\n"
+        f"用户消息：\n{message}"
+    )
     text_chunks: list[str] = []
     thinking_chunks: list[str] = []
     result = None
@@ -354,6 +450,7 @@ async def run_controller_turn(
         async with agent.run_stream_events(
             prompt,
             deps=deps,
+            message_history=chat_history,
             usage_limits=UsageLimits(
                 request_limit=runtime.settings.controller_request_limit,
                 tool_calls_limit=runtime.settings.controller_tool_calls_limit,

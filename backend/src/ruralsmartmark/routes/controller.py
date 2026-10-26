@@ -151,7 +151,7 @@ async def _run_turn(
     emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurnOut:
     history = [
-        (row.role, row.content) for row in await _messages(session, item.id)
+        (row.id, row.role, row.content) for row in await _messages(session, item.id)
     ]
     user_message = ControllerMessage(
         session_id=item.id,

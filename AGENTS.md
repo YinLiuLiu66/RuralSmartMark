@@ -25,7 +25,7 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）。后端 80 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
 - **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
@@ -38,6 +38,7 @@
 - `.env`：`backend/.env.example` 复制为 `.env`；`OPENAI_API_KEY` 可空，空则走 Mock；
   `DATABASE_URL` 默认 `sqlite+aiosqlite:///./data/app.db`；`AUTO_APPROVE` 默认 false；
   `LLM_FALLBACK_TO_MOCK=true`、`LLM_TIMEOUT_SECONDS=180`（营销长文实测需要更长超时）；`LLM_THINKING_BUDGET=2048`（128–32768，0 关闭）、`LLM_MAX_TOKENS=4096`。默认模型 `deepseek-ai/DeepSeek-V4.1-Flash`。
+  总控上下文：真多轮 messages（system + 全量历史 + 易变上下文后置），`CONTROLLER_CONTEXT_TOKENS=1024000`、`CONTROLLER_COMPRESS_RATIO=0.8`、`LLM_COMPRESS_MODEL=XingChenAGI/Xing4.0-29B`（达阈值自动压历史，复用硅基流动端点与 key）。
   图像：`IMAGE_MODEL=Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`），`IMAGE_SIZE` 空=按调用尺寸自动选 512×512/1024×576/768×1024，`IMAGE_BASE_URL` 空=复用 `OPENAI_BASE_URL`，`IMAGE_TIMEOUT_SECONDS=120`。
   总控调研：`SEARCH_PROVIDER=firecrawl`、`FIRECRAWL_API_KEY`（空则提示贴资料）、`FIRECRAWL_TRUST_ENV=false`（默认绕过系统代理；必须走代理时设 true）、`SEARCH_MAX_RESULTS=5`、`SEARCH_MAX_SCRAPES=4`、`CONTROLLER_REQUEST_LIMIT=10`、`CONTROLLER_TOOL_CALLS_LIMIT=12`、`RESEARCH_REQUEST_LIMIT=10`、`RESEARCH_TOOL_CALLS_LIMIT=16`、`RESEARCH_MAX_TOKENS=8192`。
 - 知识库 `data/knowledge/zhaotong/*.md` 是事实真源（已入库）；seed 时 upsert 到 `knowledge_doc`。

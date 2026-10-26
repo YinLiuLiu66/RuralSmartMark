@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 180.0
     llm_thinking_budget: int = 2048
     llm_max_tokens: int = 4096
+    llm_compress_model: str = "XingChenAGI/Xing4.0-29B"
+    controller_context_tokens: int = 1_024_000
+    controller_compress_ratio: float = 0.8
 
     @property
     def cors_origin_list(self) -> list[str]:

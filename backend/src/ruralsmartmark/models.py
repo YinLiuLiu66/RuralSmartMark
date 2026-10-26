@@ -176,6 +176,7 @@ class ControllerSession(TimestampMixin, Base):
     )
     draft_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     pending_action_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    summary_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 event.listen(
