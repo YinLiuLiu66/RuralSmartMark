@@ -12,6 +12,15 @@
 - **出网**：服务器需能访问 SiliconFlow（LLM/生图）与 Firecrawl；无 key 时走 mock，但总控调研会退化为“贴资料”。
 - **验证状态（2026-10-26）**：前端 `pnpm build` 与后端 `APP_ENV=production DEBUG=false` 启动、`/api/health` 200 已在本机 macOS 实测；`backend/data` 缺失时迁移报 `unable to open database file` 也已实测。**nginx 与 systemd 配置尚未在目标服务器执行**，首次上线请按 §9 逐项验收；手机真机扫码仍未实测（见 runbook §2.1）。
 
+**给自动化部署 Agent 的硬约束**：
+
+- 只新增配置，不改、不停、不重启服务器上已有的 nginx 站点与其他服务；nginx 改完先 `nginx -t`，用 `reload` 不用 `restart`。
+- 单 worker（`--workers 1`），不起多副本；不引入 Docker/Redis/Celery/Postgres（decisions #63/#90）。
+- 应用不以 root 运行，不全局装 Python 包；后端只用 `uv sync --frozen --no-dev`，不要重写 `uv.lock`。
+- 不在服务器跑 `make dev` / `make lan` / e2e / perf；它们是本机开发入口。
+- 有真实数据后禁止执行 demo reset（清库范围见 §3）；迁移或重启前先按 §7 备份。
+- `.env` 与 API key 不进 git、不写日志、不回显到终端输出。
+
 ## 1. 目录与用户
 
 以下路径统一假设仓库在 `/opt/ruralsmartmark`，运行用户为 `rsm`；换成自己的路径时同步改 nginx 与 systemd。
@@ -86,7 +95,9 @@ sudo -H -u rsm .venv/bin/alembic upgrade head
 sudo -H -u rsm .venv/bin/python -m ruralsmartmark.seed
 ```
 
-`PUBLIC_BASE_URL` 必须在 seed **之前**定好：固定演示批次的 `pricing_json.trace_url` 会在 seed 时烘进去。之后改域名要重跑 `POST /api/demo/reset`（或直接重新 seed）才会更新；二维码图片和包装 PNG 是请求时渲染的，会立即跟着变。
+`PUBLIC_BASE_URL` 必须在 seed **之前**定好：固定演示批次的 `pricing_json.trace_url` 会在 seed 时烘进去。之后改域名只能重跑 `POST /api/demo/reset` 才会更新（普通 seed 不会改已存在的演示批次）；二维码图片和包装 PNG 是请求时渲染的，会立即跟着变。
+
+> **reset 是清库级操作**：`seed_demo(reset=True)` 会删除**所有批次**及其 `AgentRun`/`Artifact`/`ScanEvent`/`ChatMessage`，并清空总控会话；只保留产品、知识库与基准价。全新部署时尚无数据，先 seed 没问题；一旦库里有真实批次，禁止为了换域名执行 reset——先按 §7 备份并确认可接受清空，或继续沿用旧域名。
 
 ## 4. 前端构建
 
