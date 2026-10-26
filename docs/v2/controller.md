@@ -45,14 +45,16 @@
 `list_products`、`select_product`、`list_batches`、`get_workspace`、`get_agent_output`、`get_knowledge`、`search_web`、`scrape_sources`、`update_draft`。
 
 ### 执行（用户明确要求时）
-`run_agent(agent, note)`。建批次不在此列：首批次随建档（`commit_product`）产生，追加批次走顶栏「新建批次」按钮（decisions #86）。
+`run_agent(agent, note)`。
 
 ### 必须确认
-`commit_product`、`approve_agent`、`reject_agent`、`rewind_to_agent`、`delete_batch`。`request_action` 的 kind 必须逐字使用这五个值；模型提示词里点名“建档用 `commit_product`”，不要发明 `create_product` / `start_batch` / `create_batch`。
+`commit_product`、`create_batch`、`approve_agent`、`reject_agent`、`rewind_to_agent`、`delete_batch`。`request_action` 的 kind 必须逐字使用这六个值；模型提示词里点名“建档用 `commit_product`”，不要发明 `start_batch` / `create_product` 等名字。
 
 确认由后端生成 `pending_action_json`，`confirm` 接口执行；模型不直接执行危险动作。`approve_agent` 确认通过后自动启动下一站并停在待审核；定价通过后直接进入 `traced`。每站仍需用户再次确认，不做连续自动通过。
 
 `delete_batch`（decisions #87）只删当前会话绑定的批次，不接受跨批次指定；`ZT-DEMO-001` 与仍有活跃 run 的批次在服务层拒绝（409，run 超过 10 分钟视为崩溃遗留可放行），错误以中文说明返回、由模型转述。删除时先清 `backend/data/artifacts/` 产物文件，再借外键级联清运行/产物/扫码/H5 对话记录；执行后 `ControllerSession.batch_id` 置空，会话保留但不再绑定批次。
+
+`create_batch`（decisions #88）只给当前会话绑定的产品开批次，可带 `quantity_kg`（默认 300）；确认后创建下一编号批次（前缀读 `specs.batch_prefix`）并把会话切换到该批次，前端确认后按会话 `batch_id` 同步沙盘选中。创建与编号逻辑在 `services/batch_create.py`，与 `POST /api/batches` 共用；顶栏「新建批次」按钮（decisions #86）仍是手动入口。
 
 ## 4. 限额
 
@@ -116,7 +118,7 @@ RESEARCH_TOOL_CALLS_LIMIT=16
 
 - Firecrawl 只接收 query/URL；key 只在 `backend/.env`。
 - LLM 不能拼 SQL/文件路径/任意请求；所有动作走白名单。
-- 建档/通过/驳回/回退/删除批次二次确认。
+- 建档/开批次/通过/驳回/回退/删除批次二次确认。
 - 知识条目必须有 `source_url`、检索日期、credibility；无来源只能 `todo/demo`。
 - 真实人物/认证/功效/保证红线不变。
 

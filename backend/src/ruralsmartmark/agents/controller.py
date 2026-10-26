@@ -68,10 +68,10 @@ CONTROLLER_INSTRUCTIONS = (
     "你是「智农云链」的总控，不是内容生成 Agent。"
     "你可以读取产品/批次/AgentRun，调用四个 Agent，或启动调研。"
     "用户要新产品的资料时先调 research_product；有草案后向用户列缺口。"
-    "危险动作（建档、通过、驳回、回退、删除批次）只能调 request_action 让用户确认，绝不能直接执行。"
-    "request_action 的 kind 必须逐字使用：commit_product（建档）、approve_agent（通过）、"
-    "reject_agent（驳回）、rewind_to_agent（回退）、delete_batch（删除当前批次）；不要发明 create_product、start_batch、"
-    "create_batch 等名字。调研草案完成后，建档用 request_action('commit_product')。"
+    "危险动作（建档、开批次、通过、驳回、回退、删除批次）只能调 request_action 让用户确认，绝不能直接执行。"
+    "request_action 的 kind 必须逐字使用：commit_product（建档）、create_batch（给当前产品开新批次）、approve_agent（通过）、"
+    "reject_agent（驳回）、rewind_to_agent（回退）、delete_batch（删除当前批次）；不要发明 start_batch、create_product 等别的名字。"
+    "调研草案完成后，建档用 request_action('commit_product')。"
     "用户说开始/运行流水线时，对当前站调 run_agent；完成后汇报这一站的状态、关键信息和预警，等用户决定是否通过。"
     "用户说审核通过/通过时，调 request_action('approve_agent')；确认后后端会自动运行下一站，不要在同一轮再调 run_agent。"
     "每站都必须等用户确认，不要连续自动通过多站。"
@@ -79,6 +79,8 @@ CONTROLLER_INSTRUCTIONS = (
     "用户说包装/故事不好时，调 run_agent 并带上具体 note；如果目标站已通过且下游存在，改调 request_action('rewind_to_agent')。"
     "用户要求删除/清掉当前批次时，调 request_action('delete_batch')，summary 写明批次码并提醒删除不可恢复；"
     "只删当前会话绑定的批次，不要替用户解析其他批次码，跨批次删除先让用户切换到那个批次的会话。"
+    "用户要给当前产品开新批次/再来一批时，调 request_action('create_batch')，用户给了数量就带 quantity_kg（千克，默认 300），"
+    "summary 写明产品名和数量；只给当前会话绑定的产品开批次，跨产品先让用户切换。"
     "只调用必要工具，同一工具不要连续重复；拿到足够信息后直接回答。"
     "批次状态为 traced 时说明四站已完成、可看溯源/新批次，不要编造“最后确认/上架”等不存在的步骤。"
     "只有确实调用了 request_action 时才提确认；不要把普通查询说成危险动作。"
@@ -274,13 +276,15 @@ async def run_controller_turn(
         summary: str,
         agent: str = "",
         note: str = "",
+        quantity_kg: float = 0,
     ) -> dict:
         """Create a pending action for user confirmation; does not execute it.
 
-        kind must be exactly one of: commit_product, approve_agent, reject_agent, rewind_to_agent, delete_batch.
+        kind must be exactly one of: commit_product, create_batch, approve_agent, reject_agent, rewind_to_agent, delete_batch.
         """
         allowed = {
             "commit_product",
+            "create_batch",
             "approve_agent",
             "reject_agent",
             "rewind_to_agent",
@@ -288,6 +292,11 @@ async def run_controller_turn(
         }
         if kind not in allowed:
             return {"error": f"不允许的动作: {kind}"}
+        if kind == "create_batch":
+            if ctx.deps.product is None:
+                return {"error": "当前会话没有绑定产品，无法开批次；请先选择产品或完成建档。"}
+            if quantity_kg < 0:
+                return {"error": "quantity_kg 不能为负数。"}
         if kind == "delete_batch":
             if ctx.deps.batch is None:
                 return {"error": "当前没有选中批次，无法删除。"}
@@ -301,6 +310,7 @@ async def run_controller_turn(
             "summary": summary,
             "agent": agent,
             "note": note,
+            "quantity_kg": quantity_kg,
         }
         ctx.deps.pending = pending
         return {"pending": pending, "message": "已生成确认卡，等待用户确认。"}

@@ -21,6 +21,7 @@ import { STATUS_LABEL } from "../agents";
 
 const ACTION_LABEL: Record<string, string> = {
   commit_product: "确认建档",
+  create_batch: "确认新建批次",
   approve_agent: "确认通过并继续下一站",
   reject_agent: "确认驳回",
   rewind_to_agent: "确认回退并重跑",
@@ -157,7 +158,7 @@ export default function ControllerPanel({
   freshToken?: number;
   onNewProduct?: () => void;
   onClose: () => void;
-  onDataChanged: () => void;
+  onDataChanged: (batchId?: number | null) => void;
   inline?: boolean;
 }) {
   const [session, setSession] = useState<ControllerSession | null>(null);
@@ -319,7 +320,7 @@ export default function ControllerPanel({
       setSession(turn.session);
       setPendingUser(null);
       setStream(null);
-      if (decision === "confirm") onDataChanged();
+      if (decision === "confirm") onDataChanged(turn.session.batch_id);
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "确认失败");
     } finally {

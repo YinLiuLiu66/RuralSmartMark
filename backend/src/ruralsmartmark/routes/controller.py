@@ -32,6 +32,11 @@ from ..schemas import (
     ControllerTurnOut,
     ResearchDraft,
 )
+from ..services.batch_create import (
+    DEFAULT_QUANTITY_KG,
+    BatchCreateError,
+    create_batch_for_product,
+)
 from ..services.batch_delete import BatchDeleteError, delete_batch
 from ..services.products import commit_research_draft
 from ..services.rewind import rewind_to_agent
@@ -342,6 +347,31 @@ async def _execute_pending(
         return (
             f"已建档：{product_name}（{product_slug}），"
             f"知识库 {docs} 条、基准价 {benchmarks} 条，批次 {batch_code}。"
+        )
+
+    if kind == "create_batch":
+        product = (
+            await session.get(ProductProfile, item.product_id) if item.product_id else None
+        )
+        if product is None:
+            raise HTTPException(status_code=409, detail="当前会话没有绑定产品")
+        raw_quantity = pending.get("quantity_kg")
+        try:
+            quantity = float(raw_quantity) if raw_quantity else 0.0
+        except (TypeError, ValueError):
+            quantity = 0.0
+        try:
+            batch = await create_batch_for_product(
+                session, product, quantity if quantity > 0 else DEFAULT_QUANTITY_KG
+            )
+        except BatchCreateError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        item.batch_id = batch.id
+        item.pending_action_json = None
+        await session.commit()
+        return (
+            f"已为 {product.name} 创建新批次 {batch.code}（{batch.quantity_kg:g} kg），"
+            "会话已切换到该批次，可直接运行流水线。"
         )
 
     if kind == "delete_batch":

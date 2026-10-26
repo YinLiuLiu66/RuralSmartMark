@@ -1,25 +1,13 @@
-from datetime import datetime
-
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from ..deps import SessionDep
 from ..models import Batch, ProductProfile
 from ..schemas import BatchCreate, BatchOut, BatchWorkspaceOut
+from ..services.batch_create import create_batch_for_product
 from ..services.workspace import load_workspace
 
 router = APIRouter()
-
-
-async def _next_code(session: AsyncSession, product: ProductProfile) -> str:
-    year = datetime.now().year
-    raw_prefix = str((product.specs or {}).get("batch_prefix") or "ZT").strip() or "ZT"
-    prefix = f"{raw_prefix[:6]}-{year}-"
-    count = await session.scalar(
-        select(func.count()).select_from(Batch).where(Batch.code.like(f"{prefix}%"))
-    )
-    return f"{prefix}{int(count or 0) + 1:03d}"
 
 
 @router.get("/batches", response_model=list[BatchOut])
@@ -64,15 +52,4 @@ async def create_batch(payload: BatchCreate, session: SessionDep) -> Batch:
     )
     if product is None:
         raise HTTPException(status_code=404, detail="product not found")
-
-    batch = Batch(
-        product_id=product.id,
-        code=await _next_code(session, product),
-        quantity_kg=payload.quantity_kg,
-        state="raw",
-        current_station="intake",
-    )
-    session.add(batch)
-    await session.commit()
-    await session.refresh(batch)
-    return batch
+    return await create_batch_for_product(session, product, payload.quantity_kg)

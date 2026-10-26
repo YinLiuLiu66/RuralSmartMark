@@ -516,7 +516,7 @@ export default function Sandbox() {
     selectProduct(id);
   }
 
-  async function handleControllerDataChanged() {
+  async function handleControllerDataChanged(batchId?: number | null) {
     setNewProductMode(false);
     setControllerFreshToken(undefined);
     const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
@@ -527,6 +527,13 @@ export default function Sandbox() {
       selectProduct(newest.id);
       const visible = batchList.filter((batch) => batch.product_id === newest.id);
       selectBatch(visible[0]?.id ?? null);
+    }
+    if (batchId) {
+      const target = batchList.find((batch) => batch.id === batchId);
+      if (target) {
+        if (target.product_id !== selectedProductId) selectProduct(target.product_id);
+        selectBatch(batchId);
+      }
     }
   }
 
