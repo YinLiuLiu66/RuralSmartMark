@@ -173,7 +173,7 @@ docs/
 
 ## 文档
 
-- [AGENTS.md](AGENTS.md) — AI 协作约束（人类可跳过）
+- [AGENTS.md](AGENTS.md) — AI 协作约束
 - [docs/v2/plan.md](docs/v2/plan.md) — 完整方案
 - [docs/v2/ui.md](docs/v2/ui.md) — 前端设计契约
 - [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
