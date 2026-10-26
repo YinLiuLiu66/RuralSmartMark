@@ -233,9 +233,9 @@ AGENTS.md README.md
 - LLM：OpenAI SDK；环境变量 `OPENAI_API_KEY`/`OPENAI_BASE_URL`/`OPENAI_MODEL`；默认 SiliconFlow DeepSeek-V4.1-Flash（可改），推理预算 `thinking_budget=2048`、最终输出 `max_tokens=4096`；`MockLLMProvider` 无 key 可用。
 - 图像：`ImageProvider` 接口；`SiliconFlowImageProvider` 调 `POST /v1/images/generations`，默认 `Tongyi-MAI/Z-Image-Turbo`（可切 `Tongyi-MAI/Z-Image`），按 512×512 / 1024×576 / 768×1024 自动选尺寸，可用 `IMAGE_SIZE` 覆盖；生成结果下载转 PNG，按 model+prompt+size+negative 的 SHA-256 缓存；`MockImageProvider` 作无 key/测试兜底。
 - 包装合成：Pillow 服务端渲染；内置 Noto Serif SC / Noto Sans SC（OFL）；输出 1600×1000 印刷示意 PNG，SVG 渲染函数保留作后续导出。
-- 二维码：`qrcode[pil]`；`PUBLIC_BASE_URL` 生成 `/t/{code}`。
+- 二维码：`qrcode[pil]`；`PUBLIC_BASE_URL` 生成 `/trace/{code}`。
 - 配置：`.env`（LLM/图像/`DATABASE_URL`/`PUBLIC_BASE_URL`/`AUTO_APPROVE`）；`.env.example` 入库。
-- 部署：开发时 `uv run ruralsmartmark` + `pnpm dev`；生产 `pnpm build` 后 FastAPI 挂 `frontend/dist`；可选 Dockerfile + compose（app 单服务，SQLite 卷）。
+- 部署：开发时 `uv run ruralsmartmark` + `pnpm dev`；生产见 [deploy.md](deploy.md)（nginx 托管 `frontend/dist` + systemd 单 worker uvicorn，SQLite 本地文件；不做 Docker，decisions #63/#90）。
 
 ### 数据模型
 
@@ -351,9 +351,9 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 6. 溯源 H5 移动端可用，IP 对话有边界（不编食品安全/功效）。
 7. `POST /api/demo/reset` 幂等；固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26` 不变。
 8. 后端关键测试 + 前端 typecheck/lint/build + Playwright 冒烟全绿。
-9. 文档：decisions v2、架构、Agent、数据、来源、runbook、AGENTS、README、05-next-steps。
+9. 文档：decisions v2、架构、Agent、数据、来源、runbook、deploy、AGENTS、README、05-next-steps。
 10. 单工作台多产品切换；第二产品档案测试与总控建档均通过，证明可复制。
-11. 一键开发启动；可选 Docker；无外部服务依赖（mock 模式）。
+11. 一键开发启动；生产部署按 [deploy.md](deploy.md)（nginx + systemd 单进程，不做 Docker，decisions #63/#90）；无外部服务依赖（mock 模式）。
 12. 全中文 UI，无占位文案；演示数据有标识。
 
 ---
@@ -375,8 +375,8 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 
 ## 12. 文档与决策
 
-- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#78（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链、空白会话新建产品、确认通过后自动继续下一站、空沙盘与空白会话单例、空白会话唯一索引、新产品提示词按档案生成、P1 链路健壮性修复）；本文只引用，不复制结论。
-- `docs/v2/`：plan.md / ui.md / sources.md / runbook.md；architecture/agents/data/references 按需补。
+- `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#90（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链、空白会话新建产品、确认通过后自动继续下一站、空沙盘与空白会话单例、空白会话唯一索引、新产品提示词按档案生成、P1 链路健壮性修复、定价/包装默认值档案化、H5 FAQ 直达、长文折叠、右栏调宽与滚动、3D 独立图层、空沙盘回流、顶栏常驻新建批次、delete_batch、create_batch、总控真多轮与自动压缩、生产部署）；本文只引用，不复制结论。
+- `docs/v2/`：plan.md / ui.md / sources.md / controller.md / runbook.md / deploy.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 - 开发分支 `main`；完成可验证单元自动 commit，任务收口自动 push 到 `origin/main`（2026-10-22 起）；force/历史重写/删除远端分支仍先确认。

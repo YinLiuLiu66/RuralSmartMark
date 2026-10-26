@@ -25,7 +25,7 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）；生产部署文档 `docs/v2/deploy.md`（nginx + systemd 单 worker，#90）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
 - **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
@@ -71,6 +71,7 @@
 - `make test` → 后端 pytest/ruff + 前端 typecheck/lint/build
 - `make e2e` → Playwright 桌面/移动冒烟（未启动的服务由 Playwright 自动拉起）
 - `make perf` → 60 秒帧率/堆内存 + 200% 等效视口
+- 生产部署 → 见 [docs/v2/deploy.md](docs/v2/deploy.md)（nginx + systemd，单 worker；Docker 不做）
 
 后端（在 `backend/`）：
 
@@ -146,6 +147,7 @@ docs/
   v2/ui.md                          # 前端六行契约/token/组件/七类丑
   v2/sources.md                     # 昭通事实待核验清单
   v2/runbook.md                     # 启动/演示动线/验收/新增档案/排障
+  v2/deploy.md                      # Linux 生产部署（nginx/systemd/env/备份/验收）
   05-next-steps.md                  # 唯一动态任务清单
 Makefile                            # make dev/lan/test/e2e/perf
 scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_BASE_URL + reset）
@@ -169,6 +171,7 @@ scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_B
 | docs/v2/sources.md | 昭通事实待核验清单 | 每条事实补 source_url / 原文 / 日期；冲突用区间 |
 | docs/v2/controller.md | 总控/多产品契约 | 动作白名单、确认/回退、流式协议、限额、前端入口变化时同步 |
 | docs/v2/runbook.md | 启动/演示/验收操作 | 命令、端口、演示动线、新增档案步骤、排障变化时同步 |
+| docs/v2/deploy.md | Linux 服务器部署（nginx/systemd/env/备份） | 部署方式、反代、进程模型、端口、env、备份变化时同步 |
 | docs/05-next-steps.md | 唯一动态任务清单 | 开工前写条目与假设；完工打勾；新假设补录 |
 | README.md | 人类读者入口 | 运行方式/目录变化时同步；不复制 AGENTS 的约束 |
 

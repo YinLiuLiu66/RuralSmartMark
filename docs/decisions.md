@@ -339,3 +339,9 @@
 **理由**：原拼接把 12 条历史压成文本塞单条 user、上下文 JSON 在头部，滑动窗口每轮位移，前缀缓存完全命不中；真多轮 + 易变后置让旧消息逐字节复用。1024K 上下文下 80% 阈值（≈82 万 token）日常难触发，压缩是保险丝而非日常路径；用更小的 29B 模型压历史比让主模型带全量历史继续聊更省。
 **验证**：pytest 新增 8 条（token 估算、摘要+消息映射、阈值下全量保留、触发后 summary_json 落库与 upto、压缩失败硬截断兜底、upto 过滤）→ 后端 88 passed + 2 skipped、ruff 干净；迁移在全新 SQLite 与开发库均 `alembic upgrade head` 通过（`controller_session.summary_json` 存在）；用 pydantic-ai `FunctionModel` 本地假模型验证多轮 messages 被 Agent 正常接受且内容无丢失（相邻同角色请求按框架规则合并，前缀仍稳定）；真实模型下的压缩与多轮请求链路留给独立测试会话冒烟。
 **拍板时间**：2026-10-26
+
+### #90 · 生产部署走 nginx + systemd 单进程，不引入容器
+**结论**：新增 `docs/v2/deploy.md` 作为服务器部署唯一入口：nginx 托管 `frontend/dist` 并把 `/api` 反代到 `127.0.0.1:8000`，systemd 以单 worker 运行 uvicorn；SQLite 与 artifacts 留在 `backend/data`，备份用 `sqlite3 .backup` + artifacts 打包；不做 Docker（沿用 #63），不加应用层登录（红线），公网由 nginx Basic Auth 或 IP 白名单保护，`/trace/` 与 `/api/trace/` 保持公开。同时修正 `plan.md` 里未实现的「FastAPI 挂 frontend/dist」设想与二维码路径 `/t/{code}`（实际为 `/trace/{code}`）。
+**理由**：`main.py` 没有任何 `StaticFiles` 挂载，前端必须由 nginx 发；流水线 SSE 事件总线在进程内存、总控用 `asyncio.create_task`，多 worker 会丢事件与请求分叉；后端路由无鉴权依赖，公网裸奔会让人重置演示数据或消耗 LLM/生图额度。nginx 层同时解决静态、反代、SSE 不缓冲与鉴权，零代码改动，符合“不推倒状态机”。
+**验证**：2026-10-26 本机实测 `pnpm build`（dist 1.3MB）通过、`APP_ENV=production DEBUG=false` 启动后 `/api/health` 返回 200；实测 `backend/data` 缺失时 `alembic upgrade head` 报 `unable to open database file`，故部署步骤先建目录；nginx/systemd 配置未在目标服务器执行，首次上线按 `deploy.md` §9 验收；手机真机扫码仍未实测。
+**拍板时间**：2026-10-26

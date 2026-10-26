@@ -49,6 +49,8 @@ make dev
 make lan    # 自动取局域网 IP、Vite 监听 0.0.0.0、二维码指向局域网地址
 ```
 
+生产部署（Linux 服务器，nginx + systemd 单 worker，SQLite 本地文件）见 [docs/v2/deploy.md](docs/v2/deploy.md)；不做 Docker。
+
 分开启动：
 
 ### 后端
@@ -177,5 +179,6 @@ docs/
 - [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
 - [docs/v2/controller.md](docs/v2/controller.md) — 总控/多产品契约
 - [docs/v2/runbook.md](docs/v2/runbook.md) — 启动、演示动线、验收与排障
+- [docs/v2/deploy.md](docs/v2/deploy.md) — Linux 生产部署（nginx + systemd、env、备份、验收）
 - [docs/decisions.md](docs/decisions.md) — 决策记录
 - [docs/05-next-steps.md](docs/05-next-steps.md) — 当前进度与下一步
