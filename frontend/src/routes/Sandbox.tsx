@@ -621,6 +621,19 @@ export default function Sandbox() {
             </select>
           </label>
 
+          {!newProductMode && (
+            <button
+              type="button"
+              aria-label="新建批次"
+              title="新建批次"
+              onClick={() => void handleCreateBatch()}
+              disabled={creating || !selectedProduct}
+              className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted transition-colors hover:border-apple/40 hover:text-apple disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={15} />
+            </button>
+          )}
+
           <div className="ml-auto flex items-center gap-2">
             <span
               className={`rounded-full px-3 py-1 text-[11px] ${
