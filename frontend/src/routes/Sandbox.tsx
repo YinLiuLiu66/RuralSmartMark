@@ -1014,7 +1014,7 @@ export default function Sandbox() {
           freshToken={controllerFreshToken}
           onNewProduct={startNewProduct}
           onClose={() => setControllerOpen(false)}
-          onDataChanged={() => void handleControllerDataChanged()}
+          onDataChanged={(batchId) => void handleControllerDataChanged(batchId)}
         />
       )}
     </>
