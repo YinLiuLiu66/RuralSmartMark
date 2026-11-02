@@ -40,7 +40,7 @@
 - [x] `data/knowledge/zhaotong/*.md` 10 篇，frontmatter 含 `source_url/source_date/credibility`
 - [x] seed 时 upsert 到 `knowledge_doc`；`knowledge_dir` 由产品档案指定
 - [x] 第一轮来源核验：GI-01/ORIGIN-01/ORIGIN-02/ENV-01/ENV-02/CUL-01/PRICE-01 可引用；具体海拔、1940/吴敬端、洒渔 13.1 万亩等未核项 DROP
-- [x] `docs/v2/sources.md` 记录 OK/CONFLICT/TODO/DEMO/DROP 与原文摘录
+- [x] `docs/sources.md` 记录 OK/CONFLICT/TODO/DEMO/DROP 与原文摘录
 
 ### 2.2 真实 Agent
 
@@ -118,10 +118,10 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 来源补证：农业部公告第1478号/AGI2010-07-00370 入 GI-01；80–85mm 补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，无书面报价
 - [x] 生图失败视觉兜底（包装工位）与缓存清理命令（30 天/512MB，支持 dry-run）
 - [x] 局域网扫码入口：`make lan` 自动取 IP、Vite 监听 0.0.0.0、后端 `PUBLIC_BASE_URL` 与二维码指向局域网，reset 后可用；真机扫描仍需同一 Wi-Fi 实测
-- [x] 文档收口：decisions #61–#67、`docs/v2/runbook.md`、AGENTS/README/plan/ui/sources
+- [x] 文档收口：decisions #61–#67、`docs/runbook.md`、AGENTS/README/plan/ui/sources
 - [x] 字段级审核表单：Phase 5 确认不做，保留 JSON 编辑器（#58/#63）
 - [x] Docker：确认不做，继续 uv + pnpm 本地进程（#63）
-- [x] 演示脚本与彩排：见 `docs/v2/runbook.md` §4
+- [x] 演示脚本与彩排：见 `docs/runbook.md` §4
 
 **Phase 5 验收**：`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`test_second_product_runs_without_code_changes` 与 `RSM_REAL_LLM=1` 真实四站均通过；`ZTDEMO26` 与 156% 溢价回归不变。
 
@@ -157,7 +157,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 后端 70 passed + 2 skipped；Playwright 11 条；迁移在全新 SQLite 通过
 - [x] 真实 Firecrawl 搜索/抓页 + 麻江蓝莓/平泉香菇草案（本机 key；来源与抓取失败均如实标注，价格缺口转追问）
 - [x] 两批新产品审核收尾：麻江蓝莓 `PR0003`、平泉香菇 `PR0004` 均 traced；溯源 API/包装 PNG/二维码/H5 200，扫码计数写入
-- [x] 生产部署文档：`docs/v2/deploy.md`（nginx + systemd 单 worker、env/备份/验收；Docker 仍不做，#90）
+- [x] 生产部署文档：`docs/deploy.md`（nginx + systemd 单 worker、env/备份/验收；Docker 仍不做，#90）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 
 ## 6. 未验证假设（开工即验证）
@@ -171,7 +171,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 3D 场景长时 60fps：headless Chromium 1280×720 采样 60 秒 58.3fps，堆内存不增长
 - [x] 局域网扫码入口：`make lan` 已验 LAN 首页/H5/二维码 200，二维码 payload 指向局域网 IP
 - [ ] 手机真机扫码（当前只验了 390px 视口、Playwright 移动模拟与局域网 HTTP，尚未用真实手机扫）
-- [ ] Linux 服务器首次上线（nginx 反代/SPA 回退/SSE 不缓冲/systemd 单 worker/HTTPS）；配置已写入 `docs/v2/deploy.md`，尚未在目标服务器执行，按 §9 验收
+- [ ] Linux 服务器首次上线（nginx 反代/SPA 回退/SSE 不缓冲/systemd 单 worker/HTTPS）；配置已写入 `docs/deploy.md`，尚未在目标服务器执行，按 §9 验收
 - [x] 200% 等效视口：640×360 回退桌面提示且无横向溢出；H5 320px/超长码已压测
 - [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站与真实 V4.1-Flash 四站，不改核心代码
 - [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算；只找到 1000 个起订线索）
@@ -190,7 +190,7 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - 总控 PydanticAI 工具循环实测比原计划多轮，默认限额调到 10 请求/12 工具；仍需真实调研观察费用与稳定性。
 - 多产品 UI 已做，但不做多产品并列 3D；产品知识库/批次互相独立。
 - 手机真机扫码、包装厂书面报价/食品接触合规、真实盒型/刀版仍未补齐；80–85mm 挂牌价与 GI 公告号已补，成交价仍待跟。
-- Docker 不做；现场演示仍依赖本机 uv + pnpm + SQLite；服务器部署见 `docs/v2/deploy.md`（nginx + systemd 单 worker，#90）。
+- Docker 不做；现场演示仍依赖本机 uv + pnpm + SQLite；服务器部署见 `docs/deploy.md`（nginx + systemd 单 worker，#90）。
 - 前端已分包：initial index 260KB、Scene 950KB 异步；手机 H5 不下载 three.js。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 

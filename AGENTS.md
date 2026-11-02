@@ -14,7 +14,7 @@
 - 新功能先查：现有代码/组件 → 标准库/已装依赖 → 成熟开源项目/官方 SDK；确认没有合适方案再自己写。
 - 不重复造轮子：Agent 循环/工具调用/重试、搜索抓取、聊天 UI、状态机等优先复用；当前已选 PydanticAI、Firecrawl、现有 `orchestrator.py` 与 H5 聊天样式。
 - 引入新依赖前先说明“现有方案为什么不够”，并只装进本项目环境（后端 `uv add` → `backend/.venv`；前端 `pnpm add`），禁止全局安装。
-- 复用外部代码/资产要确认许可证，并在 `docs/v2/plan.md` 或 `docs/decisions.md` 记录来源；框架与现有架构冲突时，只写最小适配层，不推倒状态机。
+- 复用外部代码/资产要确认许可证，并在 `docs/plan.md` 或 `docs/decisions.md` 记录来源；框架与现有架构冲突时，只写最小适配层，不推倒状态机。
 - 如果最终决定自写，必须留下“已比较过哪些现成方案、为什么不采用”的一句话，避免重复踩坑。
 
 ## 当前阶段（2026-10-22）
@@ -25,8 +25,8 @@
 - **Phase 3 已完成**：公开溯源 API（trace / packaging.png / qr.png / scan / chat）、390px H5、扫码统计与 `trace.scanned`、IP 对话边界、固定演示快照（`ZTDEMO26` reset 后仍完整）、3D 包装贴图/广告牌/二维码/CatmullRom 路径/卡车出库。
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
-- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）；生产部署文档 `docs/v2/deploy.md`（nginx + systemd 单 worker，#90）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
-- **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/v2/sources.md`），成交价/同渠道长期价仍可继续跟。
+- **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）；生产部署文档 `docs/deploy.md`（nginx + systemd 单 worker，#90）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
 ## 环境特殊性（缺就是缺，别假设有）
@@ -71,7 +71,7 @@
 - `make test` → 后端 pytest/ruff + 前端 typecheck/lint/build
 - `make e2e` → Playwright 桌面/移动冒烟（未启动的服务由 Playwright 自动拉起）
 - `make perf` → 60 秒帧率/堆内存 + 200% 等效视口
-- 生产部署 → 见 [docs/v2/deploy.md](docs/v2/deploy.md)（nginx + systemd，单 worker；Docker 不做）
+- 生产部署 → 见 [docs/deploy.md](docs/deploy.md)（nginx + systemd，单 worker；Docker 不做）
 
 后端（在 `backend/`）：
 
@@ -143,11 +143,11 @@ frontend/
   vite.config.ts package.json
 docs/
   decisions.md                      # v2 #32 起；唯一决策真源（v1 已移除）
-  v2/plan.md                        # v2 产品/架构方案
-  v2/ui.md                          # 前端六行契约/token/组件/七类丑
-  v2/sources.md                     # 昭通事实待核验清单
-  v2/runbook.md                     # 启动/演示动线/验收/新增档案/排障
-  v2/deploy.md                      # Linux 生产部署（nginx/systemd/env/备份/验收）
+  plan.md                           # v2 产品/架构方案
+  ui.md                             # 前端六行契约/token/组件/七类丑
+  sources.md                        # 昭通事实待核验清单
+  runbook.md                        # 启动/演示动线/验收/新增档案/排障
+  deploy.md                         # Linux 生产部署（nginx/systemd/env/备份/验收）
   05-next-steps.md                  # 唯一动态任务清单
 Makefile                            # make dev/lan/test/e2e/perf
 scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_BASE_URL + reset）
@@ -166,16 +166,16 @@ scripts/lan-demo.sh                 # 局域网扫码模式（0.0.0.0 + PUBLIC_B
 | --- | --- | --- |
 | AGENTS.md | 操作事实：命令 / 环境 / 目录 / 红线 | 改动命令、目录、依赖、端口、env、测试方式后必须同步；过时行直接删 |
 | docs/decisions.md | 决策权威：唯一真源 | 任何拍板先新增 #N 条目；v2 从 #32 起；不重排已有 v2 编号 |
-| docs/v2/plan.md | v2 产品/架构方案 | 方案变化先改 decisions，再同步本文 |
-| docs/v2/ui.md | 前端设计契约 / token / 组件 | 前端结构、token、组件变化时同步 |
-| docs/v2/sources.md | 昭通事实待核验清单 | 每条事实补 source_url / 原文 / 日期；冲突用区间 |
-| docs/v2/controller.md | 总控/多产品契约 | 动作白名单、确认/回退、流式协议、限额、前端入口变化时同步 |
-| docs/v2/runbook.md | 启动/演示/验收操作 | 命令、端口、演示动线、新增档案步骤、排障变化时同步 |
-| docs/v2/deploy.md | Linux 服务器部署（nginx/systemd/env/备份） | 部署方式、反代、进程模型、端口、env、备份变化时同步 |
+| docs/plan.md | v2 产品/架构方案 | 方案变化先改 decisions，再同步本文 |
+| docs/ui.md | 前端设计契约 / token / 组件 | 前端结构、token、组件变化时同步 |
+| docs/sources.md | 昭通事实待核验清单 | 每条事实补 source_url / 原文 / 日期；冲突用区间 |
+| docs/controller.md | 总控/多产品契约 | 动作白名单、确认/回退、流式协议、限额、前端入口变化时同步 |
+| docs/runbook.md | 启动/演示/验收操作 | 命令、端口、演示动线、新增档案步骤、排障变化时同步 |
+| docs/deploy.md | Linux 服务器部署（nginx/systemd/env/备份） | 部署方式、反代、进程模型、端口、env、备份变化时同步 |
 | docs/05-next-steps.md | 唯一动态任务清单 | 开工前写条目与假设；完工打勾；新假设补录 |
 | README.md | 人类读者入口 | 运行方式/目录变化时同步；不复制 AGENTS 的约束 |
 
-v1 设计文档已移除；如需追溯见 git history（main 分支）。与 v2 冲突时以 `docs/v2/` 与 `decisions.md` 为准。
+v1 设计文档已移除；如需追溯见 git history（main 分支）。与 v2 冲突时以 `docs/` 与 `decisions.md` 为准。
 
 ## 红线
 
@@ -197,5 +197,5 @@ v1 设计文档已移除；如需追溯见 git history（main 分支）。与 v2
 ## 常见任务自检（动手前过一眼）
 
 - 改命令/目录/依赖 → 先同步 AGENTS.md，再动代码。
-- 改架构决策 → 先落 docs/decisions.md #N，再同步 docs/v2/。
+- 改架构决策 → 先落 docs/decisions.md #N，再同步 docs/。
 - 结束一轮 → 文档同步了吗？假设补录了吗？红线有违反吗？测试通过并自动提交/推送了吗？

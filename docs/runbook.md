@@ -1,6 +1,6 @@
 # v2 Runbook · 启动、演示、验收
 
-> 适用：2026-10-22 后的 main。环境与命令以根 [AGENTS.md](../../AGENTS.md) 为准；本文只写操作顺序和现场口径。
+> 适用：2026-10-22 后的 main。环境与命令以根 [AGENTS.md](../AGENTS.md) 为准；本文只写操作顺序和现场口径。
 
 ## 1. 首次准备
 
@@ -120,4 +120,4 @@ cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run 
 - 固定演示码依赖 seed 快照，不依赖现场 LLM/图像 API；断网也能打开 H5。
 - 价格、成本、溢价均为演示测算；品牌、IP、合作社为演示合成；区域事实引用知识库。
 - 地理标志公告号与 80–85mm 公开挂牌价已补；包装厂只有 1000 个起订线索，无书面报价；手机真机扫码、真实盒型/刀版仍未做。
-- 不做字段级审核表单、Docker、真实盒型/刀版、真实供应商报价；详见 [decisions.md](../decisions.md) #58/#63/#64。
+- 不做字段级审核表单、Docker、真实盒型/刀版、真实供应商报价；详见 [decisions.md](decisions.md) #58/#63/#64。

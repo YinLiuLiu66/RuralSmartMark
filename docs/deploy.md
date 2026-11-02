@@ -2,7 +2,7 @@
 
 > 适用：把「智农云链」部署到一台 Linux 服务器，供桌面沙盘、总控和手机扫码 H5 使用。
 > 本机开发、演示动线、新增档案、排障见 [runbook.md](runbook.md)；本文只写服务器部署。
-> 决策依据：[decisions.md](../decisions.md) #63（不做 Docker）、#90（nginx + systemd 单进程）。
+> 决策依据：[decisions.md](decisions.md) #63（不做 Docker）、#90（nginx + systemd 单进程）。
 
 ## 0. 边界与验证状态
 

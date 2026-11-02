@@ -27,7 +27,7 @@
 - 性能：1280×720 固定演示批次 60 秒采样 58.3fps，JSHeap 44.5MB→42.4MB；200% 等效视口回退桌面提示且无横向溢出。
 - 可复制：第二产品档案夹具「麻江蓝莓」只建数据，mock 四站与真实 V4.1-Flash 四站都跑到 `traced`、`MJ` 溯源码、公开 H5/包装 PNG 可用，真实运行无 fallback、输出无昭通/苹果残留；系统提示、定价标签、包装品牌字、溯源码前缀均从产品档案读取。
 - 来源补证：地理标志公告第1478号/登记编号已补；80–85mm 精选果公开挂牌价补了 4 个惠农网页面（5斤 25/36/40 元，10斤 6.2 元/斤）；包装厂只找到 1000 个起订线索，仍无书面报价。
-- 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/v2/runbook.md](docs/v2/runbook.md)。
+- 一键启动与验收：根 `Makefile` 的 `make dev/test/e2e/perf`；现场演示动线与排障见 [docs/runbook.md](docs/runbook.md)。
 - 生图失败兜底：包装工位显示「插画这次没有生成 / 包装审核不受影响」；`python -m ruralsmartmark.maintenance image-cache --dry-run` 可预演 30 天/512MB 缓存清理。
 - 后端 64 常跑测试 + 2 条默认跳过的真实外部冒烟、ruff、前端 typecheck/lint/build 全绿；V4.1-Flash 批次 `ZT-2026-005` 真实四站跑到 `ZT0006`（无 fallback），随后 reset 为固定演示数据。
 
@@ -49,7 +49,7 @@ make dev
 make lan    # 自动取局域网 IP、Vite 监听 0.0.0.0、二维码指向局域网地址
 ```
 
-生产部署（Linux 服务器，nginx + systemd 单 worker，SQLite 本地文件）见 [docs/v2/deploy.md](docs/v2/deploy.md)；不做 Docker。
+生产部署（Linux 服务器，nginx + systemd 单 worker，SQLite 本地文件）见 [docs/deploy.md](docs/deploy.md)；不做 Docker。
 
 分开启动：
 
@@ -104,11 +104,11 @@ frontend/
   playwright.config.ts      # 桌面/移动/perf projects + webServer
 docs/
   decisions.md              # 决策（v2 #32 起）
-  v2/plan.md                # v2 产品/架构方案
-  v2/ui.md                  # 前端设计契约
-  v2/sources.md             # 昭通事实待核验清单
-  v2/controller.md          # 总控/多产品契约
-  v2/runbook.md             # 启动/演示/验收/新增档案/排障
+  plan.md                   # v2 产品/架构方案
+  ui.md                     # 前端设计契约
+  sources.md                # 昭通事实待核验清单
+  controller.md             # 总控/多产品契约
+  runbook.md                # 启动/演示/验收/新增档案/排障
   05-next-steps.md          # 当前进度与下一步
 ```
 
@@ -174,11 +174,11 @@ docs/
 ## 文档
 
 - [AGENTS.md](AGENTS.md) — AI 协作约束
-- [docs/v2/plan.md](docs/v2/plan.md) — 完整方案
-- [docs/v2/ui.md](docs/v2/ui.md) — 前端设计契约
-- [docs/v2/sources.md](docs/v2/sources.md) — 昭通事实待核验清单
-- [docs/v2/controller.md](docs/v2/controller.md) — 总控/多产品契约
-- [docs/v2/runbook.md](docs/v2/runbook.md) — 启动、演示动线、验收与排障
-- [docs/v2/deploy.md](docs/v2/deploy.md) — Linux 生产部署（nginx + systemd、env、备份、验收）
+- [docs/plan.md](docs/plan.md) — 完整方案
+- [docs/ui.md](docs/ui.md) — 前端设计契约
+- [docs/sources.md](docs/sources.md) — 昭通事实待核验清单
+- [docs/controller.md](docs/controller.md) — 总控/多产品契约
+- [docs/runbook.md](docs/runbook.md) — 启动、演示动线、验收与排障
+- [docs/deploy.md](docs/deploy.md) — Linux 生产部署（nginx + systemd、env、备份、验收）
 - [docs/decisions.md](docs/decisions.md) — 决策记录
 - [docs/05-next-steps.md](docs/05-next-steps.md) — 当前进度与下一步

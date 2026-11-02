@@ -47,4 +47,4 @@ uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 生图缓�
 
 第二产品夹具仍在 `tests/fixtures/majiang/`，用于验证档案化；运行期多产品由总控建档写入。提示词、mock 文案、定价标签、包装品牌字、溯源码前缀均从 `ProductProfile.specs` 读取；`RSM_REAL_LLM=1` 时 `tests/test_second_product_real.py` 用真实 V4.1-Flash 跑四站，默认跳过以免扣费。
 
-总控调研依赖 `pydantic-ai-slim[openai]` 与 `firecrawl-py`，只装在本项目 venv；`FIRECRAWL_API_KEY` 空时提示贴资料。`docs/v2/plan.md` 是当前方案，`docs/v2/controller.md` 是总控契约，`docs/v2/runbook.md` 是启动与演示操作。
+总控调研依赖 `pydantic-ai-slim[openai]` 与 `firecrawl-py`，只装在本项目 venv；`FIRECRAWL_API_KEY` 空时提示贴资料。`docs/plan.md` 是当前方案，`docs/controller.md` 是总控契约，`docs/runbook.md` 是启动与演示操作。

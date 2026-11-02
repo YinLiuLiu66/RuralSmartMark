@@ -177,7 +177,7 @@
 - 灯光：HemisphereLight + DirectionalLight（软阴影）+ 环境光；阴影贴图 1024；DPR 上限 2。
 - 性能：目标 60fps @1280×720；树木/箱子 instancing；不在每帧 setState；事件驱动动画。
 - 资产：全部程序化几何（Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + Texture），对齐 WareTrack 的构建方式；广告牌/二维码用 Html 覆盖层保证中文与二维码清晰；v2 不引 GLB/写实资产管线，也不搬 WareTrack 的模型/贴图。
-- 代码复用：相机、raycast、标签定位等模式可参考/复用 WareTrack 的实现；在 `docs/v2/references.md` 标注出处。
+- 代码复用：相机、raycast、标签定位等模式可参考/复用 WareTrack 的实现；在 `docs/references.md` 标注出处。
 
 ---
 
@@ -214,7 +214,7 @@ data/
   artifacts/            # gitignored
 docs/
   decisions.md          # v1 #1–#31 + v2 #32 起
-  v2/ plan.md ui.md sources.md runbook.md   # architecture/agents/data/references 按需补
+  plan.md ui.md sources.md runbook.md controller.md deploy.md   # architecture/agents/data/references 按需补
   05-next-steps.md       # v2 当前进度与下一步
 AGENTS.md README.md
 ```
@@ -289,7 +289,7 @@ Phase 1 实现：`batch.updated`、`agent.started`、`agent.completed`、`agent.
 - 价格：每条基准带 URL + 检索日期；页面和 API 都返回 `is_demo=true` 与公式；禁止"保证增收"。
 - 认证：只用"昭通苹果国家地理标志"等可查事实；"有机/绿色食品"未认证不写。
 - `FactGuard`：正则抽年份/百分比/认证/人名 + 引用校验；不通过的 claim 在 UI 标黄，阻断进入下一站；重跑时把违规点写进 prompt。
-- `docs/v2/sources.md` 汇总所有来源；实现前逐条核验，冲突数据用区间并注明。
+- `docs/sources.md` 汇总所有来源；实现前逐条核验，冲突数据用区间并注明。
 
 ---
 
@@ -376,7 +376,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 ## 12. 文档与决策
 
 - `docs/decisions.md` 是决策唯一真源，v2 已记录 #32–#90（范围、案例、栈、3D、Agent、Provider、SSE、知识库/FactGuard、包装、定价、溯源、验收、Phase 2 审核 UI 边界、Phase 3 公开溯源与 3D 联动、FactGuard 提问边界、品牌/IP 冻结、真实图像 Provider、包装变体与代码分割、Phase 5 自动化验收、第二产品档案夹具、字段级表单/Docker 收口、LLM 未知字段忽略、生图缓存清理与失败兜底、局域网扫码模式、项目正式名、多产品工作台、单入口总控、Firecrawl、早期站回退、总控流式与思维链、空白会话新建产品、确认通过后自动继续下一站、空沙盘与空白会话单例、空白会话唯一索引、新产品提示词按档案生成、P1 链路健壮性修复、定价/包装默认值档案化、H5 FAQ 直达、长文折叠、右栏调宽与滚动、3D 独立图层、空沙盘回流、顶栏常驻新建批次、delete_batch、create_batch、总控真多轮与自动压缩、生产部署）；本文只引用，不复制结论。
-- `docs/v2/`：plan.md / ui.md / sources.md / controller.md / runbook.md / deploy.md；architecture/agents/data/references 按需补。
+- `docs/`：plan.md / ui.md / sources.md / controller.md / runbook.md / deploy.md；architecture/agents/data/references 按需补。
 - 重写 `AGENTS.md`（新命令、目录、env、测试方式、红线）、`README.md`、`docs/05-next-steps.md`。
 - v1 设计文档已移除；如需追溯见 git history（main 分支）。
 - 开发分支 `main`；完成可验证单元自动 commit，任务收口自动 push 到 `origin/main`（2026-10-22 起）；force/历史重写/删除远端分支仍先确认。
@@ -471,7 +471,7 @@ Agent 1–4 接真实 LLM；知识库与 FactGuard；包装合成器；结构化
 - 生图兜底与缓存：包装工位在插画 artifact 带错误或图片加载失败时显示设计化空态；`services/image_cache.py` + `maintenance image-cache` 支持 30 天/512MB 清理，先删最旧、支持 dry-run（#65）。
 - 来源补证：农业部公告第1478号 / AGI2010-07-00370 已入 GI-01；80–85mm 精选果补 4 个惠农网公开挂牌页；包装厂 1000 个起订线索已记，仍无书面报价。
 - 性能：headless Chromium 1280×720 固定演示批次 60 秒 58.3fps，JSHeap 44.5MB→42.4MB；640×360 显示“3D 沙盘需要桌面端”且无横向溢出。
-- 一键启动：根 `Makefile` 的 `dev/lan/test/e2e/perf`；`make lan` 自动检测局域网 IP、Vite 监听 `0.0.0.0`、后端 `PUBLIC_BASE_URL` 与固定演示二维码指向局域网，并自动 reset；默认 `make dev` 仍只绑 127.0.0.1。runbook `docs/v2/runbook.md` 覆盖启动、手机扫码、演示动线、验收、新增档案与排障。
+- 一键启动：根 `Makefile` 的 `dev/lan/test/e2e/perf`；`make lan` 自动检测局域网 IP、Vite 监听 `0.0.0.0`、后端 `PUBLIC_BASE_URL` 与固定演示二维码指向局域网，并自动 reset；默认 `make dev` 仍只绑 127.0.0.1。runbook `docs/runbook.md` 覆盖启动、手机扫码、演示动线、验收、新增档案与排障。
 - 验证：后端 47 passed + 1 skipped（真实 LLM 默认跳过）、ruff、前端 typecheck/lint/build 全绿；`pnpm test:e2e` 7 passed；`PERF_SECONDS=60 pnpm test:perf` 2 passed；`RSM_REAL_LLM=1` 第二产品四站通过；`maintenance image-cache --dry-run` 输出扫描/将删除/保留统计；`make lan` 在 `172.20.10.13` 下 LAN 首页/H5/二维码均 200，二维码 payload 指向局域网。
 - 命名收口（#67）：正式名《“智农云链”——基于多智能体协同的县域农产品品牌数字化重构系统》；界面、包装系统署名、Agent 系统提示、README/文档统一为“智农云链”；昭通案例、乌蒙丑果、山风守园人不变。
 - 明确不做：字段级审核表单（#58/#63）、Docker（#63）、真实盒型/刀版、手机真机扫码、包装厂书面报价/食品接触合规。
