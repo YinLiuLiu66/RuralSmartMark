@@ -345,3 +345,10 @@
 **理由**：`main.py` 没有任何 `StaticFiles` 挂载，前端必须由 nginx 发；流水线 SSE 事件总线在进程内存、总控用 `asyncio.create_task`，多 worker 会丢事件与请求分叉；后端路由无鉴权依赖，公网裸奔会让人重置演示数据或消耗 LLM/生图额度。nginx 层同时解决静态、反代、SSE 不缓冲与鉴权，零代码改动，符合“不推倒状态机”。
 **验证**：2026-10-26 本机实测 `pnpm build`（dist 1.3MB）通过、`APP_ENV=production DEBUG=false` 启动后 `/api/health` 返回 200；实测 `backend/data` 缺失时 `alembic upgrade head` 报 `unable to open database file`，故部署步骤先建目录；nginx/systemd 配置未在目标服务器执行，首次上线按 `deploy.md` §9 验收；手机真机扫码仍未实测。
 **拍板时间**：2026-10-26
+
+### #91 · 用户可直接提供成本口径：录入走独立工具，数字只进档案、算账仍归计算器
+**结论**：新增「用户提供数据」入口，但严格分层——总控只做结构化搬运（`record_inputs` 工具，`search` 不可用时跳过检索直接结构化），所有数字落 `product.specs.cost_assumptions`（Pydantic 带上下限：果价系数 0.1–2、损耗 0–30%、分选/冷链/电商箱 0–20 元/kg、费率 0–30%），`pricing.py` 逐项优先读档案、缺省才回退 #62 起沿用的演示常量。`verify_draft` 放行 `internal://user` 开头的来源并标 `credibility=user`，不逐字校验但附「用户提供，未经外部核验」warning；`fact_guard` 同步加 `user` 分支（warning，不当错误）。包装单盒成本优先级固定为「用户给 > 包装站 `cost_estimate.total` > 默认 5.7」，避免用户给了报价又被上游产物盖掉。写入仍走 `request_action('apply_inputs')` + 二次确认，不开放任何直写库通道（沿用 #69）；用户数据与知识库数字冲突时不自动裁决，留待 #92 单独处理。
+**理由**：成本假设写死在 `pricing.py` 里意味着任何真实报价都要改代码重部署，与「多产品可跑」的现状矛盾；但把算账权交给模型会引入幻觉，所以只让模型搬运、算术仍由确定性计算器闭环。录入与调研拆成两个工具，是因为「搜外部来源」和「录入用户口述」的提示词、失败模式、限流预算完全不同，混在一起会让调研提示词被迫兼容无网络场景。`assumptions` 逐项标来源（`user`/`packaging`/`benchmark`/`derived`/`default`）后，溯源页才能回答「这个 4% 是谁定的」，也让 `is_demo` 边界声明保持成立。
+**验证**：pytest 覆盖——成本假设覆盖默认值后 `cost_breakdown` 逐项改变、`assumptions` 来源标注正确、`internal://user` 引用不再被 `verify_draft` 丢弃、`user` credibility 只产生 warning、`box_cost` 优先级高于包装站产物；演示批次 `ZT-DEMO-001` 重新 seed 后 assumptions 全部标 `default`/`packaging`，H5 成本口径区可见；ruff + 前端 typecheck/lint/build 通过。真实对话录入链路留给独立测试会话复测。
+**顺带修复（自测暴露的既有缺陷，不在原计划）**：① `agents/engine.py` 的数字白名单 `_numbers` 只扫字符串，漏掉 `premium_pct`/`cost_breakdown` 这类数值字段，定价叙事每次复述计算结果都被判「与计算器不一致」而强制回退模板；新增 `_numbers_in_struct` 把嵌套结构的数字与去尾零写法一并纳入后，实测 `narrative_source=llm`、`fallback_reason=None`。② `agents/orchestrator.py` 的溯源码在回退后按「前缀+batch.id」重生成，会把演示批次的 `ZTDEMO26` 改成 `ZT0001`、已发出去的演示二维码直接 404；改为演示批次沿用 `services.trace.DEMO_TRACE_CODE`，并把 `DEMO_BATCH_CODE`/`DEMO_TRACE_CODE` 收敛到 `services/trace.py` 单一真源（seed 改为从 trace 导入）。
+**拍板时间**：2026-11-08
