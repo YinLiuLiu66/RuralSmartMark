@@ -35,6 +35,16 @@ async def test_trace_public_payload(session, client):
     assert data["pricing"]["premium_pct"] == 156.0
     assert len(data["pricing"]["price_ladder"]) == 3
     assert "margin" not in data["pricing"]["price_ladder"][0]
+    assumptions = data["pricing"]["assumptions"]
+    assert len(assumptions) == 8
+    assert {row["key"] for row in assumptions} >= {"果价", "损耗", "礼盒", "平台费"}
+    box_row = next(row for row in assumptions if row["key"] == "礼盒")
+    assert box_row["source"] == "packaging"
+    assert box_row["unit"] == "元/kg"
+    assert all(
+        row["source"] in {"user", "packaging", "benchmark", "derived", "default"}
+        for row in assumptions
+    )
     assert data["packaging"]["image_url"].endswith("/packaging.png")
     assert data["timeline"][0]["step"] == "批次建立"
     assert [item["step"] for item in data["timeline"][1:]] == [

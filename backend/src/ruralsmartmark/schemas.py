@@ -200,12 +200,21 @@ class TraceMarketingOut(BaseModel):
     wechat_title: str
 
 
+class CostAssumptionItem(BaseModel):
+    key: str
+    value: float
+    unit: str
+    source: Literal["user", "packaging", "benchmark", "derived", "default"]
+    basis: str
+
+
 class TracePricingOut(BaseModel):
     price_ladder: list[TracePriceTier]
     premium_pct: float
     rationale: str
     formula: str
     cost_breakdown: dict[str, float]
+    assumptions: list[CostAssumptionItem] = Field(default_factory=list)
     faq: list[TraceQA]
     persona_greeting: str
     is_demo: bool
@@ -245,6 +254,23 @@ class TraceChatRequest(BaseModel):
 class TraceChatOut(BaseModel):
     reply: str
     source: Literal["llm", "template"]
+
+
+class CostAssumptions(BaseModel):
+    """用户提供的成本口径；每一项都可缺省，缺省时由定价计算器回退到演示默认值。"""
+
+    model_config = ConfigDict(extra="ignore")
+
+    bulk_price_per_kg: float | None = Field(default=None, gt=0, le=1000)
+    fruit_ratio: float | None = Field(default=None, ge=0.1, le=2)
+    loss_rate: float | None = Field(default=None, ge=0, le=0.3)
+    sorting_per_kg: float | None = Field(default=None, ge=0, le=20)
+    cold_chain_per_kg: float | None = Field(default=None, ge=0, le=20)
+    ecommerce_pack_per_kg: float | None = Field(default=None, ge=0, le=20)
+    box_cost: float | None = Field(default=None, ge=0, le=300)
+    platform_rate: float | None = Field(default=None, ge=0, le=0.3)
+    marketing_rate: float | None = Field(default=None, ge=0, le=0.3)
+    basis: str | None = Field(default=None, max_length=200)
 
 
 class ResearchProduct(BaseModel):

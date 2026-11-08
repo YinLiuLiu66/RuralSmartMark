@@ -7,7 +7,7 @@ from ruralsmartmark.schemas import (
     ResearchDraft,
     ResearchProduct,
 )
-from ruralsmartmark.services.products import commit_research_draft
+from ruralsmartmark.services.products import apply_user_inputs, commit_research_draft
 
 
 def _draft(slug: str, name: str, prefix: str) -> ResearchDraft:
@@ -103,3 +103,90 @@ async def test_two_products_can_reuse_doc_keys(session):
 
     batches = list((await session.execute(select(Batch))).scalars().all())
     assert len(batches) == 2
+
+
+def _user_draft(slug: str, name: str, **kwargs) -> ResearchDraft:
+    return ResearchDraft(
+        product=ResearchProduct(
+            slug=slug,
+            name=name,
+            county="测试县",
+            province="测试省",
+            category="鲜果",
+            form="1kg 礼盒",
+        ),
+        **kwargs,
+    )
+
+
+async def test_apply_user_inputs_merges_cost_assumptions(session):
+    product, _, _, _ = await commit_research_draft(
+        session, _draft("gamma-fruit", "丙方水果", "GF")
+    )
+    await session.commit()
+
+    first = await apply_user_inputs(
+        session,
+        product,
+        _user_draft(
+            "gamma-fruit",
+            "丙方水果",
+            specs={
+                "cost_assumptions": {
+                    "loss_rate": 0.03,
+                    "cold_chain_per_kg": 1.6,
+                    "basis": "本地冷库报价",
+                }
+            },
+        ),
+    )
+    await session.refresh(product)
+    assert first["cost_assumptions"]["loss_rate"] == 0.03
+    assert first["benchmarks"] == 0
+
+    await apply_user_inputs(
+        session,
+        product,
+        _user_draft(
+            "gamma-fruit", "丙方水果", specs={"cost_assumptions": {"box_cost": 6.2}}
+        ),
+    )
+    await session.refresh(product)
+    costs = product.specs["cost_assumptions"]
+    assert costs["box_cost"] == 6.2
+    assert costs["loss_rate"] == 0.03
+    assert costs["basis"] == "本地冷库报价"
+    assert product.specs["brand_name"] == "丙方水果品牌"
+
+
+async def test_apply_user_inputs_replaces_benchmarks_only_when_given(session):
+    product, _, _, _ = await commit_research_draft(
+        session, _draft("delta-fruit", "丁方水果", "DF")
+    )
+    await session.commit()
+
+    await apply_user_inputs(
+        session,
+        product,
+        _user_draft(
+            "delta-fruit",
+            "丁方水果",
+            benchmarks=[
+                ResearchBenchmarkDraft(
+                    channel="散装批发",
+                    competitor="丁方水果",
+                    spec="1kg",
+                    price_per_kg=9.0,
+                    source_url="internal://user/price",
+                    source_date="2026-11-08",
+                )
+            ],
+        ),
+    )
+
+    rows = list(
+        (await session.execute(select(Benchmark).where(Benchmark.product_id == product.id)))
+        .scalars()
+        .all()
+    )
+    assert [row.price_per_kg for row in rows] == [9.0]

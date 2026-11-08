@@ -11,6 +11,21 @@ export interface TraceQA {
   a: string;
 }
 
+export type AssumptionSource =
+  | "user"
+  | "packaging"
+  | "benchmark"
+  | "derived"
+  | "default";
+
+export interface TraceCostAssumption {
+  key: string;
+  value: number;
+  unit: string;
+  source: AssumptionSource;
+  basis: string;
+}
+
 export interface TraceEvidence {
   doc_id: string;
   title: string;
@@ -80,6 +95,7 @@ export interface Trace {
     rationale: string;
     formula: string;
     cost_breakdown: Record<string, number>;
+    assumptions: TraceCostAssumption[];
     faq: TraceQA[];
     persona_greeting: string;
     is_demo: boolean;

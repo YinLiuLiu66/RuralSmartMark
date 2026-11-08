@@ -13,6 +13,7 @@ from ..services.fact_guard import check_output
 from ..services.knowledge import list_knowledge_docs
 from ..services.packaging import render_label_png
 from ..services.pricing import calculate_pricing
+from ..services.trace import DEMO_BATCH_CODE, DEMO_TRACE_CODE
 from .base import AgentName
 from .engine import AgentGenerationError, _guard_allowed_numbers, generate_output
 from .runtime import AgentRuntime
@@ -243,6 +244,7 @@ async def _validate_review_content(
             "premium_pct",
             "formula",
             "cost_breakdown",
+            "assumptions",
             "qr_payload",
             "is_demo",
         ):
@@ -289,9 +291,15 @@ async def approve_agent(
 
     pending_trace_code = batch.trace_code
     if agent == AgentName.PRICING and not pending_trace_code:
-        product = await session.get(ProductProfile, batch.product_id)
-        prefix = str((product.specs or {}).get("trace_prefix") or "ZT") if product else "ZT"
-        pending_trace_code = f"{prefix[:4]}{batch.id:04d}"
+        if batch.code == DEMO_BATCH_CODE:
+            # 固定演示批次沿用 ZTDEMO26：重跑定价不能把已发出去的演示二维码改掉。
+            pending_trace_code = DEMO_TRACE_CODE
+        else:
+            product = await session.get(ProductProfile, batch.product_id)
+            prefix = (
+                str((product.specs or {}).get("trace_prefix") or "ZT") if product else "ZT"
+            )
+            pending_trace_code = f"{prefix[:4]}{batch.id:04d}"
 
     content, guard = await _validate_review_content(
         session,

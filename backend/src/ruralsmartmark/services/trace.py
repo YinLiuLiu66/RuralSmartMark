@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Artifact, Batch, KnowledgeDoc, ProductProfile, ScanEvent
 from ..schemas import (
+    CostAssumptionItem,
     TraceBatchOut,
     TraceEvidenceOut,
     TraceMarketingOut,
@@ -24,6 +26,7 @@ from ..schemas import (
 from .knowledge import list_knowledge_docs
 
 DEMO_BATCH_CODE = "ZT-DEMO-001"
+DEMO_TRACE_CODE = "ZTDEMO26"
 
 _TIMELINE_LABEL = {
     "story": "故事定稿",
@@ -35,6 +38,22 @@ _TIMELINE_LABEL = {
 
 def _dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _assumptions(pricing: dict[str, Any]) -> list[CostAssumptionItem]:
+    """历史批次没有 assumptions 字段，缺就返回空列表，不让溯源页报错。"""
+    rows = pricing.get("assumptions")
+    if not isinstance(rows, list):
+        return []
+    result: list[CostAssumptionItem] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        try:
+            result.append(CostAssumptionItem.model_validate(item))
+        except ValidationError:
+            continue
+    return result
 
 
 def _citations(*values: dict[str, Any]) -> list[dict[str, Any]]:
@@ -249,6 +268,7 @@ async def load_trace(session: AsyncSession, code: str) -> TraceOut | None:
                 str(key): float(value)
                 for key, value in _dict(pricing.get("cost_breakdown")).items()
             },
+            assumptions=_assumptions(pricing),
             faq=faq,
             persona_greeting=str(pricing.get("persona_greeting") or ""),
             is_demo=bool(pricing.get("is_demo", True)),

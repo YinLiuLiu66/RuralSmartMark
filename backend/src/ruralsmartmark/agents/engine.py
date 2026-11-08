@@ -86,6 +86,22 @@ def _numbers(value: Any) -> set[str]:
     return found
 
 
+def _numbers_in_struct(value: Any) -> set[str]:
+    """提取嵌套结构里的全部数字 token（含 float/int 字段），并补上去尾零写法。
+
+    `_numbers` 只扫字符串，计算器算出的 premium_pct/cost_breakdown 这类数值字段
+    会被漏掉，导致模型复述「溢价 178.3%」时被判成不一致。这里补上，
+    同时让 56.20 与 56.2 视为同一个数。
+    """
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    tokens: set[str] = set()
+    for raw in _NUMBER.findall(text):
+        tokens.add(raw)
+        if "." in raw:
+            tokens.add(raw.rstrip("0").rstrip("."))
+    return tokens
+
+
 def _allowed_numbers(
     product: ProductProfile,
     batch: Batch,
@@ -220,6 +236,7 @@ async def _generate_pricing(
     tokens = 0
     if runtime.provider_name != "mock":
         allowed = _allowed_numbers(product, batch, docs, base)
+        allowed |= _numbers_in_struct(base)
         prompt = build_pricing_narrative_prompt(base, allowed)
         try:
             response = await runtime.llm.complete(

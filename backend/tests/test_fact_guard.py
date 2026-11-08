@@ -110,3 +110,24 @@ async def test_unknown_doc_id_is_error(session):
     result = check_output(payload, docs)
     assert not result.passed
     assert any(issue.rule == "CRIT-01" for issue in result.errors)
+
+
+async def test_user_citation_is_warning_not_error(session):
+    from types import SimpleNamespace
+
+    docs = await _docs(session)
+    target = next(item for item in docs if item.doc_key == "ENV-02")
+    fake = SimpleNamespace(
+        doc_key=target.doc_key,
+        title=target.title,
+        content=target.content,
+        credibility="user",
+        source_url="internal://user/1",
+        source_date="2026-11-08",
+    )
+    patched = [fake if item.doc_key == "ENV-02" else item for item in docs]
+
+    result = check_output(_payload(patched), patched)
+
+    assert result.passed
+    assert any(issue.rule == "USER-01" for issue in result.warnings)

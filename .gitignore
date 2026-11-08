@@ -16,6 +16,8 @@
 # ---------- 工具私有目录（不入库） ----------
 .zcode/
 .claude/
+.vscode/
+.workbuddy/
 
 # ---------- 本地数据 / 生成物（v2 SQLite、artifacts） ----------
 # 知识库是仓库资产，必须入库；运行期产物留在本机。
@@ -34,6 +36,7 @@ wheels/
 .venv/
 venv/
 .pytest_cache/
+.pytest-tmp/
 .ruff_cache/
 .mypy_cache/
 .coverage
@@ -52,4 +55,6 @@ dist-ssr/
 *.local
 pnpm-debug.log*
 npm-debug.log*
-yarn-error.log*
+yarn-error.log
+
+软著申请材料/

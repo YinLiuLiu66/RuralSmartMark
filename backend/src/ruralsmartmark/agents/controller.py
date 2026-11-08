@@ -35,7 +35,7 @@ from ..services.rewind import AGENT_ORDER, STAGE_INDEX
 from ..services.workspace import load_workspace
 from .base import AgentName
 from .pydantic_model import build_model_settings, build_pydantic_model
-from .research import ResearchUnavailable, run_research
+from .research import ResearchUnavailable, run_record, run_research
 from .runtime import AgentRuntime
 
 
@@ -170,9 +170,15 @@ CONTROLLER_INSTRUCTIONS = (
     "你可以读取产品/批次/AgentRun，调用四个 Agent，或启动调研。"
     "用户要新产品的资料时先调 research_product；有草案后向用户列缺口。"
     "危险动作（建档、开批次、通过、驳回、回退、删除批次）只能调 request_action 让用户确认，绝不能直接执行。"
-    "request_action 的 kind 必须逐字使用：commit_product（建档）、create_batch（给当前产品开新批次）、approve_agent（通过）、"
+    "request_action 的 kind 必须逐字使用：commit_product（建档）、apply_inputs（写入用户提供的数据）、"
+    "create_batch（给当前产品开新批次）、approve_agent（通过）、"
     "reject_agent（驳回）、rewind_to_agent（回退）、delete_batch（删除当前批次）；不要发明 start_batch、create_product 等别的名字。"
     "调研草案完成后，建档用 request_action('commit_product')。"
+    "用户报出自己的成本、收购价、盒价、运费或费率时，调 record_inputs 把他的原话结构化成草案，"
+    "不要用 research_product、也不要联网搜索；然后复述收到了哪些数字、缺哪些。"
+    "当前已有产品时，写入用 request_action('apply_inputs')；写入只改产品档案，不会自动重算已有产出，"
+    "要提醒用户：想让新成本生效，得重新跑到定价站（定价已通过则先回退再跑）。"
+    "用户只说“大概”“差不多”这类不给具体数字的话时，先问一个具体问题，不要自己补默认值。"
     "用户说开始/运行流水线时，对当前站调 run_agent；完成后汇报这一站的状态、关键信息和预警，等用户决定是否通过。"
     "用户说审核通过/通过时，调 request_action('approve_agent')；确认后后端会自动运行下一站，不要在同一轮再调 run_agent。"
     "每站都必须等用户确认，不要连续自动通过多站。"
@@ -335,6 +341,36 @@ async def run_controller_turn(
         }
 
     @agent.tool
+    async def record_inputs(ctx: RunContext[ControllerDeps], brief: str) -> dict:
+        """Record user-provided facts, prices, and cost assumptions. Does not search the web."""
+        known: dict = {}
+        if ctx.deps.product is not None:
+            known["current_product"] = {
+                "slug": ctx.deps.product.slug,
+                "name": ctx.deps.product.name,
+                "county": ctx.deps.product.county,
+                "province": ctx.deps.product.province,
+                "category": ctx.deps.product.category,
+                "form": ctx.deps.product.form,
+            }
+            known["current_cost_assumptions"] = (
+                (ctx.deps.product.specs or {}).get("cost_assumptions") or {}
+            )
+        try:
+            draft = await run_record(brief, settings=ctx.deps.settings, known=known)
+        except ResearchUnavailable as exc:
+            return {"error": str(exc)}
+        ctx.deps.draft = draft
+        return {
+            "product": draft.product.model_dump(),
+            "cost_assumptions": (draft.specs or {}).get("cost_assumptions") or {},
+            "benchmark_count": len(draft.benchmarks),
+            "doc_count": len(draft.docs),
+            "questions": draft.questions,
+            "warnings": draft.warnings,
+        }
+
+    @agent.tool
     async def run_agent(
         ctx: RunContext[ControllerDeps], agent: str, note: str = ""
     ) -> dict:
@@ -381,10 +417,11 @@ async def run_controller_turn(
     ) -> dict:
         """Create a pending action for user confirmation; does not execute it.
 
-        kind must be exactly one of: commit_product, create_batch, approve_agent, reject_agent, rewind_to_agent, delete_batch.
+        kind must be exactly one of: commit_product, apply_inputs, create_batch, approve_agent, reject_agent, rewind_to_agent, delete_batch.
         """
         allowed = {
             "commit_product",
+            "apply_inputs",
             "create_batch",
             "approve_agent",
             "reject_agent",
@@ -393,6 +430,18 @@ async def run_controller_turn(
         }
         if kind not in allowed:
             return {"error": f"不允许的动作: {kind}"}
+        if kind == "apply_inputs":
+            if ctx.deps.product is None:
+                return {
+                    "error": "当前会话没有绑定产品，无法更新档案；新产品请先 record_inputs 再 commit_product。"
+                }
+            if ctx.deps.draft is None:
+                return {"error": "还没有可写入的数据草案，请先调 record_inputs。"}
+            incoming = (ctx.deps.draft.specs or {}).get("cost_assumptions") or {}
+            if not incoming and not ctx.deps.draft.benchmarks and not ctx.deps.draft.docs:
+                return {
+                    "error": "草案里没有成本口径、基准价或事实，无法更新档案；请补充具体数字。"
+                }
         if kind == "create_batch":
             if ctx.deps.product is None:
                 return {"error": "当前会话没有绑定产品，无法开批次；请先选择产品或完成建档。"}
@@ -418,7 +467,13 @@ async def run_controller_turn(
 
     context = {
         "product": (
-            {"id": product.id, "slug": product.slug, "name": product.name, "county": product.county}
+            {
+                "id": product.id,
+                "slug": product.slug,
+                "name": product.name,
+                "county": product.county,
+                "cost_assumptions": (product.specs or {}).get("cost_assumptions") or {},
+            }
             if product
             else None
         ),

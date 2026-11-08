@@ -2,22 +2,58 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError
+
 from ..models import Batch, Benchmark, KnowledgeDoc, ProductProfile
+from ..schemas import CostAssumptions
 from .knowledge import quote_containing
 
 PACK_KG = 5.0
 BULK_PACK_KG = 5.0
+
+# 演示默认值：用户没给成本口径时逐项回退到这里（第 #91 条决策）。
+DEMO_DEFAULTS: dict[str, float] = {
+    "fruit_ratio": 0.8,
+    "loss_rate": 0.04,
+    "sorting_per_kg": 1.0,
+    "cold_chain_per_kg": 1.2,
+    "ecommerce_pack_per_kg": 0.4,
+    "box_cost": 5.7,
+    "platform_rate": 0.05,
+    "marketing_rate": 0.06,
+}
 
 
 class PricingError(ValueError):
     """定价基准或成本假设无法得到非负毛利。"""
 
 
-def _price_of(benchmarks: list[Benchmark], channel: str, fallback: float) -> float:
+def _benchmark_price(benchmarks: list[Benchmark], channel: str) -> float | None:
     for item in benchmarks:
         if item.channel == channel:
             return float(item.price_per_kg)
-    return fallback
+    return None
+
+
+def _assumptions_of(specs: dict[str, Any]) -> CostAssumptions:
+    """读产品档案里的成本口径；脏数据回退默认，不让历史档案把定价站带崩。"""
+    raw = specs.get("cost_assumptions")
+    if not isinstance(raw, dict) or not raw:
+        return CostAssumptions()
+    try:
+        return CostAssumptions.model_validate(raw)
+    except ValidationError:
+        return CostAssumptions()
+
+
+def _take(
+    model: CostAssumptions, field: str, source: str = "default"
+) -> tuple[float, str]:
+    """取用户值或默认值，同时给出这一项的来源标记。"""
+    value = getattr(model, field)
+    if value is None:
+        return DEMO_DEFAULTS[field], source
+    return float(value), "user"
 
 
 def _round_money(value: float) -> float:
@@ -44,12 +80,31 @@ def calculate_pricing(
     trace_code: str | None = None,
 ) -> dict[str, Any]:
     specs = product.specs or {}
-    bulk = _price_of(benchmarks, "散装批发", 10.0)
-    ecommerce = _price_of(benchmarks, "电商散装", max(bulk * 1.2, bulk + 1))
-    gift = _price_of(benchmarks, "品牌礼盒", max(ecommerce * 2, 25.6))
+    assumed = _assumptions_of(specs)
+
+    bulk = _benchmark_price(benchmarks, "散装批发")
+    bulk_source = "benchmark" if bulk is not None else "default"
+    if bulk is None:
+        bulk = 10.0
+    if assumed.bulk_price_per_kg is not None:
+        bulk, bulk_source = float(assumed.bulk_price_per_kg), "user"
+
+    ecommerce = _benchmark_price(benchmarks, "电商散装")
+    if ecommerce is None:
+        ecommerce = max(bulk * 1.2, bulk + 1)
+
+    gift = _benchmark_price(benchmarks, "品牌礼盒")
+    if gift is None:
+        gift = max(ecommerce * 2, 25.6)
 
     cost = packaging.get("cost_estimate") or {}
-    box_total = float(cost.get("total", 5.7))
+    raw_box = cost.get("total")
+    if assumed.box_cost is not None:
+        box_total, box_source = float(assumed.box_cost), "user"
+    elif raw_box is not None:
+        box_total, box_source = float(raw_box), "packaging"
+    else:
+        box_total, box_source = DEMO_DEFAULTS["box_cost"], "default"
     box_kg = float(specs.get("pack_kg", PACK_KG))
     bulk_kg = float(specs.get("bulk_pack_kg", BULK_PACK_KG))
     zhaotong = _is_zhaotong(product)
@@ -59,14 +114,18 @@ def calculate_pricing(
     ecommerce_pack = str(specs.get("ecommerce_pack_label") or gift_pack)
     bulk_pack = str(specs.get("bulk_pack_label") or default_bulk_pack)
 
-    # 演示成本模型：果价 + 损耗 + 分选人工 + 冷链 + 包装 + 平台/营销费。
-    fruit = bulk * 0.8
-    loss = fruit * 0.04
-    sorting = 1.0
-    cold_chain = 1.2
-    ecommerce_pack_cost = 0.4
-    platform_rate = 0.05
-    marketing_rate = 0.06
+    # 成本模型：果价 + 损耗 + 分选人工 + 冷链 + 包装 + 平台/营销费。
+    # 每项优先取用户提供的口径，缺省才回退演示默认值。
+    fruit_ratio, fruit_ratio_source = _take(assumed, "fruit_ratio")
+    loss_rate, loss_source = _take(assumed, "loss_rate")
+    sorting, sorting_source = _take(assumed, "sorting_per_kg")
+    cold_chain, cold_chain_source = _take(assumed, "cold_chain_per_kg")
+    ecommerce_pack_cost, _ = _take(assumed, "ecommerce_pack_per_kg")
+    platform_rate, platform_source = _take(assumed, "platform_rate")
+    marketing_rate, marketing_source = _take(assumed, "marketing_rate")
+
+    fruit = bulk * fruit_ratio
+    loss = fruit * loss_rate
 
     bulk_cost = fruit + loss + sorting
     ecommerce_cost = (
@@ -88,6 +147,54 @@ def calculate_pricing(
     gift_margin = _margin(gift, gift_cost)
     ecommerce_margin = _margin(ecommerce, ecommerce_cost)
     bulk_margin = _margin(bulk, bulk_cost)
+
+    note = str(assumed.basis or "").strip()
+
+    def _row(key: str, value: float, source: str, basis: str) -> dict[str, Any]:
+        return {
+            "key": key,
+            "value": _round_money(value),
+            "unit": "元/kg",
+            "source": source,
+            "basis": basis[:160],
+        }
+
+    bulk_basis = {
+        "benchmark": "知识库里的散装批发基准价",
+        "user": "你提供的收购基准价",
+        "default": "无公开基准，使用演示假设",
+    }[bulk_source]
+    fruit_basis = f"基准价 {bulk:.2f} × 系数 {fruit_ratio:g}"
+    if fruit_ratio_source == "user":
+        fruit_basis += "（系数由你提供）"
+
+    assumptions = [
+        _row("散装批发基准", bulk, bulk_source, bulk_basis),
+        _row("果价", fruit, "derived", fruit_basis),
+        _row("损耗", loss, loss_source, f"果价 × {loss_rate * 100:.1f}%"),
+        _row("分选人工", sorting, sorting_source, "按公斤计的分选人工"),
+        _row("冷链", cold_chain, cold_chain_source, "按公斤计的冷链运费"),
+        _row(
+            "礼盒",
+            box_total / box_kg,
+            box_source,
+            f"单盒 {box_total:.2f} 元 ÷ {box_kg:g} kg",
+        ),
+        _row("平台费", gift * platform_rate, platform_source, f"礼盒价 × {platform_rate * 100:.1f}%"),
+        _row(
+            "营销费",
+            gift * marketing_rate,
+            marketing_source,
+            f"礼盒价 × {marketing_rate * 100:.1f}%",
+        ),
+    ]
+    user_given = [row["key"] for row in assumptions if row["source"] == "user"]
+    if note:
+        # 依据只挂在第一个用户提供的项上，逐行重复同一句话在 H5 上很吵。
+        for row in assumptions:
+            if row["source"] == "user":
+                row["basis"] = f"{row['basis']}（依据：{note}）"[:160]
+                break
 
     channel_rows = [
         {
@@ -123,12 +230,15 @@ def calculate_pricing(
         f"{gift_fees:.2f}) / 售价 = {gift_margin * 100:.1f}%。"
     )
 
+    source_note = (
+        f"其中{'、'.join(user_given)}的成本口径由用户提供；" if user_given else ""
+    )
     rationale = (
         f"以散装批发 {bulk:.1f} 元/kg 为基线，{box_kg:g}kg 品牌礼盒定价 {gift_total:.1f} 元"
         f"（{gift:.1f} 元/kg），溢价 {premium:.1f}%；"
         f"礼盒货品成本约 {gift_goods_cost * box_kg:.2f} 元，平台/营销费约 "
         f"{gift_fees * box_kg:.2f} 元，净毛利约 {gift_margin * 100:.1f}%。"
-        "以上为演示测算，不是市场报价或增收承诺。"
+        f"{source_note}以上为演示测算，不是市场报价或增收承诺。"
     )
 
     trace_url = f"{public_base_url.rstrip('/')}/trace/{trace_code or batch.code}"
@@ -214,6 +324,7 @@ def calculate_pricing(
             "平台费": _round_money(gift * platform_rate),
             "营销费": _round_money(gift * marketing_rate),
         },
+        "assumptions": assumptions,
         "trace_timeline": [
             {"step": "采摘", "note": f"{product.county} · 演示批次 {batch.code}"},
             {

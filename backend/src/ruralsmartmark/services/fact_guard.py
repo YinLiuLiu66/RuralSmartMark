@@ -222,6 +222,14 @@ def check_output(
                 "error",
                 "先用 seed 更新知识库，或改引已核验条目",
             )
+        elif doc.credibility == "user":
+            result.add(
+                "USER-01",
+                field_path,
+                f"{doc_id} 是用户提供的数据，未经外部核验",
+                "warning",
+                "对外表述时标明来源为用户提供，不要写成已核验的公开事实",
+            )
         if not doc.source_url or doc.source_url.upper().startswith("TODO"):
             result.add(
                 "CRIT-04",

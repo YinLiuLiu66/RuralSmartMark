@@ -46,3 +46,15 @@ def test_quotes_must_match_scraped_page():
     assert bad.docs == []
     assert any("未逐字命中" in item for item in bad.warnings)
     assert bad.questions
+
+
+def test_user_provided_doc_is_kept_with_warning():
+    draft = verify_draft(
+        _draft("我家果园去年产量大约八千斤，收购价每斤四块二。", "internal://user/1"),
+        {},
+    )
+
+    assert len(draft.docs) == 1
+    assert draft.docs[0].credibility == "user"
+    assert any("未经外部核验" in item for item in draft.warnings)
+    assert draft.questions == []

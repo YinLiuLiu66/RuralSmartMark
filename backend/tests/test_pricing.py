@@ -135,3 +135,119 @@ def test_zhaotong_pricing_keeps_tuned_defaults():
     assert "牛皮纸天地盖礼盒" in serialized
     assert "乌蒙山" in result["persona_greeting"]
     assert result["persona_greeting"].startswith("你好呀，我是山风守园人。")
+
+
+def _assumption_map(result):
+    return {row["key"]: row for row in result["assumptions"]}
+
+
+def test_cost_assumptions_override_defaults():
+    specs = {
+        "cost_assumptions": {
+            "bulk_price_per_kg": 8.0,
+            "fruit_ratio": 0.9,
+            "loss_rate": 0.02,
+            "sorting_per_kg": 0.6,
+            "cold_chain_per_kg": 1.0,
+            "box_cost": 6.4,
+            "platform_rate": 0.04,
+            "marketing_rate": 0.03,
+        }
+    }
+    product, batch, benchmarks, docs = _bare_context("qingti", "青提", specs)
+
+    result = calculate_pricing(
+        product,
+        batch,
+        {"cost_estimate": {"total": 5.7}},
+        benchmarks,
+        docs,
+        public_base_url="http://127.0.0.1:5173",
+    )
+
+    breakdown = result["cost_breakdown"]
+    assert breakdown["果价"] == pytest.approx(7.2)
+    assert breakdown["损耗"] == pytest.approx(0.14)
+    assert breakdown["分选人工"] == pytest.approx(0.6)
+    assert breakdown["冷链"] == pytest.approx(1.0)
+    assert breakdown["礼盒"] == pytest.approx(1.28)
+    assert "成本口径由用户提供" in result["rationale"]
+
+    rows = _assumption_map(result)
+    assert rows["散装批发基准"]["source"] == "user"
+    assert rows["散装批发基准"]["value"] == pytest.approx(8.0)
+    assert rows["果价"]["source"] == "derived"
+    assert rows["礼盒"]["source"] == "user"
+    assert rows["平台费"]["source"] == "user"
+
+
+def test_assumptions_mark_packaging_and_defaults():
+    product, batch, benchmarks, docs = _bare_context("qingti", "青提", {})
+
+    result = calculate_pricing(
+        product,
+        batch,
+        {"cost_estimate": {"total": 5.7}},
+        benchmarks,
+        docs,
+        public_base_url="http://127.0.0.1:5173",
+    )
+
+    rows = _assumption_map(result)
+    assert rows["散装批发基准"]["source"] == "benchmark"
+    assert rows["果价"]["source"] == "derived"
+    assert rows["损耗"]["source"] == "default"
+    assert rows["礼盒"]["source"] == "packaging"
+    assert rows["礼盒"]["basis"].startswith("单盒 5.70 元 ÷ 5 kg")
+    assert "成本口径由用户提供" not in result["rationale"]
+
+
+def test_user_box_cost_beats_packaging_artifact():
+    specs = {"cost_assumptions": {"box_cost": 8.0}}
+    product, batch, benchmarks, docs = _bare_context("qingti", "青提", specs)
+
+    result = calculate_pricing(
+        product,
+        batch,
+        {"cost_estimate": {"total": 5.7}},
+        benchmarks,
+        docs,
+        public_base_url="http://127.0.0.1:5173",
+    )
+
+    assert result["cost_breakdown"]["礼盒"] == pytest.approx(1.6)
+    assert _assumption_map(result)["礼盒"]["source"] == "user"
+
+
+def test_missing_packaging_cost_falls_back_to_default():
+    product, batch, benchmarks, docs = _bare_context("qingti", "青提", {})
+
+    result = calculate_pricing(
+        product,
+        batch,
+        {},
+        benchmarks,
+        docs,
+        public_base_url="http://127.0.0.1:5173",
+    )
+
+    assert result["cost_breakdown"]["礼盒"] == pytest.approx(1.14)
+    assert _assumption_map(result)["礼盒"]["source"] == "default"
+
+
+def test_invalid_cost_assumptions_fall_back_to_defaults():
+    specs = {"cost_assumptions": {"loss_rate": 5, "sorting_per_kg": -3}}
+    product, batch, benchmarks, docs = _bare_context("qingti", "青提", specs)
+
+    result = calculate_pricing(
+        product,
+        batch,
+        {"cost_estimate": {"total": 5.7}},
+        benchmarks,
+        docs,
+        public_base_url="http://127.0.0.1:5173",
+    )
+
+    assert result["cost_breakdown"]["损耗"] == pytest.approx(0.32)
+    assert result["cost_breakdown"]["分选人工"] == pytest.approx(1.0)
+    assert _assumption_map(result)["损耗"]["source"] == "default"

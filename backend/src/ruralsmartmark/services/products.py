@@ -153,3 +153,65 @@ async def commit_research_draft(
     session.add(batch)
     await session.flush()
     return product, batch, doc_count, len(benchmarks)
+
+
+async def apply_user_inputs(
+    session: AsyncSession, product: ProductProfile, draft: ResearchDraft
+) -> dict:
+    """把用户提供的成本口径 / 基准价 / 事实合并进既有产品档案。
+
+    只在用户确实给了对应内容时才动，避免用演示回退值把真实档案冲掉。
+    """
+    current = product.specs if isinstance(product.specs, dict) else {}
+    specs = {**current, **(draft.specs or {})}
+    incoming = (draft.specs or {}).get("cost_assumptions")
+    if isinstance(incoming, dict) and incoming:
+        base = current.get("cost_assumptions")
+        specs["cost_assumptions"] = {
+            **(base if isinstance(base, dict) else {}),
+            **incoming,
+        }
+    product.specs = specs
+    await session.flush()
+
+    doc_count = 0
+    if draft.docs:
+        documents = [
+            KnowledgeDocument(
+                doc_key=doc.doc_id,
+                title=doc.title,
+                type=doc.type,
+                source_url=doc.source_url,
+                source_date=doc.source_date,
+                publisher="",
+                credibility=doc.credibility,
+                content=doc.content,
+            )
+            for doc in draft.docs
+        ]
+        doc_count = await upsert_knowledge_documents(session, product.id, documents)
+
+    benchmark_count = 0
+    if draft.benchmarks:
+        await session.execute(delete(Benchmark).where(Benchmark.product_id == product.id))
+        for item in draft.benchmarks:
+            session.add(
+                Benchmark(
+                    product_id=product.id,
+                    channel=item.channel,
+                    competitor=item.competitor,
+                    spec=item.spec,
+                    price_per_kg=item.price_per_kg,
+                    source_url=item.source_url or "internal://user/price",
+                    source_date=item.source_date or _today(),
+                    note=item.note or "用户提供的报价",
+                )
+            )
+        benchmark_count = len(draft.benchmarks)
+
+    await session.commit()
+    return {
+        "cost_assumptions": specs.get("cost_assumptions") or {},
+        "docs": doc_count,
+        "benchmarks": benchmark_count,
+    }

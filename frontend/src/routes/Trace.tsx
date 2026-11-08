@@ -18,6 +18,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   traceApi,
   TraceNotFoundError,
+  type AssumptionSource,
   type Trace,
   type TraceEvidence,
   type TraceTimelineEvent,
@@ -25,6 +26,14 @@ import {
 
 type PageState = "loading" | "ready" | "not-found" | "error";
 type ChatEntry = { role: "user" | "assistant"; content: string; source?: "llm" | "template" };
+
+const SOURCE_LABEL: Record<AssumptionSource, string> = {
+  user: "项目方提供",
+  packaging: "包装报价",
+  benchmark: "公开基准",
+  derived: "公式折算",
+  default: "演示假设",
+};
 
 function formatPct(value: number): string {
   return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
@@ -578,6 +587,39 @@ export default function Trace() {
               ))}
             </div>
           </details>
+
+          {trace.pricing.assumptions.length > 0 && (
+            <details className="group mt-2 rounded-card border border-line bg-surface">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-xs text-ink">
+                <span>成本口径（每项谁定的）</span>
+                <ChevronDown size={14} className="text-ink-faint transition group-open:rotate-180" />
+              </summary>
+              <ul className="space-y-3 border-t border-line px-4 py-4">
+                {trace.pricing.assumptions.map((item) => (
+                  <li key={item.key} className="flex items-start justify-between gap-3 text-[11px]">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-ink">{item.key}</span>
+                        <span
+                          className={`rounded-full border px-1.5 py-px text-[10px] ${
+                            item.source === "user"
+                              ? "border-kraft text-kraft"
+                              : "border-line text-ink-faint"
+                          }`}
+                        >
+                          {SOURCE_LABEL[item.source]}
+                        </span>
+                      </div>
+                      <p className="mt-1 leading-5 text-ink-faint">{item.basis}</p>
+                    </div>
+                    <span className="shrink-0 tabular-nums text-ink">
+                      ¥{item.value.toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
 
         <section className="mt-8 px-5">

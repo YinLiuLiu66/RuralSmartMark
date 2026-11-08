@@ -161,7 +161,8 @@ async def run_mock_agent(
         }
 
     if packaging is None:
-        packaging = {"cost_estimate": {"total": 5.7}}
+        # 没有包装产物时用空壳，让计算器把礼盒成本标成 default 而不是误标 packaging。
+        packaging = {}
     output = calculate_pricing(
         product,
         batch,

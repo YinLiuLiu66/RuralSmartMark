@@ -27,10 +27,9 @@ from ..models import (
 from ..services.fact_guard import check_output
 from ..services.knowledge import list_knowledge_docs, upsert_knowledge_docs
 from ..services.pricing import calculate_pricing
+from ..services.trace import DEMO_BATCH_CODE, DEMO_TRACE_CODE
 
 PRODUCT_SLUG = "zhaotong-ugly-apple"
-DEMO_BATCH_CODE = "ZT-DEMO-001"
-DEMO_TRACE_CODE = "ZTDEMO26"
 PRICE_SOURCE = "https://www.cnhnb.com/p/pingguo/"
 
 PRODUCT_SPECS = {

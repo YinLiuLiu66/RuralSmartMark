@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..schemas import CostAssumptionItem
 from .base import AgentName
 
 HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
@@ -177,6 +178,7 @@ class PricingOutput(BaseModel):
     rationale: str = Field(min_length=30, max_length=600)
     formula: str = Field(min_length=20, max_length=500)
     cost_breakdown: dict[str, float]
+    assumptions: list[CostAssumptionItem] = Field(default_factory=list, max_length=12)
     trace_timeline: list[TraceEvent] = Field(min_length=4, max_length=8)
     qr_payload: str = Field(min_length=4, max_length=300)
     persona_greeting: str = Field(min_length=5, max_length=160)

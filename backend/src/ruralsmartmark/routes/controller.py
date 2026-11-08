@@ -38,7 +38,7 @@ from ..services.batch_create import (
     create_batch_for_product,
 )
 from ..services.batch_delete import BatchDeleteError, delete_batch
-from ..services.products import commit_research_draft
+from ..services.products import apply_user_inputs, commit_research_draft
 from ..services.rewind import rewind_to_agent
 
 router = APIRouter()
@@ -347,6 +347,26 @@ async def _execute_pending(
         return (
             f"已建档：{product_name}（{product_slug}），"
             f"知识库 {docs} 条、基准价 {benchmarks} 条，批次 {batch_code}。"
+        )
+
+    if kind == "apply_inputs":
+        if not item.draft_json:
+            raise HTTPException(status_code=409, detail="没有可写入的数据草案")
+        product = (
+            await session.get(ProductProfile, item.product_id) if item.product_id else None
+        )
+        if product is None:
+            raise HTTPException(status_code=409, detail="当前会话没有绑定产品")
+        draft = ResearchDraft.model_validate(item.draft_json)
+        stats = await apply_user_inputs(session, product, draft)
+        item.pending_action_json = None
+        item.draft_json = None
+        await session.commit()
+        costs = stats["cost_assumptions"]
+        return (
+            f"已写入 {product.name} 的档案：成本口径 {len(costs)} 项、"
+            f"基准价 {stats['benchmarks']} 条、事实 {stats['docs']} 条。"
+            "档案已更新，但已有产出不会自动重算——要重新跑到定价站才生效。"
         )
 
     if kind == "create_batch":
