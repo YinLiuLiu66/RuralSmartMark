@@ -73,12 +73,6 @@ export default function ProjectCard({
             </span>
           </div>
         )}
-        {latest?.trace_code && (
-          <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-[10px] text-leaf">
-            <QrCode size={10} />
-            {latest.trace_code}
-          </span>
-        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -98,9 +92,17 @@ export default function ProjectCard({
         </div>
 
         <div className="mt-auto space-y-2 pt-1">
-          <div className="flex items-center justify-between text-[10px] text-ink-faint">
-            <span>{latest ? latest.code : "未创建批次"}</span>
-            <span>{stage}/6 站</span>
+          <div className="flex items-center justify-between gap-2 text-[10px] text-ink-faint">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate">{latest ? latest.code : "未创建批次"}</span>
+              {latest?.trace_code && (
+                <span className="flex shrink-0 items-center gap-0.5 text-leaf">
+                  <QrCode size={9} />
+                  {latest.trace_code}
+                </span>
+              )}
+            </span>
+            <span className="shrink-0">{stage}/6 站</span>
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-line">
             <div
