@@ -4,20 +4,17 @@ import {
   Brain,
   ChevronRight,
   Loader2,
-  Plus,
   Send,
   ShieldCheck,
   Sparkles,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-import {
-  controllerApi,
-  type ControllerMessage,
-  type ControllerSession,
-  type ControllerStreamEvent,
-} from "../api/controller";
-import { STATUS_LABEL } from "../agents";
+import type { ControllerMessage } from "../../api/controller";
+import { STATUS_LABEL } from "../../agents";
+import { useControllerStore } from "../../stores/controller";
+import { toApiContext, type PageContext } from "../../hooks/usePageContext";
 
 const ACTION_LABEL: Record<string, string> = {
   commit_product: "确认建档",
@@ -26,14 +23,15 @@ const ACTION_LABEL: Record<string, string> = {
   reject_agent: "确认驳回",
   rewind_to_agent: "确认回退并重跑",
   delete_batch: "确认删除批次",
+  apply_inputs: "确认写入档案",
 };
 
 const TOOL_LABEL: Record<string, string> = {
   list_products: "正在读取产品列表",
+  list_batches: "正在读取批次列表",
   get_workspace: "正在读取批次状态",
   research_product: "正在检索资料并整理档案",
-  search_web: "正在搜索来源",
-  scrape_sources: "正在抓取页面正文",
+  record_inputs: "正在整理你提供的数据",
   run_agent: "正在调用 Agent",
   request_action: "正在准备确认卡",
 };
@@ -88,10 +86,7 @@ function ThinkingBlock({
   return (
     <details className="group mb-2 rounded-control border border-line/70 bg-paper/70 px-2.5 py-2">
       <summary className="flex cursor-pointer list-none select-none items-center gap-1.5 text-[10px] text-ink-faint [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          size={11}
-          className="transition-transform group-open:rotate-90"
-        />
+        <ChevronRight size={11} className="transition-transform group-open:rotate-90" />
         {streaming ? (
           <Loader2 size={11} className="animate-spin" />
         ) : (
@@ -137,194 +132,82 @@ function AssistantBubble({ children }: { children: ReactNode }) {
   );
 }
 
-interface StreamState {
-  thinking: string;
-  answer: string;
-  tools: string[];
-  active: boolean;
+function contextLabel(context: PageContext): string {
+  if (context.productName) {
+    const parts = [context.productName];
+    parts.push(context.batchCode ?? "未选批次");
+    if (context.batchState) {
+      parts.push(STATUS_LABEL[context.batchState] ?? context.batchState);
+    }
+    return parts.join(" · ");
+  }
+  if (context.route === "workbench") return "工作台 · 未选择项目";
+  return "全页聊天 · 未选择项目";
 }
 
-export default function ControllerPanel({
-  productSlug,
-  batchId,
-  freshToken,
-  onNewProduct,
+export default function ControllerChat({
+  context,
+  variant = "dock",
   onClose,
-  onDataChanged,
-  inline = false,
 }: {
-  productSlug: string | null;
-  batchId: number | null;
-  freshToken?: number;
-  onNewProduct?: () => void;
+  context: PageContext;
+  variant?: "dock" | "page";
   onClose: () => void;
-  onDataChanged: (batchId?: number | null) => void;
-  inline?: boolean;
 }) {
-  const [session, setSession] = useState<ControllerSession | null>(null);
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingUser, setPendingUser] = useState<string | null>(null);
-  const [stream, setStream] = useState<StreamState | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    const abort = new AbortController();
-    setSession(null);
-    setError(null);
-    setPendingUser(null);
-    setStream(null);
-    controllerApi
-      .createSession(
-        productSlug,
-        batchId,
-        freshToken !== undefined,
-        abort.signal,
-      )
-      .then((result) => {
-        if (!cancelled) setSession(result);
-      })
-      .catch((reason: unknown) => {
-        if (!cancelled && !abort.signal.aborted) {
-          setError(reason instanceof Error ? reason.message : "总控初始化失败");
-        }
-      });
-    return () => {
-      cancelled = true;
-      abort.abort();
-    };
-  }, [productSlug, batchId, freshToken]);
+  const session = useControllerStore((state) => state.session);
+  const busy = useControllerStore((state) => state.busy);
+  const error = useControllerStore((state) => state.error);
+  const pendingUser = useControllerStore((state) => state.pendingUser);
+  const stream = useControllerStore((state) => state.stream);
+  const needsTarget = useControllerStore((state) => state.needsTarget);
+  const ensureSession = useControllerStore((state) => state.ensureSession);
+  const refresh = useControllerStore((state) => state.refresh);
+  const send = useControllerStore((state) => state.send);
+  const confirm = useControllerStore((state) => state.confirm);
 
   useEffect(() => {
-    if (!session) return;
-    const reload = () => {
-      void controllerApi
-        .getSession(session.id)
-        .then((next) => setSession(next))
-        .catch(() => undefined);
-    };
+    void ensureSession();
+  }, [ensureSession]);
+
+  useEffect(() => {
+    const reload = () => void refresh();
     window.addEventListener("focus", reload);
     return () => window.removeEventListener("focus", reload);
-  }, [session?.id]);
+  }, [refresh]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [
-    session?.messages.length,
-    pendingUser,
-    stream?.answer,
-    stream?.thinking,
-    busy,
-  ]);
+  }, [session?.messages.length, pendingUser, stream?.answer, stream?.thinking, busy]);
 
-  function applyStreamEvent(event: ControllerStreamEvent) {
-    if (event.type === "user") {
-      setPendingUser(null);
-      setSession((current) => {
-        if (!current) return current;
-        if (current.messages.some((row) => row.id === event.message.id)) {
-          return current;
-        }
-        return { ...current, messages: [...current.messages, event.message] };
-      });
-      return;
-    }
-    if (event.type === "thinking") {
-      setStream((current) =>
-        current ? { ...current, thinking: current.thinking + event.text } : current,
-      );
-      return;
-    }
-    if (event.type === "delta") {
-      setStream((current) =>
-        current ? { ...current, answer: current.answer + event.text } : current,
-      );
-      return;
-    }
-    if (event.type === "tool") {
-      if (event.status !== "running") return;
-      setStream((current) =>
-        current
-          ? { ...current, tools: [...current.tools, event.name].slice(-3) }
-          : current,
-      );
-      return;
-    }
-    if (event.type === "done") {
-      setSession(event.turn.session);
-      setPendingUser(null);
-      setStream(null);
-      setBusy(false);
-      return;
-    }
-    if (event.type === "error") {
-      setError(event.detail);
-      setStream(null);
-      setBusy(false);
-      if (session) {
-        void controllerApi
-          .getSession(session.id)
-          .then((next) => {
-            setSession(next);
-            setPendingUser(null);
-          })
-          .catch(() => undefined);
-      }
-    }
-  }
-
-  async function send(text: string) {
-    if (!session || busy || !text.trim()) return;
-    const message = text.trim().slice(0, 2000);
+  function submit() {
+    const text = input.trim();
+    if (!text || busy) return;
     setInput("");
-    setBusy(true);
-    setError(null);
-    setPendingUser(message);
-    setStream({ thinking: "", answer: "", tools: [], active: true });
-    let finished = false;
-    try {
-      await controllerApi.streamMessage(session.id, message, (event) => {
-        if (event.type === "done" || event.type === "error") finished = true;
-        applyStreamEvent(event);
-      });
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "总控没有回应");
-    } finally {
-      setBusy(false);
-      setStream(null);
-      if (!finished) {
-        setError((current) => current ?? "连接中断，已保留你的消息；请再发一次或刷新页面。");
-        void controllerApi
-          .getSession(session.id)
-          .then((next) => {
-            setSession(next);
-            setPendingUser(null);
-          })
-          .catch(() => undefined);
-      }
-    }
+    void send(text, toApiContext(context));
   }
 
-  async function confirm(decision: "confirm" | "cancel") {
-    if (!session?.pending_action_json || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const turn = await controllerApi.confirm(
-        session.id,
-        session.pending_action_json.id,
-        decision,
-      );
-      setSession(turn.session);
-      setPendingUser(null);
-      setStream(null);
-      if (decision === "confirm") onDataChanged(turn.session.batch_id);
-    } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : "确认失败");
-    } finally {
-      setBusy(false);
+  async function handleConfirm(decision: "confirm" | "cancel") {
+    const kind = session?.pending_action_json?.kind;
+    const turn = await confirm(decision);
+    if (!turn || decision !== "confirm") return;
+    const next = turn.session;
+    if (kind === "commit_product") {
+      // 新产品建档后回工作台，卡片由 dataVersion 触发刷新生成。
+      navigate("/");
+      return;
+    }
+    if (kind === "create_batch") {
+      if (context.product_slug && next.batch_id) {
+        navigate(`/project/${context.product_slug}?batch=${next.batch_id}`);
+      }
+      return;
+    }
+    if (kind === "delete_batch" && context.product_slug) {
+      navigate(`/project/${context.product_slug}`);
     }
   }
 
@@ -336,61 +219,37 @@ export default function ControllerPanel({
   return (
     <aside
       className={
-        inline
+        variant === "page"
           ? "relative mx-auto flex h-dvh w-full max-w-[720px] flex-col border-x border-line bg-paper"
           : "fixed right-0 top-0 z-40 flex h-dvh w-full max-w-[430px] flex-col border-l border-line bg-paper shadow-[-20px_0_60px_rgba(31,42,36,0.16)]"
       }
     >
       <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 font-display text-lg text-ink">
             <Sparkles size={16} className="text-apple" />
             总控
           </div>
-          <p className="mt-0.5 text-[10px] text-ink-faint">
-            调研 · 运行 · 修改 · 审核，都在这里说
+          <p
+            className="mt-0.5 max-w-[250px] truncate text-[10px] text-ink-muted"
+            title={contextLabel(context)}
+          >
+            {contextLabel(context)}
           </p>
-          {session && (
-            <p
-              className="mt-0.5 max-w-[250px] truncate text-[10px] text-ink-muted"
-              title={`${session.product_name ?? "新产品"} · ${
-                session.batch_code ?? "未绑定批次"
-              }${
-                session.batch_state
-                  ? ` · ${STATUS_LABEL[session.batch_state] ?? session.batch_state}`
-                  : ""
-              }`}
-            >
-              {session.product_name ?? "新产品"} ·{" "}
-              {session.batch_code ?? "未绑定批次"}
-              {session.batch_state
-                ? ` · ${STATUS_LABEL[session.batch_state] ?? session.batch_state}`
-                : ""}
+          {session?.product_name && (
+            <p className="mt-0.5 max-w-[250px] truncate text-[10px] text-ink-faint">
+              最近操作：{session.product_name} · {session.batch_code ?? "未绑定批次"}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {onNewProduct && (
-            <button
-              type="button"
-              onClick={onNewProduct}
-              aria-label="新建产品"
-              title="新建产品"
-              className="flex h-8 items-center gap-1 rounded-control border border-line px-2 text-[10px] text-ink-muted hover:border-apple/40 hover:text-apple"
-            >
-              <Plus size={12} />
-              新建
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="关闭总控"
-            className="flex h-8 w-8 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
-          >
-            <X size={15} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="关闭总控"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control border border-line text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
+        >
+          <X size={15} />
+        </button>
       </header>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -404,14 +263,14 @@ export default function ControllerPanel({
         {session?.messages.length === 0 && !busy && !pendingUser && (
           <div className="rounded-card border border-dashed border-line bg-surface p-4">
             <p className="text-sm leading-6 text-ink">
-              告诉我你想做什么产品，或者直接问当前批次。
+              告诉我你想做什么产品，或者直接问当前项目。
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {["帮我做一个新产品", "现在到哪了", "包装改克制一点"].map((item) => (
+              {["帮我做一个新产品", "我现在有哪些项目", "现在到哪了"].map((item) => (
                 <button
                   key={item}
                   type="button"
-                  onClick={() => void send(item)}
+                  onClick={() => void send(item, toApiContext(context))}
                   className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] text-ink-muted transition-colors hover:border-apple/30 hover:bg-apple-weak/40 hover:text-apple"
                 >
                   {item}
@@ -453,6 +312,35 @@ export default function ControllerPanel({
               </div>
             )}
           </AssistantBubble>
+        )}
+
+        {needsTarget && needsTarget.candidates.length > 0 && (
+          <section className="rounded-card border border-amber/40 bg-amber/5 p-3">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-amber">
+              需要指定目标
+            </div>
+            <p className="mt-1 text-[11px] leading-5 text-ink-muted">
+              {needsTarget.message}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {needsTarget.candidates.map((candidate) => (
+                <button
+                  key={`${candidate.kind}-${candidate.batch_id ?? candidate.product_slug}`}
+                  type="button"
+                  onClick={() => {
+                    const target =
+                      candidate.kind === "batch" && candidate.batch_id
+                        ? `/project/${candidate.product_slug}?batch=${candidate.batch_id}`
+                        : `/project/${candidate.product_slug}`;
+                    navigate(target);
+                  }}
+                  className="rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] text-ink-muted hover:border-apple/40 hover:text-apple"
+                >
+                  {candidate.label}
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
         {draft && (
@@ -504,11 +392,16 @@ export default function ControllerPanel({
               {ACTION_LABEL[pending.kind] ?? pending.kind}
             </div>
             <p className="mt-1 text-xs leading-5 text-ink-muted">{pending.summary}</p>
+            {pending.batch_code && (
+              <p className="mt-1 text-[10px] text-ink-faint">
+                目标批次：{pending.batch_code}（出卡时已固定）
+              </p>
+            )}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void confirm("confirm")}
+                onClick={() => void handleConfirm("confirm")}
                 className="flex-1 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
               >
                 确认
@@ -516,7 +409,7 @@ export default function ControllerPanel({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void confirm("cancel")}
+                onClick={() => void handleConfirm("cancel")}
                 className="rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:opacity-50"
               >
                 取消
@@ -547,7 +440,7 @@ export default function ControllerPanel({
         className="flex items-center gap-2 border-t border-line bg-surface px-4 py-3"
         onSubmit={(event) => {
           event.preventDefault();
-          void send(input);
+          submit();
         }}
       >
         <input
@@ -567,7 +460,7 @@ export default function ControllerPanel({
         </button>
       </form>
       <div className="border-t border-line px-4 py-2 text-[10px] text-ink-faint">
-        建档、通过、驳回、回退会先弹确认；调研来源会逐字校验。
+        建档、通过、驳回、回退会先弹确认；目标批次在出卡时固定。
         <ArrowUpRight size={10} className="ml-1 inline" />
       </div>
     </aside>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -86,6 +87,8 @@ BENCHMARKS = [
 DEMO_SNAPSHOT_FILE = Path(__file__).with_name("demo_batch.json")
 DEMO_ILLUSTRATION_FILE = Path(__file__).with_name("demo_illustration.png")
 
+ZHAOTONG_RAW_BATCH_CODE = "ZT-2026-001"
+
 BATCHES = [
     {
         "code": DEMO_BATCH_CODE,
@@ -95,7 +98,7 @@ BATCHES = [
         "trace_code": DEMO_TRACE_CODE,
     },
     {
-        "code": "ZT-2026-001",
+        "code": ZHAOTONG_RAW_BATCH_CODE,
         "quantity_kg": 300.0,
         "state": "raw",
         "current_station": "intake",
@@ -104,23 +107,92 @@ BATCHES = [
 ]
 
 
-async def _upsert_product(session: AsyncSession) -> ProductProfile:
+@dataclass(frozen=True)
+class ProductSeed:
+    slug: str
+    name: str
+    county: str
+    province: str
+    category: str
+    form: str
+    specs: dict
+    palette: dict
+    scene_preset: str
+    knowledge_dir: str
+    benchmarks: list[dict]
+    batches: list[dict]
+
+
+ZHAOTONG_SEED = ProductSeed(
+    slug=PRODUCT_SLUG,
+    name="昭通丑苹果",
+    county="云南省昭通市昭阳区",
+    province="云南省",
+    category="鲜果",
+    form="5kg / 12 枚礼盒",
+    specs=PRODUCT_SPECS,
+    palette=PRODUCT_PALETTE,
+    scene_preset="orchard",
+    knowledge_dir="data/knowledge/zhaotong",
+    benchmarks=BENCHMARKS,
+    batches=BATCHES,
+)
+
+SEED_PRODUCTS_DIR = Path(__file__).with_name("products")
+
+
+def majiang_seed() -> ProductSeed:
+    """工作台第二个产品：麻江蓝莓，停在 raw，方便现场演示「换个产品也能跑」。"""
+    folder = SEED_PRODUCTS_DIR / "majiang"
+    data = json.loads((folder / "product.json").read_text(encoding="utf-8"))
+    benchmarks = json.loads((folder / "benchmarks.json").read_text(encoding="utf-8"))
+    specs = dict(data.get("specs") or {})
+    specs.setdefault("batch_prefix", "MJ")
+    return ProductSeed(
+        slug=str(data["slug"]),
+        name=str(data["name"]),
+        county=str(data["county"]),
+        province=str(data["province"]),
+        category=str(data["category"]),
+        form=str(data["form"]),
+        specs=specs,
+        palette=dict(data.get("palette") or PRODUCT_PALETTE),
+        scene_preset=str(data.get("scene_preset") or "orchard"),
+        knowledge_dir=str(folder / "knowledge"),
+        benchmarks=benchmarks,
+        batches=[
+            {
+                "code": "MJ-2026-001",
+                "quantity_kg": 120.0,
+                "state": "raw",
+                "current_station": "intake",
+                "trace_code": None,
+            }
+        ],
+    )
+
+
+def seed_products() -> list[ProductSeed]:
+    return [ZHAOTONG_SEED, majiang_seed()]
+
+
+async def _upsert_product(session: AsyncSession, seed: ProductSeed) -> ProductProfile:
     product = await session.scalar(
-        select(ProductProfile).where(ProductProfile.slug == PRODUCT_SLUG)
+        select(ProductProfile).where(ProductProfile.slug == seed.slug)
     )
     if product is None:
-        product = ProductProfile(slug=PRODUCT_SLUG)
+        product = ProductProfile(slug=seed.slug)
         session.add(product)
 
-    product.name = "昭通丑苹果"
-    product.county = "云南省昭通市昭阳区"
-    product.province = "云南省"
-    product.category = "鲜果"
-    product.form = "5kg / 12 枚礼盒"
-    product.specs = PRODUCT_SPECS
-    product.palette = PRODUCT_PALETTE
-    product.scene_preset = "orchard"
-    product.knowledge_dir = "data/knowledge/zhaotong"
+    product.name = seed.name
+    product.county = seed.county
+    product.province = seed.province
+    product.category = seed.category
+    product.form = seed.form
+    product.specs = seed.specs
+    product.palette = seed.palette
+    product.scene_preset = seed.scene_preset
+    product.knowledge_dir = seed.knowledge_dir
     product.is_active = True
     await session.flush()
     return product
@@ -130,23 +202,28 @@ async def _seed_knowledge(session: AsyncSession, product: ProductProfile) -> Non
     await upsert_knowledge_docs(session, product.id, product.knowledge_dir)
 
 
-async def _seed_benchmarks(session: AsyncSession, product_id: int) -> None:
+async def _seed_benchmarks(
+    session: AsyncSession, product_id: int, benchmarks: list[dict]
+) -> None:
     await session.execute(delete(Benchmark).where(Benchmark.product_id == product_id))
-    for item in BENCHMARKS:
+    for item in benchmarks:
         session.add(Benchmark(product_id=product_id, **item))
 
 
-async def _seed_batches(session: AsyncSession, product_id: int, *, reset: bool) -> None:
-    if reset:
-        await session.execute(delete(ControllerMessage))
-        await session.execute(delete(ControllerSession))
-        await session.execute(delete(ChatMessage))
-        await session.execute(delete(ScanEvent))
-        await session.execute(delete(Artifact))
-        await session.execute(delete(AgentRun))
-        await session.execute(delete(Batch))
+async def _reset_batches(session: AsyncSession) -> None:
+    await session.execute(delete(ControllerMessage))
+    await session.execute(delete(ControllerSession))
+    await session.execute(delete(ChatMessage))
+    await session.execute(delete(ScanEvent))
+    await session.execute(delete(Artifact))
+    await session.execute(delete(AgentRun))
+    await session.execute(delete(Batch))
 
-    for item in BATCHES:
+
+async def _seed_batches(
+    session: AsyncSession, product_id: int, batches: list[dict]
+) -> None:
+    for item in batches:
         existing = await session.scalar(select(Batch).where(Batch.code == item["code"]))
         if existing is None:
             session.add(Batch(product_id=product_id, **item))
@@ -293,16 +370,25 @@ async def seed_demo(
     artifact_dir: Path | None = None,
 ) -> dict[str, int]:
     """Idempotent seed; reset clears batches and their children but keeps product/docs/benchmarks."""
-    product = await _upsert_product(session)
-    await _seed_knowledge(session, product)
-    await _seed_benchmarks(session, product.id)
-    await _seed_batches(session, product.id, reset=reset)
+    seeds = seed_products()
+    if reset:
+        await _reset_batches(session)
+
+    products: list[ProductProfile] = []
+    total_batches = 0
+    for seed in seeds:
+        product = await _upsert_product(session, seed)
+        await _seed_knowledge(session, product)
+        await _seed_benchmarks(session, product.id, seed.benchmarks)
+        await _seed_batches(session, product.id, seed.batches)
+        products.append(product)
+        total_batches += len(seed.batches)
     await session.flush()
     await _seed_demo_snapshot(
         session,
-        product,
+        products[0],
         public_base_url=public_base_url or get_settings().public_base_url,
         artifact_dir=artifact_dir,
     )
     await session.commit()
-    return {"products": 1, "batches": len(BATCHES)}
+    return {"products": len(products), "batches": total_batches}

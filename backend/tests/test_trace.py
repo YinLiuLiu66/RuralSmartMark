@@ -1,4 +1,4 @@
-from ruralsmartmark.seed import seed_demo
+from ruralsmartmark.seed import ZHAOTONG_RAW_BATCH_CODE, seed_demo
 
 AGENTS = ["story", "packaging", "marketing", "pricing"]
 
@@ -7,7 +7,9 @@ async def _traced_batch(client, session) -> str:
     await seed_demo(session)
     response = await client.get("/api/batches")
     assert response.status_code == 200
-    raw = next(batch for batch in response.json() if batch["state"] == "raw")
+    raw = next(
+        batch for batch in response.json() if batch["code"] == ZHAOTONG_RAW_BATCH_CODE
+    )
     workspace = None
     for agent in AGENTS:
         started = await client.post(f"/api/batches/{raw['id']}/pipeline/start")

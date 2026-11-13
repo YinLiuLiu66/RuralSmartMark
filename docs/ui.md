@@ -10,23 +10,23 @@
 ## 1. 六行设计契约
 
 ```
-Platform / surface:  desktop web 1280–1920；3D 沙盘 + 覆盖式工作台；移动端只做 /trace H5（390px 起）
-User job:            把一个苹果批次依次过四个 Agent，审核产出，看到溢价与溯源码
+Platform / surface:  desktop web 1280–1920；工作台（项目卡片）+ 3D 沙盘详情；移动端工作台与 /trace H5（390px 起）
+User job:            选一个项目进沙盘，把批次依次过四个 Agent，审核产出，看到溢价与溯源码
 Primary action:      「运行流水线」/「通过并进入下一站」——同一时刻只允许一个主按钮
 Lead value:          品牌护照进度（如「3/6 · 包装待审核」）；溢价率是支持指标，不是主视觉
-States:              无批次 / idle / running / waiting_review / approved / failed / SSE 重连 / loading / 极端内容
-Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper、Tabs、原生 <dialog> 审核、Toast、Skeleton
+States:              无项目 / 无批次 / idle / running / waiting_review / approved / failed / SSE 重连 / loading / 极端内容
+Borrowed patterns:   项目卡网格、顶栏 + 批次切换、右侧上下文卡、底部 stepper、Tabs、原生 <dialog> 审核、常驻总控抽屉
 ```
 
-**Out of scope**：游戏化任务/评分、多产品 UI、登录/权限、移动端沙盘、真实电商 API、Canva/Midjourney 直连。
+**Out of scope**：游戏化任务/评分、登录/权限、真实电商 API、Canva/Midjourney 直连；移动端沙盘只做简化交互（#93）。
 
 ### 契约已经决定的几件事
 
 - 主按钮同一时刻只有一个：顶栏「运行流水线」和右卡「通过并进入下一站」互斥，不并列。
 - 品牌护照进度是首屏主角；溢价率、故事、内容、扫码只做支持指标，不做五张等权 KPI 卡。
 - 审核是短任务，用原生 `<dialog>`；不跳页、不嵌套弹窗。
-- 站点/批次/门店是 peer 对象，用右侧上下文卡切换；不做多层导航。
-- 移动端只承载溯源 H5；沙盘在 <1024px 显示“请用桌面端”，不硬做响应式 3D。
+- **允许两级导航**：`/` 工作台 → `/project/:slug` 沙盘，靠卡片进入、面包屑返回；沙盘内的站点/批次仍是 peer 对象，用右侧上下文卡切换，不再往下分层。
+- 移动端：工作台单列可用；沙盘做简化适配（底部抽屉 + 固定机位），不追求桌面级编辑能力。
 
 ## 2. 设计 token
 
@@ -111,11 +111,11 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 
 ## 3. 布局与信息层级
 
-### 桌面布局（≥1280）
+### 桌面布局（≥1280，沙盘详情页）
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ 顶栏 64：Logo / 批次切换 / 状态 pill / 运行流水线 / 通知 / 设置 │
+│ 顶栏 64：←工作台 / Logo / 项目名 / 批次切换 / 状态 pill / 主按钮 │
 ├───────────────┬──────────────────────────────┬───────────────┤
 │ 左栏 280       │ 中央 3D 沙盘（固定宽）        │ 右栏覆盖 340–600│
 │ 品牌护照 lead  │ 果园/故事馆/包装/内容/云仓     │ 上下文卡       │
@@ -131,8 +131,21 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - **中央**：3D 场景占最大面积；不要在画布上叠太多卡；相机控件靠左中，图例/操作提示靠左下，均半透明纸卡。canvas 宽度只由窗口和左栏决定（为右栏保留 340px），拖动右栏不改变 canvas 尺寸；orthographic 相机按 canvas 宽高比重算视锥，窗口 resize 时几何比例不变。
 - **右栏**：绝对定位覆盖层，不参与 grid 列宽计算；上下文卡只服务一个选中对象；顶部对象名 + 状态 chip，中部关键字段，底部一个主操作；日志和原始 JSON 折叠在“详情”里。宽度默认 460px，可拖动左边缘在 340–600px 间调整，宽度写入 localStorage；拖动时只遮挡/露出沙盘，不改变 3D canvas 尺寸。点 3D 站点时若总控抽屉开着，先自动收起抽屉再显示该站点，避免被抽屉遮住。右栏高度锁在中间 grid 行内，长故事/营销文展开后只在右栏内部滚动，不撑高整页、不盖住底栏。
 - **底部 dock**：左侧 stepper（6 步）是叙事脊柱；右侧产出物 Tabs 是快捷入口。两者不要互相复制信息。
-- **顶栏**：批次切换是下拉（一个产品下 1–N 个批次）；状态 pill 用文字 + 小圆点，不用彩色大横幅。
-- **响应式**：≥1280 右栏可调 340–600（默认 460）；<1280 右栏隐藏，底部站点 Tabs 仍可用；<1024 沙盘显示桌面端提示，不缩成手机版 3D。
+- **顶栏**：左侧「← 工作台」+ 品牌 + 当前项目名；批次切换是下拉（一个项目下 1–N 个批次）；不再有产品下拉（产品切换已上移到工作台）。状态 pill 用文字 + 小圆点，不用彩色大横幅。
+- **响应式**：≥1280 右栏可调 340–600（默认 460）；<1280 右栏隐藏，底部站点 Tabs 仍可用；<1024 走移动布局（顶部精简栏 + 底部抽屉），见 §3.1。
+
+### 3.1 入口层级与移动布局（Phase 7）
+
+```
+/                     工作台：项目卡网格 + 常驻总控（抽屉 430px / 全页 /controller）
+  └ /project/:slug    沙盘详情：?batch=<id>&station=<agent> 是页面上下文的唯一真源
+/trace/:code          消费者 H5（390px）
+```
+
+- 工作台是「集合视图」，沙盘是「详情视图」；总控浮层挂在 App 级，`/controller` 与 `/trace` 不重复挂载。
+- 移动端工作台：单列卡片、320px 无横向溢出；不显示 3D。
+- 移动端沙盘：3D 区在上（固定机位/单指旋转），四站点列表在下，点站点弹底部抽屉；不显示可拖拽右栏。
+
 
 ### 层级顺序
 
@@ -177,14 +190,22 @@ Borrowed patterns:   顶栏 + 批次切换、右侧上下文卡、底部 stepper
 - 选中：点击站点/批次/门店；outline + 浮动标签；点空白取消。
 - 相机：拖拽平移、滚轮/双指缩放、旋转按钮 45°、复位缓动；极角限制在等距范围。
 
-### 工作台
+### 项目工作台（`/`，Phase 7）
 
-`LeadPassportCard`、`MetricGrid`、`StationCard`、`BatchCard`、`StoreCard`、`ReviewDialog`、`ArtifactTabs`、`ArtifactPreview`、`AgentLog`、`RerunNote`、`PhonePreview`、`CameraControls`。
+`Workbench`、`ProjectCard`、`ControllerDock`、`ControllerChat`。
+
+- `ProjectCard`：包装缩略图（traced 用 `/api/trace/{code}/packaging.png`，包装已通过用 preview，其余用 `palette` 色块 + 产品名首字，加载失败永久回退色块）、项目名、产地 + 规格、状态胶囊、`n/6` 进度条、批次数量；整卡可点进 `/project/:slug?batch=最新批次`。
+- 工作台顶栏：品牌 + 「全页聊天」+「总控」+「新建产品」；不出现批次概念。
+- 空态两种：无项目（引导对总控说产品名/产地/品类）、有项目无批次（卡片显示「还没有批次」）。
+- 刷新：总控 `dataVersion` 自增后重拉 products/batches，不轮询。
+
+### 沙盘组件
+
+`LeadPassportCard`、`MetricGrid`、`StationCard`、`ReviewDialog`、`ArtifactTabs`、`ArtifactPreview`、`AgentLog`、`RerunNote`。工作台专用卡片（`ProjectCard`）不属于沙盘。
 
 - `StationCard`：Agent 名/角色、状态、当前任务、输入摘要、产出预览、主操作（运行/通过）、次操作（重跑/查看日志）。
 - `ReviewDialog`：标题写明站点和批次；可编辑字段；底部主按钮“通过并进入下一站”，次按钮“驳回/稍后”；Esc/遮罩关闭；破坏性操作不默认聚焦。
 - `ArtifactTabs`：故事 / 包装 / 内容 / 定价 / 溯源；每个 tab 显示状态点；不把 5 个 tab 做成 5 张卡。
-- `PhonePreview`：未单独做 390px 手机框；3D 二维码按钮直接打开 H5 新标签（decisions #55）。
 
 ### 溯源 H5（Phase 3 已实现）
 

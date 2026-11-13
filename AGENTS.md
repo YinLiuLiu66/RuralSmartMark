@@ -26,6 +26,8 @@
 - **Phase 4 已完成**：真实图像 Provider（Z-Image-Turbo + 缓存 + 插画 artifact）、3 个包装视觉变体、3D 加载/WebGL 错误态、路由与 Scene 代码分割、相机阻尼、空批次新建；短时 1280×720 采样 120fps。
 - **Phase 5 已完成**：Playwright 7 条冒烟 + 2 条性能用例、reset 幂等回归、第二产品麻江蓝莓夹具（只建数据，mock 与真实 V4.1-Flash 四站均跑通）、档案化提示词/定价/包装/溯源码前缀、60 秒 58.3fps、200% 等效视口回退、生图失败视觉兜底与缓存清理命令、根 `Makefile` 一键启动、runbook。字段级表单与 Docker 明确不做（decisions #63）；LLM 未知字段改为忽略（#64）。
 - **Phase 6 已完成**：多产品列表/切换（decisions #68）；单入口总控对话 + 动作白名单 + 二次确认（#69）；Firecrawl SearchProvider（#70）；早期站回退/下游作废（#71）；总控 SSE 流式 + 思维链折叠 + 用户消息乐观显示、Firecrawl 异步重试（#72）；新建产品使用空白会话（#73）；确认通过后自动运行下一站（#74）；新建先进入空沙盘且空白沙盘单例（#75）；空白会话唯一索引与并发兜底（#76）；新产品提示词按档案生成（#77）；P1 写操作链路健壮性修复（#78）；定价与包装默认值按产品档案生成、语义色板映射（#79）；溯源 FAQ 按钮直达已审核答案（#80）；工位卡故事/营销长文可展开阅读（#81）；右栏可拖拽调宽、点 3D 站点自动收起总控（#82）；右栏长内容在自身网格行内滚动、不撑高整页（#83）；3D 沙盘独立图层、右栏覆盖不改变 canvas 尺寸、orthographic 相机自适应（#84）；空沙盘产品下拉可直接返回现有产品（#85）；顶栏批次下拉旁常驻「新建批次」按钮（#86）；总控 `delete_batch` 删除当前批次（二次确认、演示批次/跑批中禁删，#87）；总控 `create_batch` 给当前产品开批次（二次确认、确认后切换会话，#88）；总控上下文改真多轮 messages + 超 80% 自动压缩历史（#89）；生产部署文档 `docs/deploy.md`（nginx + systemd 单 worker，#90）；用户可直接提供成本口径：`record_inputs` 独立录入工具（无搜索也能用）+ `apply_inputs` 动作 + `specs.cost_assumptions` 进档案、`pricing.py` 逐项优先读、`assumptions` 逐项标来源并在 H5 展示（#91）。后端 88 passed + 2 skipped，Playwright 11 条。真实麻江蓝莓（PR0003）与平泉香菇（PR0004）已从调研建档跑到 traced；Firecrawl 真实搜索/抓页与研究草案已用本机 key 验证。
+- **Phase 7 已完成**：入口改工作台（`/` 项目卡片 + 常驻总控，沙盘移到 `/project/:slug?batch=&station=`）；总控改全局唯一会话 + 每轮 PageContext；写操作目标在确认卡出卡时冻结（batch/state/draft hash），缺页面上下文一律反问；seed 带第二个产品「麻江蓝莓」（raw，可现场跑）；后端 106 passed + 2 skipped，Playwright 15 条（桌面 10 + 移动 5）（decisions #92）。
+- **Phase 8 待做**：工作台响应式 + 沙盘移动端（右栏底部抽屉、固定机位、DPR 1.5），撤销「不做移动端 3D 沙盘」红线（decisions #93）。
 - **下一步交付/补证**：真实调研质量调优（来源覆盖、价格缺口）、手机真机扫码（`make lan` 已提供局域网入口，仍需同一 Wi-Fi 下实测）、包装厂书面报价与食品接触合规、真实盒型/刀版；80–85mm 公开挂牌价与地理标志公告号已补（见 `docs/sources.md`），成交价/同渠道长期价仍可继续跟。
 - **尚未实现**：字段级审核表单（明确不做，保留 JSON 编辑器）、真实盒型/刀版、手机真机扫码、包装厂书面报价/合规。别假设它们存在。
 
@@ -49,7 +51,8 @@
 - 3D 只在桌面端（≥1024px）；手机只走 `/trace/:code`。3D 构建方式对齐 WareTrack：
   代码拼 Box/Cylinder/Cone/Sphere/Plane + MeshStandardMaterial + Texture；广告牌/二维码用 Html 覆盖层；不引 GLB/写实资产。
 - 固定演示批次 `ZT-DEMO-001` / 溯源码 `ZTDEMO26`；`seed/demo_batch.json` 存真实 V4.1 内容快照，`seed/demo_illustration.png` 存 Z-Image-Turbo IP 插画快照；seed/reset 时写入四章产出、4 条 approved run、5 条 artifact（含插画）和确定性定价；reset 后 H5 仍有完整内容。
-- 多产品工作台：产品下拉切换、批次按产品过滤；新产品由总控调研/确认后写入，不 seed、不做第二套 3D。第二产品夹具 `backend/tests/fixtures/majiang/` 仍只用于测试。品牌/IP/包装/定价/溯源码前缀从 `ProductProfile.specs` 读取。
+- 多产品工作台：`/` 是项目卡片集合，卡片点进 `/project/:slug` 沙盘；新产品由总控调研/确认后写入，不 seed、不做第二套 3D。第二产品麻江蓝莓由 seed 提供（`mj-*` 批次，停在 raw），canonical 数据在 `src/ruralsmartmark/seed/products/majiang/`（product.json + benchmarks.json + knowledge/），测试直接复用，不要再建第二份夹具。品牌/IP/包装/定价/溯源码前缀从 `ProductProfile.specs` 读取。
+- 总控是全局唯一会话：`controller_session` 只有一行（`uq_controller_session_single`），`POST /api/controller/sessions` 是 get-or-create，`product_slug/batch_id/fresh` 已废弃并被忽略。当前页面由每条消息的 `ControllerPageContext` 携带，写操作目标只认页面批次，缺上下文返回 `needs_target` 让模型反问。
 - 前端 Vite 代理 `/api` → `http://127.0.0.1:8000`。
 
 ## 技能包同步（每个 Agent 开工必做）
@@ -80,7 +83,7 @@
 - `uv run python -m ruralsmartmark.seed` → 种演示数据（幂等）
 - `uv run python -m ruralsmartmark.maintenance image-cache --dry-run` → 生图缓存清理预演（默认 30 天/512MB）
 - `uv run ruralsmartmark` → 起服务，端口 8000
-- `uv run pytest` → 全测试（64 passed + 2 条默认跳过的真实外部冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
+- `uv run pytest` → 全测试（106 passed + 2 条默认跳过的真实外部冒烟）；单函数：`uv run pytest tests/test_health.py::test_health`
 - `RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py` → 可选真实 LLM 第二产品冒烟，会消耗额度
 - `uv run ruff check .` → 静态检查；`uv run ruff format .` → 格式化
 
@@ -90,7 +93,7 @@
 - `pnpm dev` → 开发服，端口 5173
 - `pnpm typecheck` / `pnpm lint` / `pnpm build`
 - `pnpm exec playwright install chromium` → 首次安装测试浏览器
-- `pnpm test:e2e` → 9 条冒烟；`pnpm test:perf` → 性能用例；`PERF_SECONDS=60 pnpm test:perf` 可指定时长
+- `pnpm test:e2e` → 15 条冒烟（桌面 10 + 移动 5）；`pnpm test:perf` → 3 条性能/窄视口用例；`PERF_SECONDS=60 pnpm test:perf` 可指定时长。若 Playwright 清空 `test-results/` 被系统拦截，加 `--output=/tmp/pw-<时间戳>` 用独立目录。
 
 文档无构建步骤，直接改 `.md`。
 
@@ -106,9 +109,11 @@ backend/
             pydantic_model.py research.py controller.py  # 总控/调研（PydanticAI）
     providers/ llm.py image.py search.py  # LLM + SiliconFlow 生图 + Firecrawl
     services/ events.py workspace.py knowledge.py fact_guard.py pricing.py packaging.py
+             controller_context.py   # PageContext 解析 / 确认卡目标冻结与候选
              trace.py trace_chat.py image_cache.py products.py rewind.py
     assets/fonts/                  # 内置 Noto Serif/Sans + OFL
     seed/ __init__.py __main__.py demo_batch.json demo_illustration.png  # 幂等 seed + 固定演示快照
+          products/majiang/ product.json benchmarks.json knowledge/      # 第二产品 canonical 数据
   migrations/                       # Alembic 生成物，ruff 不检
   alembic.ini pyproject.toml
   tests/ conftest.py test_health.py test_seed.py test_batches.py test_pipeline.py
@@ -125,16 +130,21 @@ frontend/
   src/api/trace.ts                  # 公开溯源 / 扫码 / 对话类型与 API
   src/api/controller.ts             # 总控会话/消息/确认 API
   src/agents.ts                     # Agent 元数据、状态映射、下一站/审核站
-  src/stores/world.ts               # Zustand：产品/批次/选中项
+  src/stores/world.ts               # Zustand：产品/批次（跨页数据缓存）
   src/stores/pipeline.ts            # Zustand：workspace/选中 Agent/包装变体/busy
+  src/stores/controller.ts          # Zustand：全局总控会话/流式状态/dataVersion（无 localStorage）
+  src/hooks/usePageContext.ts       # 从 URL 派生 PageContext（页面/产品/批次/站点）
   src/three/Scene.tsx               # 等距场景（包装贴图/广告牌/二维码/路径/卡车）
   src/three/SceneBoundary.tsx       # WebGL/懒加载错误边界
   src/three/stations.ts             # 四站点元数据
   src/components/StationCard.tsx    # 工位卡（预览/引用/FactGuard/包装变体/插画）
   src/components/ReviewDialog.tsx   # 原生 dialog 审核（JSON + 引用/预警/包装预览）
-  src/components/ControllerPanel.tsx # 总控对话/草案/确认卡
-  src/routes/Sandbox.tsx            # 桌面沙盘 `/` + 产品/批次切换 + SSE + 总控抽屉
-  src/routes/Controller.tsx         # 独立总控 `/controller`
+  src/components/controller/ControllerChat.tsx  # 总控对话本体（气泡/思维链/草案/确认卡/needs_target chip）
+  src/components/controller/ControllerDock.tsx  # App 级总控浮层，所有页面共用同一会话
+  src/components/workbench/ProjectCard.tsx      # 工作台项目卡（缩略图/状态/进度）
+  src/routes/Workbench.tsx          # 工作台 `/`（项目卡片集合 + 常驻总控）
+  src/routes/Sandbox.tsx            # 沙盘 `/project/:slug?batch=&station=`（URL 为唯一真源）
+  src/routes/Controller.tsx         # 全页总控 `/controller`
   src/routes/Trace.tsx              # 公开溯源 H5 `/trace/:code`（390px）
   src/App.tsx                       # 路由懒加载（Sandbox / Controller / Trace 分包）
   src/styles/global.css             # Tailwind v4 @theme + 山野编辑部 token
@@ -180,7 +190,7 @@ v1 设计文档已移除；如需追溯见 git history（main 分支）。与 v2
 ## 红线
 
 - 不做游戏化任务/评分、登录/权限、真实电商 API、Canva/Midjourney 直连、IoT 温度曲线；多产品列表/切换已按 decisions #68 解禁，但仍不做多产品并列 3D。
-- 不做写实 3D/自定义 GLB 管线；不做移动端 3D 沙盘。
+- 不做写实 3D/自定义 GLB 管线；移动端沙盘只做简化交互与固定性能预算（#93），不做移动端完整编辑能力。
 - 不引 LangChain / LlamaIndex / Celery / Redis / Chroma；不引向量数据库。
 - 不提交 `.env`、`backend/data/`、`node_modules/`、`dist/`、`.zcode/` 等被 ignore 的产物；改 .gitignore 需理由。
 - 昭通事实必须有 `source_url` + 检索日期；演示数字标“演示测算”；不编真实人物/认证/功效。

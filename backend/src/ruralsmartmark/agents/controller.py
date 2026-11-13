@@ -31,6 +31,11 @@ from ..providers.llm import compress_history
 from ..providers.search import SearchProvider
 from ..schemas import ResearchDraft
 from ..services.batch_delete import BatchDeleteError, ensure_deletable
+from ..services.controller_context import (
+    ResolvedPageContext,
+    draft_hash,
+    target_candidates,
+)
 from ..services.rewind import AGENT_ORDER, STAGE_INDEX
 from ..services.workspace import load_workspace
 from .base import AgentName
@@ -52,7 +57,7 @@ COMPRESS_SYSTEM = (
     "你是「智农云链」总控的对话压缩器。把输入的控制器对话压缩成一份交接档案，"
     "供后续对话在看不到原始记录的情况下继续工作。必须保留："
     "1) 任务目标与用户最新意图（以末尾几条为准）；"
-    "2) 当前绑定的产品/批次与流水线状态（各站通过/待审核/被驳回）；"
+    "2) 最近讨论过的每个项目与批次（可能不止一个），按项目分组保留批次码与各站状态（通过/待审核/被驳回）；"
     "3) 已执行的动作及结果（建档、开批次、通过、驳回、回退、删除批次等，含确认卡结论）；"
     "4) 用户明确的偏好、禁令与修改要求；"
     "5) 未决问题与下一步。"
@@ -144,10 +149,17 @@ class ControllerDeps:
     runtime: AgentRuntime
     settings: Settings
     search: SearchProvider
+    # 读目标：页面优先，回退到会话里的「最近聚焦」。
     product: ProductProfile | None = None
     batch: Batch | None = None
+    # 写目标：只来自本轮 page_context，绝不回退（decisions #92）。
+    page_product: ProductProfile | None = None
+    page_batch: Batch | None = None
+    page_route: str | None = None
+    focus_agent: str | None = None
     draft: ResearchDraft | None = None
     pending: dict | None = None
+    needs_target: dict | None = None
     events: list[dict] = field(default_factory=list)
 
 
@@ -159,6 +171,7 @@ class ControllerTurn:
     events: list[dict]
     questions: list[str] = field(default_factory=list)
     thinking: list[str] = field(default_factory=list)
+    needs_target: dict | None = None
 
 
 def _thinking_lines(text: str) -> list[str]:
@@ -168,26 +181,33 @@ def _thinking_lines(text: str) -> list[str]:
 CONTROLLER_INSTRUCTIONS = (
     "你是「智农云链」的总控，不是内容生成 Agent。"
     "你可以读取产品/批次/AgentRun，调用四个 Agent，或启动调研。"
+    "每轮请求会给你【当前上下文】，其中 page 段说明用户此刻在哪一页："
+    "route 是 workbench（工作台）、project（项目页）或 controller（全页聊天）；"
+    "batch_source=page 表示页面已选中批次，focus 表示只是上次操作过的批次，none 表示没有。"
+    "写操作（run_agent 和所有 request_action）的目标只能是页面批次："
+    "batch_source 不是 page 时工具会返回 needs_target 和候选，此时不要猜、也不要用历史对话里的批次，"
+    "直接把候选列给用户，请他进入对应项目页或明确指定批次。"
+    "读操作可以显式指定 product_slug / batch_code（get_workspace、list_batches），但读到的批次不能当成写目标。"
     "用户要新产品的资料时先调 research_product；有草案后向用户列缺口。"
     "危险动作（建档、开批次、通过、驳回、回退、删除批次）只能调 request_action 让用户确认，绝不能直接执行。"
     "request_action 的 kind 必须逐字使用：commit_product（建档）、apply_inputs（写入用户提供的数据）、"
-    "create_batch（给当前产品开新批次）、approve_agent（通过）、"
-    "reject_agent（驳回）、rewind_to_agent（回退）、delete_batch（删除当前批次）；不要发明 start_batch、create_product 等别的名字。"
+    "create_batch（给页面产品开新批次）、approve_agent（通过）、"
+    "reject_agent（驳回）、rewind_to_agent（回退）、delete_batch（删除页面批次）；不要发明 start_batch、create_product 等别的名字。"
     "调研草案完成后，建档用 request_action('commit_product')。"
     "用户报出自己的成本、收购价、盒价、运费或费率时，调 record_inputs 把他的原话结构化成草案，"
     "不要用 research_product、也不要联网搜索；然后复述收到了哪些数字、缺哪些。"
-    "当前已有产品时，写入用 request_action('apply_inputs')；写入只改产品档案，不会自动重算已有产出，"
-    "要提醒用户：想让新成本生效，得重新跑到定价站（定价已通过则先回退再跑）。"
+    "页面有产品时，写入用 request_action('apply_inputs')；草案必须属于页面产品，跨产品要先让用户回到对应项目页。"
+    "写入只改产品档案，不会自动重算已有产出，要提醒用户：想让新成本生效，得重新跑到定价站（定价已通过则先回退再跑）。"
     "用户只说“大概”“差不多”这类不给具体数字的话时，先问一个具体问题，不要自己补默认值。"
-    "用户说开始/运行流水线时，对当前站调 run_agent；完成后汇报这一站的状态、关键信息和预警，等用户决定是否通过。"
+    "用户说开始/运行流水线时，对页面批次的当前站调 run_agent；完成后汇报这一站的状态、关键信息和预警，等用户决定是否通过。"
     "用户说审核通过/通过时，调 request_action('approve_agent')；确认后后端会自动运行下一站，不要在同一轮再调 run_agent。"
     "每站都必须等用户确认，不要连续自动通过多站。"
     "approve_agent 的 summary 要写明“通过哪一站并自动运行下一站”。"
     "用户说包装/故事不好时，调 run_agent 并带上具体 note；如果目标站已通过且下游存在，改调 request_action('rewind_to_agent')。"
     "用户要求删除/清掉当前批次时，调 request_action('delete_batch')，summary 写明批次码并提醒删除不可恢复；"
-    "只删当前会话绑定的批次，不要替用户解析其他批次码，跨批次删除先让用户切换到那个批次的会话。"
+    "只删页面上的批次，不要替用户解析其它批次码；用户要删别的批次，先让他进入那个批次的项目页。"
     "用户要给当前产品开新批次/再来一批时，调 request_action('create_batch')，用户给了数量就带 quantity_kg（千克，默认 300），"
-    "summary 写明产品名和数量；只给当前会话绑定的产品开批次，跨产品先让用户切换。"
+    "summary 写明产品名和数量；只给页面上的产品开批次，跨产品先让用户切换项目。"
     "只调用必要工具，同一工具不要连续重复；拿到足够信息后直接回答。"
     "批次状态为 traced 时说明四站已完成、可看溯源/新批次，不要编造“最后确认/上架”等不存在的步骤。"
     "只有确实调用了 request_action 时才提确认；不要把普通查询说成危险动作。"
@@ -239,6 +259,7 @@ async def run_controller_turn(
     message: str,
     *,
     search: SearchProvider,
+    page: ResolvedPageContext | None = None,
     history: list[tuple[int, str, str]] | None = None,
     emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurn:
@@ -249,16 +270,25 @@ async def run_controller_turn(
         if emit is not None:
             await emit(event)
 
-    product = (
+    focus_product = (
         await session.get(ProductProfile, controller_session.product_id)
         if controller_session.product_id
         else None
     )
-    batch = await session.get(Batch, controller_session.batch_id) if controller_session.batch_id else None
-    if product is not None:
-        await session.refresh(product)
-    if batch is not None:
-        await session.refresh(batch)
+    focus_batch = (
+        await session.get(Batch, controller_session.batch_id)
+        if controller_session.batch_id
+        else None
+    )
+    if focus_product is not None:
+        await session.refresh(focus_product)
+    if focus_batch is not None:
+        await session.refresh(focus_batch)
+
+    page_product = page.product if page is not None else None
+    page_batch = page.batch if page is not None else None
+    product = page_product or focus_product
+    batch = page_batch or focus_batch
     draft = (
         ResearchDraft.model_validate(controller_session.draft_json)
         if controller_session.draft_json
@@ -271,6 +301,10 @@ async def run_controller_turn(
         search=search,
         product=product,
         batch=batch,
+        page_product=page_product,
+        page_batch=page_batch,
+        page_route=page.route if page is not None else None,
+        focus_agent=page.focus_agent if page is not None else None,
         draft=draft,
     )
 
@@ -282,6 +316,13 @@ async def run_controller_turn(
         model_settings=build_model_settings(runtime.settings, temperature=0.3),
         instructions=CONTROLLER_INSTRUCTIONS,
     )
+
+    async def ask_target(ctx: RunContext[ControllerDeps], message: str) -> dict:
+        """没有页面批次/产品时：登记候选并让模型反问，不生成确认卡。"""
+        candidates = await target_candidates(ctx.deps.session, ctx.deps.page_product)
+        payload = {"message": message, "candidates": candidates[:6]}
+        ctx.deps.needs_target = payload
+        return {"needs_target": True, **payload}
 
     @agent.tool
     async def list_products(ctx: RunContext[ControllerDeps]) -> list[dict]:
@@ -305,14 +346,63 @@ async def run_controller_turn(
         ]
 
     @agent.tool
-    async def get_workspace(ctx: RunContext[ControllerDeps]) -> dict:
-        """Read current batch state, recent runs, and artifacts."""
-        if ctx.deps.batch is None:
-            return {"error": "当前没有选中批次"}
-        workspace = await load_workspace(ctx.deps.session, ctx.deps.batch.id)
+    async def get_workspace(
+        ctx: RunContext[ControllerDeps], product_slug: str = "", batch_code: str = ""
+    ) -> dict:
+        """Read a batch's state, recent runs and artifacts.
+
+        Defaults to the page batch; product_slug / batch_code only switch the read target.
+        """
+        batch = ctx.deps.page_batch or ctx.deps.batch
+        if batch_code:
+            found = await ctx.deps.session.scalar(
+                select(Batch).where(Batch.code == batch_code)
+            )
+            if found is None:
+                return {"error": f"没有找到批次 {batch_code}"}
+            batch = found
+        elif product_slug:
+            product = await ctx.deps.session.scalar(
+                select(ProductProfile).where(ProductProfile.slug == product_slug)
+            )
+            if product is None:
+                return {"error": f"没有找到产品 {product_slug}"}
+            batch = await ctx.deps.session.scalar(
+                select(Batch)
+                .where(Batch.product_id == product.id)
+                .order_by(Batch.id.desc())
+            )
+            if batch is None:
+                return {"error": f"{product.name} 还没有批次"}
+        if batch is None:
+            return {"error": "当前没有页面批次；请进入项目页，或指定 product_slug / batch_code"}
+        workspace = await load_workspace(ctx.deps.session, batch.id)
         if workspace is None:
             return {"error": "批次不存在"}
         return _workspace_summary(workspace)
+
+    @agent.tool
+    async def list_batches(
+        ctx: RunContext[ControllerDeps], product_slug: str = ""
+    ) -> list[dict]:
+        """List batches (optionally filtered by product_slug). Read-only."""
+        stmt = select(Batch, ProductProfile).join(
+            ProductProfile, Batch.product_id == ProductProfile.id
+        )
+        if product_slug:
+            stmt = stmt.where(ProductProfile.slug == product_slug)
+        rows = (await ctx.deps.session.execute(stmt.order_by(Batch.id.desc()))).all()
+        return [
+            {
+                "product_slug": product.slug,
+                "product_name": product.name,
+                "batch_id": batch.id,
+                "code": batch.code,
+                "state": batch.state,
+                "trace_code": batch.trace_code,
+            }
+            for batch, product in rows
+        ]
 
     @agent.tool
     async def research_product(ctx: RunContext[ControllerDeps], brief: str) -> dict:
@@ -375,13 +465,17 @@ async def run_controller_turn(
         ctx: RunContext[ControllerDeps], agent: str, note: str = ""
     ) -> dict:
         """Run or revise one of story/packaging/marketing/pricing."""
-        if ctx.deps.batch is None:
-            return {"error": "当前没有选中批次"}
+        batch = ctx.deps.page_batch
+        if batch is None:
+            return await ask_target(
+                ctx,
+                "运行流水线需要指定批次：请先进入对应项目页，或告诉我要跑哪个批次。",
+            )
         try:
             target = AgentName(agent)
         except ValueError:
             return {"error": f"未知 Agent: {agent}"}
-        current = STAGE_INDEX.get(ctx.deps.batch.state, -1)
+        current = STAGE_INDEX.get(batch.state, -1)
         target_index = AGENT_ORDER.index(target)
         if current > target_index:
             return {
@@ -394,7 +488,7 @@ async def run_controller_turn(
             from .orchestrator import run_agent as run_pipeline_agent
 
             run = await run_pipeline_agent(
-                ctx.deps.session, ctx.deps.batch, target, ctx.deps.runtime, note or None
+                ctx.deps.session, batch, target, ctx.deps.runtime, note or None
             )
         except Exception as exc:  # noqa: BLE001
             return {"error": str(exc)[:500]}
@@ -430,28 +524,46 @@ async def run_controller_turn(
         }
         if kind not in allowed:
             return {"error": f"不允许的动作: {kind}"}
+
+        page_product = ctx.deps.page_product
+        page_batch = ctx.deps.page_batch
+        needs_batch = kind in {
+            "approve_agent",
+            "reject_agent",
+            "rewind_to_agent",
+            "delete_batch",
+        }
+        if needs_batch and page_batch is None:
+            return await ask_target(
+                ctx,
+                "这个动作需要指定批次：请先进入对应项目页选中批次，或告诉我要操作哪个批次。",
+            )
+        if kind in {"apply_inputs", "create_batch"} and page_product is None:
+            return await ask_target(
+                ctx, "这个动作需要指定产品：请先进入对应项目页，或告诉我是哪个产品。"
+            )
+
         if kind == "apply_inputs":
-            if ctx.deps.product is None:
-                return {
-                    "error": "当前会话没有绑定产品，无法更新档案；新产品请先 record_inputs 再 commit_product。"
-                }
             if ctx.deps.draft is None:
                 return {"error": "还没有可写入的数据草案，请先调 record_inputs。"}
+            draft_slug = ctx.deps.draft.product.slug
+            if page_product is not None and draft_slug != page_product.slug:
+                return {
+                    "error": (
+                        f"当前草案属于 {draft_slug}，与页面产品 {page_product.slug} 不一致；"
+                        "请在该产品页重新录入，避免把数据写到别的档案。"
+                    )
+                }
             incoming = (ctx.deps.draft.specs or {}).get("cost_assumptions") or {}
             if not incoming and not ctx.deps.draft.benchmarks and not ctx.deps.draft.docs:
                 return {
                     "error": "草案里没有成本口径、基准价或事实，无法更新档案；请补充具体数字。"
                 }
-        if kind == "create_batch":
-            if ctx.deps.product is None:
-                return {"error": "当前会话没有绑定产品，无法开批次；请先选择产品或完成建档。"}
-            if quantity_kg < 0:
-                return {"error": "quantity_kg 不能为负数。"}
-        if kind == "delete_batch":
-            if ctx.deps.batch is None:
-                return {"error": "当前没有选中批次，无法删除。"}
+        if kind == "create_batch" and quantity_kg < 0:
+            return {"error": "quantity_kg 不能为负数。"}
+        if kind == "delete_batch" and page_batch is not None:
             try:
-                await ensure_deletable(ctx.deps.session, ctx.deps.batch)
+                await ensure_deletable(ctx.deps.session, page_batch)
             except BatchDeleteError as exc:
                 return {"error": str(exc)}
         pending = {
@@ -461,11 +573,36 @@ async def run_controller_turn(
             "agent": agent,
             "note": note,
             "quantity_kg": quantity_kg,
+            # 目标与状态在出卡时冻结（decisions #92）：确认阶段不再读会话绑定。
+            "product_id": page_product.id if page_product else None,
+            "batch_id": page_batch.id if page_batch else None,
+            "batch_code": page_batch.code if page_batch else None,
+            "batch_state": page_batch.state if page_batch else None,
+            "batch_updated_at": (
+                page_batch.updated_at.isoformat()
+                if page_batch is not None and page_batch.updated_at is not None
+                else None
+            ),
+            "draft_sha256": (
+                draft_hash(ctx.deps.draft.model_dump(mode="json"))
+                if ctx.deps.draft is not None
+                and kind in {"commit_product", "apply_inputs"}
+                else None
+            ),
+            "target_source": "page",
         }
         ctx.deps.pending = pending
         return {"pending": pending, "message": "已生成确认卡，等待用户确认。"}
 
     context = {
+        "page": {
+            "route": deps.page_route,
+            "focus_agent": deps.focus_agent,
+            # 页面批次是写操作唯一合法目标；focus 只代表上次操作的批次。
+            "batch_source": (
+                "page" if page_batch is not None else ("focus" if batch is not None else "none")
+            ),
+        },
         "product": (
             {
                 "id": product.id,
@@ -554,4 +691,5 @@ async def run_controller_turn(
         events=deps.events,
         questions=list(deps.draft.questions) if deps.draft else [],
         thinking=_thinking_lines("".join(thinking_chunks)),
+        needs_target=deps.needs_target,
     )

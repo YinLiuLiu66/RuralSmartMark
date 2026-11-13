@@ -6,8 +6,8 @@ test.beforeAll(async ({ request }) => {
 });
 
 test("固定演示批次长时帧率与堆内存", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
+  await page.goto("/project/zhaotong-ugly-apple");
+  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
   await expect(page.locator("canvas")).toBeVisible();
   await page.waitForTimeout(3_000);
 
@@ -46,11 +46,37 @@ test("固定演示批次长时帧率与堆内存", async ({ page }) => {
   expect(heapAfter - heapBefore).toBeLessThan(30 * 1024 * 1024);
 });
 
-test("200% 等效视口回退为桌面提示且不横向溢出", async ({ page }) => {
-  await page.setViewportSize({ width: 640, height: 360 });
-  await page.goto("/");
+test("移动端沙盘帧率预算", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/project/zhaotong-ugly-apple");
+  await expect(page.locator("canvas")).toBeVisible();
+  await page.waitForTimeout(2_000);
 
-  await expect(page.getByText(/3D 沙盘需要桌面端/)).toBeVisible();
+  const seconds = Number(process.env.MOBILE_PERF_SECONDS ?? 10);
+  const fps = await page.evaluate(async (duration) => {
+    let frames = 0;
+    const started = performance.now();
+    await new Promise<void>((resolve) => {
+      const tick = (now: number) => {
+        frames += 1;
+        if (now - started >= duration) resolve();
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    return frames / ((performance.now() - started) / 1000);
+  }, seconds * 1000);
+
+  console.log(`mobile fps=${fps.toFixed(1)}`);
+  expect(fps).toBeGreaterThanOrEqual(30);
+});
+
+test("640×360 窄视口走移动布局且不横向溢出", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 360 });
+  await page.goto("/project/zhaotong-ugly-apple");
+
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.getByRole("link", { name: "工作台" })).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

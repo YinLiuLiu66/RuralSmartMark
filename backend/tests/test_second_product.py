@@ -1,46 +1,33 @@
 import json
-from pathlib import Path
 
 from ruralsmartmark.models import Batch, Benchmark, ProductProfile
+from ruralsmartmark.seed import majiang_seed
 from ruralsmartmark.services.knowledge import upsert_knowledge_docs
 
-FIXTURE_DIR = Path(__file__).parent / "fixtures" / "majiang"
 AGENTS = ["story", "packaging", "marketing", "pricing"]
 
 
 async def _seed_majiang(session) -> tuple[ProductProfile, Batch]:
-    data = json.loads((FIXTURE_DIR / "product.json").read_text(encoding="utf-8"))
-    knowledge_dir = FIXTURE_DIR / "knowledge"
+    seed = majiang_seed()
     product = ProductProfile(
-        slug=data["slug"],
-        name=data["name"],
-        county=data["county"],
-        province=data["province"],
-        category=data["category"],
-        form=data["form"],
-        specs=data["specs"],
-        palette=data["palette"],
-        scene_preset=data["scene_preset"],
-        knowledge_dir=str(knowledge_dir),
+        slug=seed.slug,
+        name=seed.name,
+        county=seed.county,
+        province=seed.province,
+        category=seed.category,
+        form=seed.form,
+        specs=seed.specs,
+        palette=seed.palette,
+        scene_preset=seed.scene_preset,
+        knowledge_dir=seed.knowledge_dir,
         is_active=True,
     )
     session.add(product)
     await session.flush()
     await upsert_knowledge_docs(session, product.id, product.knowledge_dir)
 
-    for channel, price in (("散装批发", 22.0), ("电商散装", 30.0), ("品牌礼盒", 60.0)):
-        session.add(
-            Benchmark(
-                product_id=product.id,
-                channel=channel,
-                competitor="第二产品夹具",
-                spec="2kg/箱",
-                price_per_kg=price,
-                source_url="https://example.com/ruralsmartmark/majiang-fixture",
-                source_date="2026-10-22",
-                note="夹具价格，仅用于测试",
-            )
-        )
+    for item in seed.benchmarks:
+        session.add(Benchmark(product_id=product.id, **item))
 
     batch = Batch(
         product_id=product.id,
@@ -97,4 +84,4 @@ async def test_second_product_runs_without_code_changes(session, client):
     packaging_png = await client.get(f"/api/trace/{trace_code}/packaging.png")
     assert packaging_png.status_code == 200
     assert packaging_png.content.startswith(b"\x89PNG")
-    assert product.slug == "majiang-blueberry"
+    assert product.slug == "majiang-blueberry-demo"

@@ -44,7 +44,8 @@ async def test_seed_upserts_knowledge(session):
     docs = list(
         (await session.execute(select(KnowledgeDoc).order_by(KnowledgeDoc.doc_key))).scalars().all()
     )
-    assert len(docs) == 10
+    # 昭通 10 篇 + 麻江 6 篇（seed 现在带两个产品）
+    assert len(docs) == 16
     assert any(doc.doc_key == "GI-01" and doc.source_url.startswith("http") for doc in docs)
     assert any(doc.credibility == "demo" for doc in docs)
 

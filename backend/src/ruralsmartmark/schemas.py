@@ -324,8 +324,18 @@ class ControllerSessionCreate(BaseModel):
     fresh: bool = False
 
 
+class ControllerPageContext(BaseModel):
+    """前端当前所在页面；写操作的目标只认这里的批次（decisions #92）。"""
+
+    route: str | None = Field(default=None, max_length=40)
+    product_slug: str | None = Field(default=None, max_length=120)
+    batch_id: int | None = None
+    focus_agent: str | None = Field(default=None, max_length=40)
+
+
 class ControllerMessageIn(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    context: ControllerPageContext | None = None
 
 
 class ControllerMessageOut(BaseModel):
@@ -364,3 +374,4 @@ class ControllerTurnOut(BaseModel):
     pending_action: dict | None = None
     events: list[dict] = Field(default_factory=list)
     thinking: list[str] = Field(default_factory=list)
+    needs_target: dict | None = None

@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents.base import AgentName
 from ..agents.controller import ControllerUnavailable, run_controller_turn
@@ -27,6 +28,7 @@ from ..schemas import (
     ControllerConfirmIn,
     ControllerMessageIn,
     ControllerMessageOut,
+    ControllerPageContext,
     ControllerSessionCreate,
     ControllerSessionOut,
     ControllerTurnOut,
@@ -38,10 +40,44 @@ from ..services.batch_create import (
     create_batch_for_product,
 )
 from ..services.batch_delete import BatchDeleteError, delete_batch
+from ..services.controller_context import (
+    PageContextError,
+    PendingTargetError,
+    draft_hash,
+    history_content,
+    pending_batch,
+    pending_product,
+    resolve_page_context,
+)
 from ..services.products import apply_user_inputs, commit_research_draft
 from ..services.rewind import rewind_to_agent
 
 router = APIRouter()
+
+
+class ControllerBusy(RuntimeError):
+    """同一时间只允许一轮总控操作（消息或确认）。"""
+
+
+_locks: dict[int, asyncio.Lock] = {}
+
+
+def _turn_lock() -> asyncio.Lock:
+    """按事件循环懒建锁：测试每个用例一个新 loop，模块级锁会绑到旧 loop。"""
+    loop = asyncio.get_running_loop()
+    lock = _locks.get(id(loop))
+    if lock is None:
+        lock = asyncio.Lock()
+        _locks[id(loop)] = lock
+    return lock
+
+
+def _acquire_turn_lock() -> asyncio.Lock:
+    lock = _turn_lock()
+    if lock.locked():
+        # fail-fast：确认通过可能自动跑下一站，排队会让另一个标签页空转。
+        raise ControllerBusy("总控正在处理上一条消息，请稍候再发")
+    return lock
 
 
 async def _messages(session: SessionDep, session_id: int) -> list[ControllerMessage]:
@@ -76,62 +112,40 @@ async def _session_out(session: SessionDep, item: ControllerSession) -> Controll
     )
 
 
-@router.post("/controller/sessions", response_model=ControllerSessionOut)
-async def create_controller_session(
-    payload: ControllerSessionCreate, session: SessionDep
-) -> ControllerSessionOut:
-    product_id = None
-    if payload.product_slug:
-        product = await session.scalar(
-            select(ProductProfile).where(ProductProfile.slug == payload.product_slug)
-        )
-        if product is None:
-            raise HTTPException(status_code=404, detail="product not found")
-        product_id = product.id
+async def _global_session(session: AsyncSession) -> ControllerSession:
+    """总控全局只有一条会话（decisions #92）：有则复用，无则新建。"""
+    item = await session.scalar(
+        select(ControllerSession).order_by(ControllerSession.id.desc())
+    )
+    if item is not None:
+        return item
 
-    existing = None
-    if payload.fresh and product_id is None and payload.batch_id is None:
-        # 空白沙盘只保留一个：再次点「新建」回到尚未建档的那个会话。
-        existing = await session.scalar(
-            select(ControllerSession)
-            .where(
-                ControllerSession.product_id.is_(None),
-                ControllerSession.batch_id.is_(None),
-            )
-            .order_by(ControllerSession.id.desc())
-        )
-    elif not payload.fresh:
-        existing = await session.scalar(
-            select(ControllerSession)
-            .where(
-                ControllerSession.product_id == product_id,
-                ControllerSession.batch_id == payload.batch_id,
-            )
-            .order_by(ControllerSession.id.desc())
-        )
-    if existing is not None:
-        return await _session_out(session, existing)
-
-    item = ControllerSession(product_id=product_id, batch_id=payload.batch_id)
+    item = ControllerSession()
     session.add(item)
     try:
         await session.commit()
     except IntegrityError:
-        # 空白会话唯一索引兜底：并发请求里另一个已经创建成功。
+        # 并发下另一个请求已插入；回滚后复用同一行。
         await session.rollback()
         existing = await session.scalar(
-            select(ControllerSession)
-            .where(
-                ControllerSession.product_id.is_(None),
-                ControllerSession.batch_id.is_(None),
-            )
-            .order_by(ControllerSession.id.desc())
+            select(ControllerSession).order_by(ControllerSession.id.desc())
         )
         if existing is None:
             raise
-        return await _session_out(session, existing)
+        return existing
     await session.refresh(item)
-    return await _session_out(session, item)
+    return item
+
+
+@router.post("/controller/sessions", response_model=ControllerSessionOut)
+async def create_controller_session(
+    session: SessionDep,
+    payload: ControllerSessionCreate | None = None,
+) -> ControllerSessionOut:
+    # product_slug / batch_id / fresh 已废弃（decisions #92）：总控只有一条全局会话，
+    # 当前页面由每条消息携带的 page_context 决定，不再靠会话绑定。
+    del payload
+    return await _session_out(session, await _global_session(session))
 
 
 @router.get("/controller/sessions/{session_id}", response_model=ControllerSessionOut)
@@ -148,15 +162,47 @@ async def _run_turn(
     message: str,
     runtime: RuntimeDep,
     *,
+    page_context: ControllerPageContext | None = None,
     emit: Callable[[dict], Awaitable[None]] | None = None,
 ) -> ControllerTurnOut:
+    async with _acquire_turn_lock():
+        return await _run_turn_locked(
+            session, item, message, runtime, page_context=page_context, emit=emit
+        )
+
+
+async def _run_turn_locked(
+    session: SessionDep,
+    item: ControllerSession,
+    message: str,
+    runtime: RuntimeDep,
+    *,
+    page_context: ControllerPageContext | None = None,
+    emit: Callable[[dict], Awaitable[None]] | None = None,
+) -> ControllerTurnOut:
+    page = await resolve_page_context(session, page_context)
+    # 页面目标变了，旧确认卡不再可信（decisions #92）。
+    if (
+        item.pending_action_json
+        and page.batch is not None
+        and item.pending_action_json.get("batch_id") != page.batch.id
+    ):
+        item.pending_action_json = None
+        await session.commit()
     history = [
-        (row.id, row.role, row.content) for row in await _messages(session, item.id)
+        (row.id, row.role, history_content(row.action_json, row.content))
+        for row in await _messages(session, item.id)
     ]
+    page_label = page.label
     user_message = ControllerMessage(
         session_id=item.id,
         role="user",
         content=message,
+        action_json=(
+            {"page_context": page.as_dict(), "page_label": page_label}
+            if page_label
+            else None
+        ),
     )
     session.add(user_message)
     await session.commit()
@@ -179,6 +225,7 @@ async def _run_turn(
             item,
             message,
             search=search,
+            page=page,
             history=history,
             emit=emit,
         )
@@ -210,6 +257,7 @@ async def _run_turn(
         pending_action=turn.pending,
         events=turn.events,
         thinking=turn.thinking,
+        needs_target=turn.needs_target,
     )
 
 
@@ -223,7 +271,14 @@ async def post_controller_message(
     item = await session.get(ControllerSession, session_id)
     if item is None:
         raise HTTPException(status_code=404, detail="controller session not found")
-    return await _run_turn(session, item, payload.message, runtime)
+    try:
+        return await _run_turn(
+            session, item, payload.message, runtime, page_context=payload.context
+        )
+    except PageContextError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ControllerBusy as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.post("/controller/sessions/{session_id}/messages/stream")
@@ -246,9 +301,18 @@ async def stream_controller_message(
                     await queue.put({"type": "error", "detail": "总控会话不存在"})
                     return
                 turn = await _run_turn(
-                    db_session, item, payload.message, runtime, emit=emit
+                    db_session,
+                    item,
+                    payload.message,
+                    runtime,
+                    page_context=payload.context,
+                    emit=emit,
                 )
                 await queue.put({"type": "done", "turn": turn.model_dump(mode="json")})
+        except PageContextError as exc:
+            await queue.put({"type": "error", "detail": str(exc)})
+        except ControllerBusy as exc:
+            await queue.put({"type": "error", "detail": str(exc)})
         except ControllerUnavailable as exc:
             await queue.put({"type": "error", "detail": str(exc)})
         except HTTPException as exc:
@@ -296,33 +360,61 @@ async def confirm_controller_action(
     item = await session.get(ControllerSession, session_id)
     if item is None:
         raise HTTPException(status_code=404, detail="controller session not found")
-    pending = item.pending_action_json or {}
-    if pending.get("id") != payload.action_id:
-        raise HTTPException(status_code=409, detail="确认动作已失效，请重新发起")
+    try:
+        async with _acquire_turn_lock():
+            pending = item.pending_action_json or {}
+            if pending.get("id") != payload.action_id:
+                raise HTTPException(status_code=409, detail="确认动作已失效，请重新发起")
 
-    if payload.decision == "cancel":
-        item.pending_action_json = None
-        content = "已取消，没有改动数据。"
-    else:
-        content = await _execute_pending(session, item, pending, runtime)
+            if payload.decision == "cancel":
+                item.pending_action_json = None
+                content = "已取消，没有改动数据。"
+            else:
+                # 先置空再执行：两个标签页重复点击时，第二次必然失效。
+                item.pending_action_json = None
+                await session.commit()
+                content = await _execute_pending(session, item, pending, runtime)
 
-    assistant = ControllerMessage(
-        session_id=item.id,
-        role="assistant",
-        content=content,
-        action_json={"confirmed": pending.get("kind"), "decision": payload.decision},
-    )
-    session.add(assistant)
-    await session.commit()
-    await session.refresh(item)
-    return ControllerTurnOut(
-        session=await _session_out(session, item),
-        reply=content,
-        pending_action=None,
-    )
+            assistant = ControllerMessage(
+                session_id=item.id,
+                role="assistant",
+                content=content,
+                action_json={
+                    "confirmed": pending.get("kind"),
+                    "decision": payload.decision,
+                },
+            )
+            session.add(assistant)
+            await session.commit()
+            await session.refresh(item)
+            return ControllerTurnOut(
+                session=await _session_out(session, item),
+                reply=content,
+                pending_action=None,
+            )
+    except ControllerBusy as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 async def _execute_pending(
+    session: SessionDep,
+    item: ControllerSession,
+    pending: dict,
+    runtime: RuntimeDep,
+) -> str:
+    try:
+        return await _execute_pending_locked(session, item, pending, runtime)
+    except PendingTargetError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def _verify_draft(pending: dict, draft_json: dict | None) -> None:
+    frozen = pending.get("draft_sha256")
+    if frozen and frozen != draft_hash(draft_json):
+        raise PendingTargetError("草案已被新的调研或录入覆盖，请重新发起确认")
+
+
+async def _execute_pending_locked(
     session: SessionDep,
     item: ControllerSession,
     pending: dict,
@@ -332,6 +424,7 @@ async def _execute_pending(
     if kind == "commit_product":
         if not item.draft_json:
             raise HTTPException(status_code=409, detail="没有可提交的产品草案")
+        _verify_draft(pending, item.draft_json)
         draft = ResearchDraft.model_validate(item.draft_json)
         product, new_batch, docs, benchmarks = await commit_research_draft(session, draft)
         product_name, product_slug, batch_code = (
@@ -352,12 +445,13 @@ async def _execute_pending(
     if kind == "apply_inputs":
         if not item.draft_json:
             raise HTTPException(status_code=409, detail="没有可写入的数据草案")
-        product = (
-            await session.get(ProductProfile, item.product_id) if item.product_id else None
-        )
-        if product is None:
-            raise HTTPException(status_code=409, detail="当前会话没有绑定产品")
+        _verify_draft(pending, item.draft_json)
+        product = await pending_product(session, pending)
         draft = ResearchDraft.model_validate(item.draft_json)
+        if draft.product.slug != product.slug:
+            raise PendingTargetError(
+                f"草案属于 {draft.product.slug}，与确认卡目标 {product.slug} 不一致，请重新发起"
+            )
         stats = await apply_user_inputs(session, product, draft)
         item.pending_action_json = None
         item.draft_json = None
@@ -370,11 +464,7 @@ async def _execute_pending(
         )
 
     if kind == "create_batch":
-        product = (
-            await session.get(ProductProfile, item.product_id) if item.product_id else None
-        )
-        if product is None:
-            raise HTTPException(status_code=409, detail="当前会话没有绑定产品")
+        product = await pending_product(session, pending)
         raw_quantity = pending.get("quantity_kg")
         try:
             quantity = float(raw_quantity) if raw_quantity else 0.0
@@ -395,9 +485,7 @@ async def _execute_pending(
         )
 
     if kind == "delete_batch":
-        batch = await session.get(Batch, item.batch_id) if item.batch_id else None
-        if batch is None:
-            raise HTTPException(status_code=409, detail="当前没有批次")
+        batch = await pending_batch(session, pending)
         try:
             stats = await delete_batch(session, batch)
         except BatchDeleteError as exc:
@@ -411,9 +499,7 @@ async def _execute_pending(
             "会话已不再绑定批次，可切换批次或新建。"
         )
 
-    batch = await session.get(Batch, item.batch_id) if item.batch_id else None
-    if batch is None:
-        raise HTTPException(status_code=409, detail="当前没有批次")
+    batch = await pending_batch(session, pending)
     agent_value = pending.get("agent") or ""
     try:
         agent = AgentName(agent_value)

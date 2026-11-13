@@ -4,7 +4,7 @@ from ruralsmartmark.agents.base import AgentName
 from ruralsmartmark.agents.runtime import get_runtime
 from ruralsmartmark.main import app
 from ruralsmartmark.models import Artifact, Batch
-from ruralsmartmark.seed import seed_demo
+from ruralsmartmark.seed import ZHAOTONG_RAW_BATCH_CODE, seed_demo
 from ruralsmartmark.services.rewind import rewind_to_agent
 
 AGENTS = ["story", "packaging", "marketing", "pricing"]
@@ -12,7 +12,7 @@ AGENTS = ["story", "packaging", "marketing", "pricing"]
 
 async def _trace_raw_batch(client) -> int:
     batches = (await client.get("/api/batches")).json()
-    raw = next(item for item in batches if item["state"] == "raw")
+    raw = next(item for item in batches if item["code"] == ZHAOTONG_RAW_BATCH_CODE)
     for agent in AGENTS:
         started = await client.post(f"/api/batches/{raw['id']}/pipeline/start")
         assert started.status_code == 200, started.text

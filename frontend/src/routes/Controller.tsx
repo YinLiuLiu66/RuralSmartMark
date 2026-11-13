@@ -1,54 +1,38 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { api, type Batch, type Product } from "../api/client";
-import ControllerPanel from "../components/ControllerPanel";
+import { api } from "../api/client";
+import ControllerChat from "../components/controller/ControllerChat";
+import { usePageContext } from "../hooks/usePageContext";
+import { useWorldStore } from "../stores/world";
 
 export default function Controller() {
   const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [productSlug, setProductSlug] = useState<string | null>(null);
-  const [batchId, setBatchId] = useState<number | null>(null);
-  const [freshToken, setFreshToken] = useState<number | undefined>(undefined);
-
-  async function load(selectNewest = false) {
-    const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
-    setProducts(productList);
-    setBatches(batchList);
-    const product = selectNewest
-      ? productList[productList.length - 1] ?? null
-      : productList[0] ?? null;
-    setProductSlug(product?.slug ?? null);
-    const visible = product
-      ? batchList.filter((batch) => batch.product_id === product.id)
-      : batchList;
-    setBatchId(visible[0]?.id ?? null);
-  }
+  const context = usePageContext();
+  const setProducts = useWorldStore((state) => state.setProducts);
+  const setBatches = useWorldStore((state) => state.setBatches);
 
   useEffect(() => {
-    void load(false);
-  }, []);
+    let cancelled = false;
+    Promise.all([api.products(), api.batches()])
+      .then(([products, batches]) => {
+        if (cancelled) return;
+        setProducts(products);
+        setBatches(batches);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [setProducts, setBatches]);
 
   return (
     <div className="min-h-dvh bg-paper">
-      <ControllerPanel
-        inline
-        productSlug={freshToken !== undefined ? null : productSlug}
-        batchId={freshToken !== undefined ? null : batchId}
-        freshToken={freshToken}
-        onNewProduct={() => setFreshToken((current) => current ?? Date.now())}
+      <ControllerChat
+        variant="page"
+        context={context}
         onClose={() => navigate("/")}
-        onDataChanged={() => {
-          setFreshToken(undefined);
-          void load(true);
-        }}
       />
-      {products.length === 0 && batches.length === 0 && (
-        <div className="mx-auto max-w-[720px] px-6 py-4 text-center text-xs text-ink-faint">
-          还没有产品；在总控里说“帮我做一个新产品”即可开始。
-        </div>
-      )}
     </div>
   );
 }

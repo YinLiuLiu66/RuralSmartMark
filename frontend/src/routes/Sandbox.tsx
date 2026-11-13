@@ -12,6 +12,7 @@ import {
 import {
   BadgePercent,
   BookOpen,
+  ChevronLeft,
   Megaphone,
   Play,
   Plus,
@@ -19,7 +20,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import {
   AGENTS,
@@ -36,9 +37,9 @@ import {
 import { api, type KnowledgeDoc } from "../api/client";
 import type { AgentKey } from "../api/pipeline";
 import { traceApi } from "../api/trace";
-import ControllerPanel from "../components/ControllerPanel";
 import ReviewDialog from "../components/ReviewDialog";
 import StationCard from "../components/StationCard";
+import { useControllerStore } from "../stores/controller";
 import { usePipelineStore } from "../stores/pipeline";
 import { useWorldStore } from "../stores/world";
 import { SceneBoundary } from "../three/SceneBoundary";
@@ -76,21 +77,9 @@ function SceneLoading() {
   );
 }
 
-function EmptySandbox({
-  controllerOpen,
-  canCancel,
-  onCancel,
-}: {
-  controllerOpen: boolean;
-  canCancel: boolean;
-  onCancel: () => void;
-}) {
+function NoBatch({ productName, onCreate }: { productName: string; onCreate: () => void }) {
   return (
-    <div
-      className={`absolute inset-0 z-20 flex items-center justify-center overflow-hidden bg-paper px-8 ${
-        controllerOpen ? "pr-[470px]" : ""
-      }`}
-    >
+    <div className="absolute inset-0 z-20 flex items-center justify-center overflow-hidden bg-paper px-8">
       <div
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{
@@ -100,36 +89,20 @@ function EmptySandbox({
         }}
       />
       <div className="relative max-w-md text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-line-strong bg-surface text-apple">
-          <Plus size={24} />
-        </div>
-        <p className="mt-5 text-[10px] uppercase tracking-[0.24em] text-ink-faint">
-          新沙盘 · 未建档
+        <p className="text-[10px] uppercase tracking-[0.24em] text-ink-faint">
+          暂无批次
         </p>
-        <h2 className="mt-2 font-display text-3xl text-ink">这里还空着</h2>
+        <h2 className="mt-2 font-display text-3xl text-ink">这个项目还没有批次</h2>
         <p className="mt-3 text-sm leading-7 text-ink-muted">
-          已经为你腾出一个新产品的位置。告诉右侧总控产品名、产地和品类；调研建档后，这里会出现新的批次、四站点和溯源页。
+          {productName} 的档案已经建好。给总控说“开一批”，或点下面的按钮新建一个批次，再跑四站。
         </p>
-        <div className="mt-6 grid grid-cols-3 gap-2 text-[10px] text-ink-faint">
-          {["调研资料", "确认建档", "运行四站"].map((step, index) => (
-            <div
-              key={step}
-              className="rounded-control border border-dashed border-line bg-surface/70 px-2 py-3"
-            >
-              <div className="text-apple">0{index + 1}</div>
-              <div className="mt-1">{step}</div>
-            </div>
-          ))}
-        </div>
-        {canCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="mt-6 rounded-control border border-line bg-surface px-4 py-2 text-xs text-ink-muted transition-colors hover:border-apple/40 hover:text-apple"
-          >
-            返回现有产品
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-6 rounded-control bg-apple px-4 py-2 text-xs font-medium text-white hover:bg-apple-hover"
+        >
+          新建批次
+        </button>
       </div>
     </div>
   );
@@ -172,11 +145,6 @@ export default function Sandbox() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [scanCount, setScanCount] = useState(0);
   const [creating, setCreating] = useState(false);
-  const [controllerOpen, setControllerOpen] = useState(false);
-  const [controllerFreshToken, setControllerFreshToken] = useState<number | undefined>(
-    undefined,
-  );
-  const [newProductMode, setNewProductMode] = useState(false);
   const [railWidth, setRailWidth] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_RAIL_WIDTH;
     const stored = Number(window.localStorage.getItem(RAIL_WIDTH_KEY));
@@ -187,16 +155,11 @@ export default function Sandbox() {
     window.localStorage.setItem(RAIL_WIDTH_KEY, String(railWidth));
   }, [railWidth]);
 
-  const {
-    products,
-    selectedProductId,
-    batches,
-    selectedBatchId,
-    setProducts,
-    selectProduct,
-    setBatches,
-    selectBatch,
-  } = useWorldStore();
+  const { products, batches, setProducts, setBatches } = useWorldStore();
+  const { slug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setControllerOpen = useControllerStore((state) => state.setOpen);
+  const controllerDataVersion = useControllerStore((state) => state.dataVersion);
   const {
     workspace,
     selectedAgent,
@@ -231,8 +194,22 @@ export default function Sandbox() {
     };
   }, [setBatches, setProducts]);
 
-  const selectedProduct =
-    products.find((item) => item.id === selectedProductId) ?? products[0] ?? null;
+  // URL 是唯一真源：/project/:slug?batch=&station=
+  const selectedProduct = slug
+    ? (products.find((item) => item.slug === slug) ?? null)
+    : null;
+  const visibleBatches = selectedProduct
+    ? batches.filter((batch) => batch.product_id === selectedProduct.id)
+    : [];
+  const urlBatchId = Number(searchParams.get("batch")) || null;
+  // 默认选已溯源的那一批；否则取第一条。不按产品写死批次码。
+  const defaultBatch =
+    [...visibleBatches].reverse().find((batch) => batch.state === "traced") ??
+    visibleBatches[0] ??
+    null;
+  const selectedBatch =
+    visibleBatches.find((batch) => batch.id === urlBatchId) ?? defaultBatch;
+  const selectedBatchId = selectedBatch?.id ?? null;
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -255,13 +232,22 @@ export default function Sandbox() {
     };
   }, [selectedProduct]);
 
+  // 选中批次/站点写回 URL，保证屏幕与总控看到的页面上下文一致。
   useEffect(() => {
-    if (!selectedProductId) return;
-    const visible = batches.filter((batch) => batch.product_id === selectedProductId);
-    if (!visible.some((batch) => batch.id === selectedBatchId)) {
-      selectBatch(visible[0]?.id ?? null);
+    if (!selectedProduct) return;
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+    if (selectedBatch && next.get("batch") !== String(selectedBatch.id)) {
+      next.set("batch", String(selectedBatch.id));
+      changed = true;
     }
-  }, [batches, selectedBatchId, selectedProductId, selectBatch]);
+    if (next.get("station") !== (selectedAgent ?? null)) {
+      if (selectedAgent) next.set("station", selectedAgent);
+      else next.delete("station");
+      changed = true;
+    }
+    if (changed) setSearchParams(next, { replace: true });
+  }, [selectedProduct, selectedBatch, selectedAgent, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!selectedBatchId) return;
@@ -305,13 +291,23 @@ export default function Sandbox() {
     return () => window.removeEventListener("focus", reload);
   }, [selectedBatchId, refresh]);
 
-  const visibleBatches = selectedProductId
-    ? batches.filter((batch) => batch.product_id === selectedProductId)
-    : batches;
-  const selectedBatch =
-    visibleBatches.find((batch) => batch.id === selectedBatchId) ??
-    visibleBatches[0] ??
-    null;
+  // 总控确认/建档后刷新数据；新建产品由总控完成，工作台会自动出现新卡片。
+  useEffect(() => {
+    if (!controllerDataVersion) return;
+    let cancelled = false;
+    Promise.all([api.products(), api.batches()])
+      .then(([productList, batchList]) => {
+        if (cancelled) return;
+        setProducts(productList);
+        setBatches(batchList);
+      })
+      .catch(() => undefined);
+    if (selectedBatchId) void refresh(selectedBatchId, true);
+    return () => {
+      cancelled = true;
+    };
+  }, [controllerDataVersion, selectedBatchId, refresh, setProducts, setBatches]);
+
   const currentBatch = workspace?.batch ?? selectedBatch;
   const stageIndex = STATE_STAGE[currentBatch?.state ?? ""] ?? 0;
   const statusLabel = currentBatch
@@ -476,12 +472,13 @@ export default function Sandbox() {
   }
 
   async function handleCreateBatch() {
+    if (!selectedProduct) return;
     setCreating(true);
     setLoadError(null);
     try {
-      const batch = await api.createBatch(selectedProduct?.slug);
+      const batch = await api.createBatch(selectedProduct.slug);
       setBatches([batch, ...batches]);
-      selectBatch(batch.id);
+      selectBatchById(batch.id);
     } catch (reason: unknown) {
       setLoadError(reason instanceof Error ? reason.message : "新建批次失败");
     } finally {
@@ -489,65 +486,15 @@ export default function Sandbox() {
     }
   }
 
-  function startNewProduct() {
-    if (!newProductMode) {
-      setNewProductMode(true);
-      setControllerFreshToken(Date.now());
-      selectAgent(null);
-      setReviewOpen(false);
-    }
-    setControllerOpen(true);
-  }
-
-  function exitNewProduct() {
-    setNewProductMode(false);
-    setControllerFreshToken(undefined);
-  }
-
-  function handleProductSelect(value: string) {
-    const id = Number(value) || null;
-    if (newProductMode) {
-      setNewProductMode(false);
-      setControllerFreshToken(undefined);
-      setControllerOpen(false);
-      setReviewOpen(false);
-      selectAgent(null);
-    }
-    selectProduct(id);
-  }
-
-  async function handleControllerDataChanged(batchId?: number | null) {
-    setNewProductMode(false);
-    setControllerFreshToken(undefined);
-    const [productList, batchList] = await Promise.all([api.products(), api.batches()]);
-    const newest = productList[productList.length - 1] ?? null;
-    setProducts(productList);
-    setBatches(batchList);
-    if (newest && !products.some((item) => item.id === newest.id)) {
-      selectProduct(newest.id);
-      const visible = batchList.filter((batch) => batch.product_id === newest.id);
-      selectBatch(visible[0]?.id ?? null);
-    }
-    if (batchId) {
-      const target = batchList.find((batch) => batch.id === batchId);
-      if (target) {
-        if (target.product_id !== selectedProductId) selectProduct(target.product_id);
-        selectBatch(batchId);
-      }
-    }
+  function selectBatchById(batchId: number) {
+    const next = new URLSearchParams(searchParams);
+    next.set("batch", String(batchId));
+    next.delete("station");
+    setSearchParams(next, { replace: true });
   }
 
   return (
     <>
-      <div className="desktop-only min-h-dvh items-center justify-center bg-paper p-6 text-center">
-        <div className="max-w-sm">
-          <div className="font-display text-2xl text-ink">智农云链</div>
-          <p className="mt-3 text-sm leading-7 text-ink-muted">
-            3D 沙盘需要桌面端（≥1024px）。手机请扫描包装上的二维码，打开溯源页。
-          </p>
-        </div>
-      </div>
-
       <div
         className="shell"
         style={
@@ -559,91 +506,53 @@ export default function Sandbox() {
       >
         <header className="flex items-center gap-4 border-b border-line bg-surface/85 px-5 backdrop-blur">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-xl tracking-wide text-ink">智农云链</span>
+            <Link
+              to="/"
+              className="flex items-center gap-1 text-[11px] text-ink-muted hover:text-apple"
+            >
+              <ChevronLeft size={13} />
+              工作台
+            </Link>
+            <span className="hidden font-display text-xl tracking-wide text-ink md:inline">
+              智农云链
+            </span>
             <span className="text-[11px] text-ink-muted">
-              多智能体 ·{" "}
-              {newProductMode
-                ? "新产品 · 未建档"
-                : selectedProduct?.name ?? "未选择产品"}
+              {selectedProduct?.name ?? "项目不存在"}
             </span>
           </div>
 
           <label className="ml-4 flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors hover:border-line-strong focus-within:border-apple/40">
-            <span>产品</span>
+            <span>批次</span>
             <select
-              value={newProductMode ? "" : selectedProduct?.id ?? ""}
-              onChange={(event) => handleProductSelect(event.target.value)}
-              className="max-w-[160px] bg-transparent text-ink outline-none"
+              value={selectedBatch?.id ?? ""}
+              onChange={(event) => {
+                const nextId = Number(event.target.value);
+                if (nextId) selectBatchById(nextId);
+              }}
+              className="max-w-[180px] bg-transparent text-ink outline-none disabled:cursor-default"
             >
-              {newProductMode && <option value="">新产品（未建档）</option>}
-              {!newProductMode && products.length === 0 && (
-                <option value="">暂无产品</option>
-              )}
-              {products.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
+              {visibleBatches.length === 0 && <option value="">暂无批次</option>}
+              {visibleBatches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.code}
                 </option>
               ))}
             </select>
           </label>
+
           <button
             type="button"
-            aria-label="新建产品"
-            aria-pressed={newProductMode}
-            title="新建产品"
-            onClick={startNewProduct}
-            className={`flex h-9 w-9 items-center justify-center rounded-control border transition-colors ${
-              newProductMode
-                ? "border-apple/40 bg-apple-weak text-apple"
-                : "border-line bg-surface text-ink-muted hover:border-apple/40 hover:text-apple"
-            }`}
+            aria-label="新建批次"
+            title="新建批次"
+            onClick={() => void handleCreateBatch()}
+            disabled={creating || !selectedProduct}
+            className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted transition-colors hover:border-apple/40 hover:text-apple disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus size={15} />
           </button>
-
-          <label
-            className={`flex items-center gap-2 rounded-control border border-line bg-paper px-3 py-2 text-xs text-ink-muted transition-colors ${
-              newProductMode
-                ? "opacity-70"
-                : "hover:border-line-strong focus-within:border-apple/40"
-            }`}
-          >
-            <span>批次</span>
-            <select
-              value={newProductMode ? "" : selectedBatch?.id ?? ""}
-              disabled={newProductMode}
-              onChange={(event) => selectBatch(Number(event.target.value) || null)}
-              className="max-w-[180px] bg-transparent text-ink outline-none disabled:cursor-default"
-            >
-              {newProductMode && <option value="">未创建批次</option>}
-              {!newProductMode && visibleBatches.length === 0 && (
-                <option value="">暂无批次</option>
-              )}
-              {!newProductMode &&
-                visibleBatches.map((batch) => (
-                  <option key={batch.id} value={batch.id}>
-                    {batch.code}
-                  </option>
-                ))}
-            </select>
-          </label>
-
-          {!newProductMode && (
-            <button
-              type="button"
-              aria-label="新建批次"
-              title="新建批次"
-              onClick={() => void handleCreateBatch()}
-              disabled={creating || !selectedProduct}
-              className="flex h-9 w-9 items-center justify-center rounded-control border border-line bg-surface text-ink-muted transition-colors hover:border-apple/40 hover:text-apple disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus size={15} />
-            </button>
-          )}
-
           <div className="ml-auto flex items-center gap-2">
             <span
-              className={`rounded-full px-3 py-1 text-[11px] ${
+              className={`hidden rounded-full px-3 py-1 text-[11px] md:inline-flex ${
                 health === "ok"
                   ? "bg-leaf-weak text-leaf"
                   : health === "error"
@@ -654,7 +563,7 @@ export default function Sandbox() {
               {health === "ok" ? "数据已连接" : health === "error" ? "后端未连接" : "连接中"}
             </span>
             <span
-              className={`rounded-full px-3 py-1 text-[11px] ${
+              className={`hidden rounded-full px-3 py-1 text-[11px] md:inline-flex ${
                 sse === "live"
                   ? "bg-leaf-weak text-leaf"
                   : sse === "reconnecting"
@@ -667,38 +576,47 @@ export default function Sandbox() {
             <button
               type="button"
               aria-label="打开总控"
-              onClick={() => {
-                setNewProductMode(false);
-                setControllerFreshToken(undefined);
-                setControllerOpen(true);
-              }}
+              onClick={() => setControllerOpen(true)}
               className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-2 text-xs text-ink-muted hover:border-apple/40 hover:text-apple"
             >
               <Sparkles size={14} />
               总控
             </button>
-            {!newProductMode && (
-              <button
-                className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
-                onClick={handleHeader}
-                disabled={headerDisabled}
-              >
-                {canReview ? <ShieldCheck size={14} /> : <Play size={14} />}
-                {headerLabel}
-              </button>
-            )}
+            <button
+              className="flex items-center gap-1.5 rounded-control bg-apple px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-apple-hover disabled:opacity-50"
+              onClick={handleHeader}
+              disabled={headerDisabled}
+            >
+              {canReview ? <ShieldCheck size={14} /> : <Play size={14} />}
+              {headerLabel}
+            </button>
           </div>
         </header>
 
         <div className="shell-main relative">
-          {newProductMode && (
-            <EmptySandbox
-              controllerOpen={controllerOpen}
-              canCancel={products.length > 0}
-              onCancel={exitNewProduct}
+          {!selectedBatch && selectedProduct && (
+            <NoBatch
+              productName={selectedProduct.name}
+              onCreate={() => void handleCreateBatch()}
             />
           )}
-          <aside className="border-r border-line bg-paper/70 p-4">
+          {!selectedProduct && !loadError && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-paper">
+              <div className="text-center">
+                <h2 className="font-display text-2xl text-ink">找不到这个项目</h2>
+                <p className="mt-2 text-sm text-ink-muted">
+                  它可能已被删除；回工作台重新选择。
+                </p>
+                <Link
+                  to="/"
+                  className="mt-4 inline-flex rounded-control border border-line bg-surface px-4 py-2 text-xs text-ink-muted hover:border-apple/40 hover:text-apple"
+                >
+                  返回工作台
+                </Link>
+              </div>
+            </div>
+          )}
+          <aside className="left-rail border-r border-line bg-paper/70 p-4">
             <section className="card p-4">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-ink-muted">
                 <span>品牌护照</span>
@@ -755,7 +673,7 @@ export default function Sandbox() {
             <SceneBoundary>
               <Suspense fallback={<SceneLoading />}>
                 <Scene
-                  batchCode={currentBatch?.code ?? "ZT-2026-001"}
+                  batchCode={currentBatch?.code ?? ""}
                   batchStation={currentBatch?.current_station ?? "intake"}
                   stationStatuses={stationStatuses}
                   packagingImageUrl={packagingImageUrl}
@@ -763,7 +681,7 @@ export default function Sandbox() {
                   traceCode={traceCode}
                   traced={traced}
                   onSelectBatch={() => {
-                    if (currentBatch) selectBatch(currentBatch.id);
+                    if (currentBatch) selectBatchById(currentBatch.id);
                   }}
                   onSelectStation={handleSelectStation}
                   onOpenTrace={handleOpenTrace}
@@ -794,6 +712,7 @@ export default function Sandbox() {
           <aside
             className="right-rail absolute inset-y-0 right-0 z-10 border-l border-line bg-surface/60 shadow-[-18px_0_50px_rgba(31,42,36,0.10)]"
             style={{ width: railWidth }}
+            data-open={selectedAgent ? "true" : "false"}
           >
             <div
               role="separator"
@@ -806,7 +725,7 @@ export default function Sandbox() {
               title="拖动调整右栏宽度"
               onPointerDown={handleRailResizeStart}
               onKeyDown={handleRailResizeKeyDown}
-              className="group absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple/40"
+              className="rail-resize group absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple/40"
             >
               <span className="pointer-events-none absolute left-1/2 top-1/2 h-10 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-line transition-colors group-hover:bg-apple/60 group-focus-visible:bg-apple/60" />
             </div>
@@ -926,13 +845,7 @@ export default function Sandbox() {
         </div>
 
         <footer className="border-t border-line bg-surface/85 px-4">
-          {newProductMode ? (
-            <div className="flex h-full items-center justify-center gap-3 text-[11px] text-ink-muted">
-              <span className="h-2 w-2 rounded-full bg-apple" />
-              新沙盘 · 等待总控调研建档
-            </div>
-          ) : (
-            <div className="rail-footer h-full">
+          <div className="rail-footer h-full">
             <div className="flex items-center gap-2 overflow-x-auto">
               {STAGES.map((stage, index) => (
                 <div key={stage.key} className="flex min-w-0 flex-1 items-center gap-2">
@@ -986,7 +899,6 @@ export default function Sandbox() {
               </Link>
             </div>
           </div>
-          )}
         </footer>
 
         {reviewMeta && reviewRun && (
@@ -1004,19 +916,6 @@ export default function Sandbox() {
           />
         )}
       </div>
-
-      {controllerOpen && (
-        <ControllerPanel
-          productSlug={
-            controllerFreshToken !== undefined ? null : selectedProduct?.slug ?? null
-          }
-          batchId={controllerFreshToken !== undefined ? null : selectedBatch?.id ?? null}
-          freshToken={controllerFreshToken}
-          onNewProduct={startNewProduct}
-          onClose={() => setControllerOpen(false)}
-          onDataChanged={(batchId) => void handleControllerDataChanged(batchId)}
-        />
-      )}
     </>
   );
 }

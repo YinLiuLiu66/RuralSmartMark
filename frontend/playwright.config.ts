@@ -18,7 +18,7 @@ export default defineConfig({
     {
       name: "desktop",
       use: { browserName: "chromium", viewport: { width: 1280, height: 720 } },
-      testMatch: /sandbox\.spec\.ts/,
+      testMatch: /(sandbox|workbench)\.spec\.ts/,
     },
     {
       name: "mobile",

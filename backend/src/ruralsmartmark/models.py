@@ -183,9 +183,8 @@ event.listen(
     ControllerSession.__table__,
     "after_create",
     DDL(
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_controller_session_blank "
-        "ON controller_session ((1)) "
-        "WHERE product_id IS NULL AND batch_id IS NULL"
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_controller_session_single "
+        "ON controller_session ((1))"
     ),
 )
 

@@ -117,6 +117,7 @@ async def test_confirm_delete_batch_flow(session, client):
             "id": "act-del",
             "kind": "delete_batch",
             "summary": "确认删除批次 ZT-2026-901，删除不可恢复",
+            "batch_id": batch.id,
         },
     )
     session.add(item)
@@ -147,6 +148,7 @@ async def test_confirm_delete_batch_demo_refused(session, client):
             "id": "act-demo",
             "kind": "delete_batch",
             "summary": "确认删除固定演示批次",
+            "batch_id": batch.id,
         },
     )
     session.add(item)

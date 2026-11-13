@@ -43,12 +43,13 @@ make lan
 
 ### 2.2 总控 / 新产品
 
-- 桌面右上「总控」打开抽屉；或直接打开 `/controller`。要做新产品时点顶栏「+」或面板里的「新建」，先进入空沙盘（产品/批次显示占位，不写库）；重复点击复用同一个空白沙盘。建档后自动切到新产品/首批次。
-- 输入“帮我做一个新产品，我想做贵州麻江蓝莓”，总控会搜索/追问并生成档案草案。
-- 发送后用户消息立即出现；回答逐字流式增长。需要看总控为什么查/停时，点「思考过程」展开思维链（默认折叠）。
-- 草案出齐后，在确认卡点「确认建档」；新产品出现在顶栏「产品」下拉，批次自动选中。
-- 之后可以直接说“运行故事”“包装改克制一点”“通过故事”“回到包装重做”。
-- 说“审核通过”会先出确认卡；确认后通过并自动运行下一站，下一站仍停在待审核。
+- 打开 `http://127.0.0.1:5173/` 是**工作台**：每个项目一张卡（昭通丑苹果、麻江蓝莓），点卡进沙盘；右上「总控」打开常驻抽屉，或「全页聊天」进 `/controller`。
+- 总控是**全局一段会话**：从工作台、项目页、全页聊天切来切去，对话和记忆都是同一段；它根据当前页面知道你在哪个项目/批次/站点。
+- 输入“帮我做一个新产品，我想做贵州麻江蓝莓”，总控会搜索/追问并生成档案草案。发送后用户消息立即出现；回答逐字流式增长，点「思考过程」展开思维链（默认折叠）。
+- 草案出齐后，在确认卡点「确认建档」；建档成功会自动回工作台，新卡片出现。
+- 在项目页说“运行故事”“包装改克制一点”“通过故事”“回到包装重做”。
+- 说“审核通过”会先出确认卡，卡上写明目标批次；确认后通过并自动运行下一站。
+- 在工作台或 `/controller` 直接说“通过”会**反问哪个批次**并给候选，这是预期行为：没有页面批次就不猜。
 - 建档/通过/驳回/回退都会先弹确认卡；查资料/读状态不会。
 - 真实搜索需要 Firecrawl key；没有 key 时贴官网/报道链接或原文。检索连接中断会自动重试，仍失败时直接贴链接即可。
 
@@ -62,24 +63,25 @@ curl -X POST http://127.0.0.1:8000/api/demo/reset
 ```
 
 - reset 幂等：重复调用不会产生重复 run/artifact；扫码数归零；`ZTDEMO26` 内容不变。
-- 首次打开默认选中 `ZT-DEMO-001`（store 优先固定演示批次，其次任一 `traced` 批次）；如手动切到 `ZT-2026-001`（raw），右侧就没有四章内容。
+- seed 现在带两个项目：昭通丑苹果（`ZT-DEMO-001` traced + `ZT-2026-001` raw）与麻江蓝莓（`MJ-2026-001` raw）。项目页默认选该产品下**已 traced** 的批次，否则取第一条；批次 id 会写进 URL 的 `?batch=`。
 
 ## 4. 现场演示动线（约 5 分钟）
 
-1. **桌面沙盘**：选 `ZT-DEMO-001`，指出 6/6 已完成、品牌护照、四站点状态；拖动/缩放 3D，说明低多边形是程序化几何，不是 GLB。
-2. **包装工位**：点右侧「包装设计」或 3D 包装站；切换「经典牛皮纸 / 山野红 / 夜绿」，指出 3D 贴图同步；展示 IP 插画并说明是 Z-Image-Turbo 生成、固定演示码用快照。
-3. **扫码闭环**：点 3D 二维码立牌（或底部「溯源」），打开 `/trace/ZTDEMO26`；说明 390px H5、四段审核章、价格公式与“演示测算”标注。
-4. **H5 细节**：故事与引用、包装文案、旅程/审核时间线、小红书卡；问守园人一个保守问题（如“怎么保存？”），说明认证/功效类问题会被拒答。
-5. **回沙盘**：指出扫码数随 `trace.scanned` 增加；如时间充足，展示 `ZT-2026-001` 是 raw，可现场跑新批次（会消耗真实 LLM 额度，先确认网络与 key）。
-6. **总控**：打开右侧「总控」，说“现在到哪了”，再演示一句“包装改克制一点”会走 Agent；建档/通过/回退会弹确认卡。
-7. **收尾**：`curl -X POST .../api/demo/reset` 恢复干净演示态。
+1. **工作台**：打开 `/`，指出这是产品集合：昭通丑苹果已 6/6、麻江蓝莓刚建档 0/6。「换产品只换档案，不换代码」。
+2. **进沙盘**：点昭通卡进入 `/project/zhaotong-ugly-apple`，指出 6/6 已完成、品牌护照、四站点状态；拖动/缩放 3D，说明低多边形是程序化几何，不是 GLB。
+3. **包装工位**：点右侧「包装设计」或 3D 包装站；切换「经典牛皮纸 / 山野红 / 夜绿」，指出 3D 贴图同步；展示 IP 插画并说明是 Z-Image-Turbo 生成、固定演示码用快照。
+4. **扫码闭环**：点 3D 二维码立牌（或底部「溯源」），打开 `/trace/ZTDEMO26`；说明 390px H5、四段审核章、价格公式与“演示测算”标注。
+5. **H5 细节**：故事与引用、包装文案、旅程/审核时间线、小红书卡；问守园人一个保守问题（如“怎么保存？”），说明认证/功效类问题会被拒答。
+6. **回沙盘**：指出扫码数随 `trace.scanned` 增加；如时间充足，回工作台点麻江蓝莓，现场跑故事站（会消耗真实 LLM 额度，先确认网络与 key），证明“换个产品真能跑”。
+7. **总控**：打开右侧「总控」，说“我有哪些项目”“现在到哪了”；在工作台直接说“通过”，展示它会反问批次并给候选，说明不会打错批次。
+8. **收尾**：`curl -X POST .../api/demo/reset` 恢复干净演示态。
 
 ## 5. 验收命令
 
 ```bash
-make test    # 后端 64 passed + 2 skipped + ruff；前端 typecheck/lint/build
-make e2e     # Playwright 9 条冒烟（桌面 6 + 移动 3）
-make perf    # 60 秒帧率/堆内存 + 200% 等效视口
+make test    # 后端 106 passed + 2 skipped + ruff；前端 typecheck/lint/build
+make e2e     # Playwright 15 条冒烟（桌面 10 + 移动 5）
+make perf    # 60 秒帧率/堆内存 + 移动端帧率 + 640×360 窄视口
 cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py  # 可选，真实 LLM 会消耗额度
 cd backend && RSM_REAL_SEARCH=1 uv run pytest tests/test_search_real.py  # 可选，真实 Firecrawl 会消耗 credits
 cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run  # 缓存清理预演
@@ -91,14 +93,14 @@ cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run 
 
 ## 6. 新增一个产品档案
 
-第二产品只做数据，不做 UI。参考 `backend/tests/fixtures/majiang/`：
+第二产品是 canonical 数据：`backend/src/ruralsmartmark/seed/products/majiang/`（`product.json` + `benchmarks.json` + `knowledge/`）。seed 与测试共用这一份，不要再复制到 `tests/fixtures/`。
 
-1. 新建知识库目录，Markdown frontmatter 必须含 `id/title/type/source_url/source_date/credibility`；测试夹具全部标 `credibility: demo`。
-2. 准备产品 JSON：`slug/name/county/category/form/specs/palette/knowledge_dir`；`specs` 至少含 `brand_name/ip_name`，可选 `agent_context/brand_rule/*_brief/pack_kg/*_pack_label/trace_prefix/packaging_hero/packaging_tagline/trace_footer/pricing_faq/demo_copy`。
+1. 新建知识库目录，Markdown frontmatter 必须含 `id/title/type/source_url/source_date/credibility`；演示产品全部标 `credibility: demo`。
+2. 准备产品 JSON：`slug/name/county/category/form/specs/palette/knowledge_dir`；`specs` 至少含 `brand_name/ip_name/batch_prefix/trace_prefix`，可选 `agent_context/brand_rule/*_brief/pack_kg/*_pack_label/packaging_hero/packaging_tagline/trace_footer/pricing_faq/demo_copy`。
 3. 准备 3 条基准价（散装批发 / 电商散装 / 品牌礼盒，元/kg）；定价计算器需要 `PRICE-01` 与 `DEMO-01` 两篇文档。
-4. 建 `Batch` 后走四站审核；不需要改 Agent、编排器、定价、包装或 H5 代码。
+4. 在 `seed/__init__.py` 的 `seed_products()` 里加一条 `ProductSeed`；批次停在 `raw` 即可现场演示跑站。不需要改 Agent、编排器、定价、包装或 H5 代码。
 5. 参考测试：`backend/tests/test_second_product.py`（断言 `traced`、`MJ` 溯源码、公开 H5、包装 PNG、无昭通/苹果残留）。
-6. 可选真实 LLM 冒烟：`cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py`。2026-10-22 实测 V4.1-Flash 四站约 90 秒，无 fallback；会消耗额度，默认跳过。
+6. 可选真实 LLM 冒烟：`cd backend && RSM_REAL_LLM=1 uv run pytest tests/test_second_product_real.py`。会消耗额度，默认跳过。
 
 ## 7. 故障排查
 
@@ -106,8 +108,9 @@ cd backend && uv run python -m ruralsmartmark.maintenance image-cache --dry-run 
 |---|---|
 | 右上“后端未连接” | 确认 8000 在跑；`curl http://127.0.0.1:8000/api/health`；看 `backend` 终端错误 |
 | 顶栏“重连中” | SSE 断线会自动重连；仍不恢复则刷新页面重拉 workspace |
-| 3D 显示“场景没有启动” | 点“重试 3D”；确认浏览器 WebGL 未禁用；手机端本来不提供 3D |
+| 3D 显示“场景没有启动” | 点“重试 3D”；确认浏览器 WebGL 未禁用；移动端沙盘为简化布局（#93） |
 | 包装工位没有图 | 先确认选中 `ZT-DEMO-001`；再看 `/api/trace/ZTDEMO26/packaging.png` 是否 200 |
+| 总控说“需要指定目标” | 预期行为：工作台/全页聊天没有页面批次，写操作要反问。点候选 chip 或进项目页再说 |
 | 插画生成失败 | 审核不受影响；检查 `IMAGE_*` 配置与网络，重跑包装或稍后重试 |
 | 总控发消息后一直“思考中” | 看后端日志与 `/api/controller/sessions/{id}/messages/stream` 是否在建连；检查 `CONTROLLER_REQUEST_LIMIT`、模型超时与网络；刷新后消息仍在，可重发 |
 | 总控没有思维链 | 确认 `LLM_THINKING_BUDGET>0`；短回答模型可能不产生 reasoning，属正常；思考过程默认折叠，点“思考过程”展开 |

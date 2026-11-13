@@ -1,6 +1,9 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
+import ControllerDock from "./components/controller/ControllerDock";
+
+const Workbench = lazy(() => import("./routes/Workbench"));
 const Sandbox = lazy(() => import("./routes/Sandbox"));
 const Trace = lazy(() => import("./routes/Trace"));
 const Controller = lazy(() => import("./routes/Controller"));
@@ -21,12 +24,17 @@ function PageFallback() {
 
 export default function App() {
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Routes>
-        <Route path="/" element={<Sandbox />} />
-        <Route path="/controller" element={<Controller />} />
-        <Route path="/trace/:code" element={<Trace />} />
-      </Routes>
-    </Suspense>
+    <>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/" element={<Workbench />} />
+          <Route path="/project/:slug" element={<Sandbox />} />
+          <Route path="/controller" element={<Controller />} />
+          <Route path="/trace/:code" element={<Trace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+      <ControllerDock />
+    </>
   );
 }

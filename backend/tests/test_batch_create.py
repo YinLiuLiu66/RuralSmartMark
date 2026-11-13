@@ -55,6 +55,7 @@ async def test_confirm_create_batch_flow(session, client):
             "kind": "create_batch",
             "summary": "为建批测试水果创建 500kg 新批次",
             "quantity_kg": 500,
+            "product_id": product.id,
         },
     )
     session.add(item)
@@ -97,5 +98,5 @@ async def test_confirm_create_batch_without_product_refused(session, client):
     )
 
     assert response.status_code == 409
-    assert "没有绑定产品" in response.json()["detail"]
+    assert "缺少产品目标" in response.json()["detail"]
     assert await session.scalar(select(Batch)) is None

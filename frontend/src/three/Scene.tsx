@@ -503,11 +503,15 @@ export function Scene({
   onSelectStation?: (stationId: string) => void;
   onOpenTrace?: () => void;
 }) {
+  // 移动端降预算（decisions #93）：DPR 上限 1.5、关阴影，换取 390×844 下可用帧率。
+  const compact =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 1023px)").matches;
   return (
     <Canvas
       orthographic
-      shadows
-      dpr={[1, 2]}
+      shadows={!compact}
+      dpr={compact ? [1, 1.5] : [1, 2]}
       camera={{
         position: [18, 18, 18],
         zoom: 1,

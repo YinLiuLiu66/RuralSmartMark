@@ -1,0 +1,29 @@
+[
+  {
+    "channel": "散装批发",
+    "competitor": "麻江蓝莓（演示基准）",
+    "spec": "2kg/箱",
+    "price_per_kg": 22.0,
+    "source_url": "https://example.com/ruralsmartmark/majiang-demo",
+    "source_date": "2026-10-22",
+    "note": "演示测算：麻江蓝莓工作台样例价格，不是公开成交价"
+  },
+  {
+    "channel": "电商散装",
+    "competitor": "麻江蓝莓（演示基准）",
+    "spec": "2kg/箱",
+    "price_per_kg": 30.0,
+    "source_url": "https://example.com/ruralsmartmark/majiang-demo",
+    "source_date": "2026-10-22",
+    "note": "演示测算：在散装基准上加分级与电商包装"
+  },
+  {
+    "channel": "品牌礼盒",
+    "competitor": "演示合作社礼盒",
+    "spec": "1.5kg / 6 盒",
+    "price_per_kg": 60.0,
+    "source_url": "https://example.com/ruralsmartmark/majiang-demo",
+    "source_date": "2026-10-22",
+    "note": "演示测算：礼盒目标价，不是公开成交价"
+  }
+]

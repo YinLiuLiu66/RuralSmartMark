@@ -163,7 +163,7 @@ async def test_controller_message_streams_events(session, client, monkeypatch):
     assert messages[1]["content"] == "你好，我在。"
 
 
-async def test_fresh_session_reuses_single_blank_session(session, client):
+async def test_session_is_global_singleton(session, client):
     existing = ControllerSession()
     session.add(existing)
     await session.commit()
@@ -184,8 +184,9 @@ async def test_fresh_session_reuses_single_blank_session(session, client):
     assert again.status_code == 200
     assert again.json()["id"] == existing.id
 
+    # 目标参数已废弃（decisions #92）：带 product_slug 也不再新建会话。
     product = ProductProfile(
-        slug="fresh-after-commit",
+        slug="global-session-after-commit",
         name="建档后新产品",
         county="测试县",
         province="测试省",
@@ -199,10 +200,10 @@ async def test_fresh_session_reuses_single_blank_session(session, client):
 
     after_commit = await client.post(
         "/api/controller/sessions",
-        json={"fresh": True},
+        json={"product_slug": product.slug, "fresh": True},
     )
     assert after_commit.status_code == 200
-    assert after_commit.json()["id"] != existing.id
+    assert after_commit.json()["id"] == existing.id
 
 
 async def test_confirm_approve_continues_next_station(session, client, monkeypatch):
@@ -234,6 +235,8 @@ async def test_confirm_approve_continues_next_station(session, client, monkeypat
             "kind": "approve_agent",
             "summary": "通过故事并自动运行包装设计",
             "agent": "story",
+            "batch_id": batch.id,
+            "batch_state": "story_review",
         },
     )
     session.add(item)
@@ -270,7 +273,7 @@ async def test_confirm_approve_continues_next_station(session, client, monkeypat
     assert "待审核" in response.json()["reply"]
 
 
-async def test_blank_session_unique_constraint(session):
+async def test_global_session_unique_constraint(session):
     session.add(ControllerSession())
     await session.commit()
 
@@ -283,6 +286,25 @@ async def test_blank_session_unique_constraint(session):
 def test_controller_prompt_names_request_action_kinds():
     from ruralsmartmark.agents.controller import CONTROLLER_INSTRUCTIONS
 
-    for kind in ("commit_product", "approve_agent", "reject_agent", "rewind_to_agent"):
+    for kind in (
+        "commit_product",
+        "apply_inputs",
+        "create_batch",
+        "approve_agent",
+        "reject_agent",
+        "rewind_to_agent",
+        "delete_batch",
+    ):
         assert kind in CONTROLLER_INSTRUCTIONS
     assert "request_action('commit_product')" in CONTROLLER_INSTRUCTIONS
+    # 页面上下文与写目标规则（decisions #92）
+    assert "batch_source" in CONTROLLER_INSTRUCTIONS
+    assert "needs_target" in CONTROLLER_INSTRUCTIONS
+    assert "当前会话绑定" not in CONTROLLER_INSTRUCTIONS
+
+
+def test_turn_out_exposes_needs_target():
+    from ruralsmartmark.schemas import ControllerTurnOut
+
+    assert "needs_target" in ControllerTurnOut.model_fields
+    assert ControllerTurnOut.model_fields["needs_target"].default is None

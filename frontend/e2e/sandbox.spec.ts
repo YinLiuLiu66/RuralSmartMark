@@ -1,25 +1,29 @@
 import { expect, test } from "@playwright/test";
 
+const PROJECT = "/project/zhaotong-ugly-apple";
+
 test.beforeAll(async ({ request }) => {
   const response = await request.post("/api/demo/reset");
   expect(response.ok()).toBeTruthy();
 });
 
 test("桌面沙盘加载固定演示批次", async ({ page }) => {
-  await page.goto("/");
+  await page.goto(PROJECT);
 
   await expect(page.getByText("数据已连接")).toBeVisible();
-  await expect(page.getByLabel("批次").locator("option:checked")).toHaveText("ZT-DEMO-001");
+  await expect(page.getByRole("combobox").locator("option:checked")).toHaveText("ZT-DEMO-001");
   await expect(page.getByText("实时", { exact: true })).toBeVisible();
   await expect(page.getByText("6/6")).toBeVisible();
   await expect(page.getByText("已完成", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("山风守园人").first()).toBeVisible();
   await expect(page.getByText("ZTDEMO26").first()).toBeVisible();
+  // URL 是页面上下文的唯一真源
+  await expect(page).toHaveURL(/batch=\d+/);
 });
 
 test("包装工位展示变体、服务端预览与 IP 插画", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
+  await page.goto(PROJECT);
+  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
 
   const stations = page.locator("section", { hasText: "四站点" });
   await stations.getByRole("button", { name: /包装设计/ }).click();
@@ -53,8 +57,8 @@ test("插画生成失败时显示视觉兜底", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
-  await expect(page.getByLabel("批次").locator("option:checked")).toHaveText("ZT-DEMO-001");
+  await page.goto(PROJECT);
+  await expect(page.getByRole("combobox").locator("option:checked")).toHaveText("ZT-DEMO-001");
   const stations = page.locator("section", { hasText: "四站点" });
   await stations.getByRole("button", { name: /包装设计/ }).click();
 
@@ -62,57 +66,22 @@ test("插画生成失败时显示视觉兜底", async ({ page }) => {
   await expect(page.getByText("包装审核不受影响")).toBeVisible();
 });
 
-test("总控面板可打开并显示产品/批次切换", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("combobox").first()).toBeVisible();
-  await expect(page.getByRole("combobox").nth(1)).toBeVisible();
+test("项目页只有批次下拉，总控可打开并显示页面上下文", async ({ page }) => {
+  await page.goto(PROJECT);
+  // 产品切换已上移工作台，详情页只剩批次下拉
+  await expect(page.getByRole("combobox")).toHaveCount(1);
+  await expect(page.getByRole("combobox")).toBeVisible();
+  await expect(page.getByRole("link", { name: "工作台" })).toBeVisible();
 
   await page.getByRole("button", { name: "打开总控" }).click();
   await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
-  await expect(page.getByText("告诉我你想做什么产品", { exact: false })).toBeVisible();
+  await expect(page.getByText(/昭通丑苹果 · ZT-DEMO-001/).first()).toBeVisible();
 });
 
 test("独立总控页可打开", async ({ page }) => {
   await page.goto("/controller");
   await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
-  await expect(page.getByText("调研 · 运行 · 修改 · 审核", { exact: false })).toBeVisible();
-});
-
-test("新建产品先进入空沙盘，重复点击保持同一空沙盘", async ({ page }) => {
-  const now = "2026-10-22T12:00:00";
-  const createBodies: Record<string, unknown>[] = [];
-  await page.route("**/api/controller/sessions", async (route) => {
-    createBodies.push(route.request().postDataJSON() as Record<string, unknown>);
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: 42,
-        product_id: null,
-        batch_id: null,
-        draft_json: null,
-        pending_action_json: null,
-        messages: [],
-        created_at: now,
-        updated_at: now,
-      }),
-    });
-  });
-
-  await page.goto("/");
-  await page.getByRole("button", { name: "新建产品" }).click();
-
-  await expect(page.getByPlaceholder(/帮我做贵州麻江蓝莓/)).toBeVisible();
-  await expect(page.getByText("这里还空着")).toBeVisible();
-  await expect(page.getByRole("combobox").first()).toHaveValue("");
-  await expect(page.getByRole("combobox").nth(1)).toHaveValue("");
-  await expect
-    .poll(() => createBodies[0])
-    .toEqual({ product_slug: null, batch_id: null, fresh: true });
-
-  await page.getByRole("button", { name: "新建产品" }).first().click();
-  await expect(page.getByText("这里还空着")).toBeVisible();
-  await expect(page.getByRole("combobox").first()).toHaveValue("");
+  await expect(page.getByText("全页聊天 · 未选择项目")).toBeVisible();
 });
 
 test("总控先显示用户消息，思维链默认折叠", async ({ page }) => {
@@ -192,8 +161,8 @@ test("总控先显示用户消息，思维链默认折叠", async ({ page }) => 
 });
 
 test("3D 二维码按钮打开溯源 H5", async ({ page, context }) => {
-  await page.goto("/");
-  await page.getByLabel("批次").selectOption({ label: "ZT-DEMO-001" });
+  await page.goto(PROJECT);
+  await page.getByRole("combobox").selectOption({ label: "ZT-DEMO-001" });
   await expect(page.getByRole("button", { name: "打开溯源页" })).toBeVisible();
 
   const opened = context.waitForEvent("page");

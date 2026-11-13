@@ -1,5 +1,5 @@
 {
-  "slug": "majiang-blueberry",
+  "slug": "majiang-blueberry-demo",
   "name": "麻江蓝莓",
   "county": "贵州省黔东南苗族侗族自治州麻江县",
   "province": "贵州省",
@@ -40,6 +40,7 @@
     "packaging_note": "纸浆模塑六格礼盒（演示规格）",
     "persona_greeting_scene": "这盒蓝莓从雾岭出发，带着晨露和这一批合作社的分级记录。",
     "trace_prefix": "MJ",
+    "batch_prefix": "MJ",
     "packaging_hero": "莓",
     "packaging_tagline": "雾里长，酸得清亮",
     "trace_footer": "扫码看这盒蓝莓的旅程",

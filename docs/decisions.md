@@ -352,3 +352,23 @@
 **验证**：pytest 覆盖——成本假设覆盖默认值后 `cost_breakdown` 逐项改变、`assumptions` 来源标注正确、`internal://user` 引用不再被 `verify_draft` 丢弃、`user` credibility 只产生 warning、`box_cost` 优先级高于包装站产物；演示批次 `ZT-DEMO-001` 重新 seed 后 assumptions 全部标 `default`/`packaging`，H5 成本口径区可见；ruff + 前端 typecheck/lint/build 通过。真实对话录入链路留给独立测试会话复测。
 **顺带修复（自测暴露的既有缺陷，不在原计划）**：① `agents/engine.py` 的数字白名单 `_numbers` 只扫字符串，漏掉 `premium_pct`/`cost_breakdown` 这类数值字段，定价叙事每次复述计算结果都被判「与计算器不一致」而强制回退模板；新增 `_numbers_in_struct` 把嵌套结构的数字与去尾零写法一并纳入后，实测 `narrative_source=llm`、`fallback_reason=None`。② `agents/orchestrator.py` 的溯源码在回退后按「前缀+batch.id」重生成，会把演示批次的 `ZTDEMO26` 改成 `ZT0001`、已发出去的演示二维码直接 404；改为演示批次沿用 `services.trace.DEMO_TRACE_CODE`，并把 `DEMO_BATCH_CODE`/`DEMO_TRACE_CODE` 收敛到 `services/trace.py` 单一真源（seed 改为从 trace 导入）。
 **拍板时间**：2026-11-08
+
+### #92 · 入口改为工作台，总控升级为全局单会话 + 页面上下文，写操作目标一律冻结
+**结论**：三件事一起改，取代 #69/#73/#75/#76/#86 的「按批次开会话 + 空沙盘」语义。
+①**入口分层**：`/` 改为工作台（项目卡片集合 + 常驻总控），沙盘降级为 `/project/:slug?batch=&station=` 详情页；`/controller` 保留为全屏聊天；`/trace/:code` 不动。产品下拉与「新建产品」从沙盘顶栏移到工作台，详情页只留批次下拉、新建批次、面包屑返回。
+②**会话全局唯一**：`controller_session` 只保留一行（无条件 `UNIQUE INDEX ((1))`），`POST /sessions` 变 get-or-create，`product_slug/batch_id/fresh` 全部忽略；迁移直接删除全部旧会话与旧消息，不迁移历史。`product_id/batch_id` 降级为「最近操作」展示缓存，**不再作为任何写操作的默认目标**。
+③**页面上下文**：每条消息带 `ControllerPageContext{route, product_slug, batch_id, focus_agent}`，服务端校验产品存在、批次存在且归属该产品，非法返回中文错误；上下文写入 user 消息 `action_json` 供历史回放，历史 user 消息在拼 messages 时加 `【页面：产品名 / 批次码】` 前缀。
+④**目标冻结**：`request_action` 生成确认卡时把 `{product_id, batch_id, batch_code, batch_state, batch_updated_at, draft_sha256}` 冻进 `pending_action_json`；`_execute_pending` 只从 pending 取目标与草案，缺失即中文 409，**不回退 `item.batch_id`**；执行前比对批次状态与草案哈希，任一变化即拒绝重出卡；冻结的更新时间只做 ±1 秒宽松校验（SQLite 时间戳为秒级，硬比对会误报）。`_run_turn` 发现旧卡目标与本轮页面目标不同时先清空旧卡，同页追问保留。
+⑤**无上下文即反问**：`run_agent`/`request_action` 只读页面批次，缺失时返回 `{"needs_target": true, "candidates": [...]}` 并经 `ControllerTurn.needs_target` 透传到 SSE `done.turn`，由模型反问 + 前端候选 chip；chip 点击跳转 `/project/:slug?batch=`，不引入第二套「显式目标」概念。工具签名继续不接受任何批次 id。
+⑥**并发**：进程内单把 `asyncio.Lock` 覆盖 `_run_turn` 与 `confirm`，冲突 fail-fast 409，不排队（`approve_agent` 确认可能自动跑下一站，排队会让第二个标签页空转）。
+⑦**刷新**：前端 `controller store` 维护 `dataVersion`，`done`/`confirm` 后自增，工作台与详情页据此刷新；不做后端多标签广播，`window.focus` 重拉已覆盖主场景。
+**理由**：评审直接指出「一打开就是昭通丑苹果的沙盘，看起来只是给一个项目做的可视化」。通用性在本项目其实已实现（档案化四样可换、麻江与平泉两批真实跑到 traced），但线上只有一个产品、产品切换是一个只有一项的下拉、唯一的通用动作（调研建档）藏在右侧抽屉里——信息架构把「详情」当了首页，叙事上就只剩单案例。全局总控是同一问题的第二半：会话绑批次导致切页换对话，用户面对的不是「一个平台助手」而是一堆碎片。把绑定降级为聚焦之后，写操作失去默认目标，所以必须同时做④⑤，否则会从「切页换对话」变成「确认错批次」，风险更高。
+**对 #91 的回应**：用户提供的成本口径与知识库数字冲突时仍不自动裁决、不静默覆盖。`pricing.py` 按 #91 继续优先用户值；冲突时在 H5 `assumptions`、确认卡、FactGuard warning 三处并列标注 `source=user` 与 `source=benchmark/doc`，确认卡写明「你给的值与知识库 X 冲突」；只有用户明确说「以我给的为准」才写入覆盖，否则两套数字并存并在展示层说明。
+**验证**：pytest 新增/改写——全局单会话 get-or-create 与第二条插入 IntegrityError、页面上下文四种输入（合法/批次不属于产品/批次不存在/无上下文）、跨页确认拒绝、草案 hash 变化拒绝、批次状态变化拒绝、缺 target 的旧 pending 拒绝、并发 409、`needs_target` 序列化；既有 `fresh`/空沙盘用例改写或删除。前端 Playwright 改 8 条、新增工作台 3 条。真实 LLM 下的反问链路留给独立测试会话冒烟。
+**拍板时间**：2026-11-13
+
+### #93 · 移动端从「只做溯源 H5」扩到工作台与沙盘，撤销「不做移动端 3D 沙盘」红线
+**结论**：撤销 AGENTS 红线「不做移动端 3D 沙盘」，改为「移动端沙盘只做简化交互与固定性能预算」。范围：①工作台在 <1024px 单列卡片、320px 无横向溢出，可点进项目页；②沙盘移动端不再 `display:none`，右栏改底部抽屉，3D 交互简化为单指旋转 + 双指缩放或固定机位预设，`DPR` 上限 1.5 并关闭高成本阴影；③预算 390×844 下 30 秒采样 ≥30fps、无 OOM，新增 perf 用例。退化方案：若固定机位审核不通过，移动端改为「3D 静帧 + 四站点列表」，功能可用即交付。桌面端 3D 视觉契约与 perf 基线不变。
+**理由**：评审与演示场景会在手机上打开首页，工作台是入口页，不能用「请用桌面端」把评委挡在门外；沙盘虽然复杂，但演示动线里「手机上也能看到这批果子在流水线上」比「手机上能自由转视角」更重要，因此优先保证可见与可操作，而不是交互完整度。放在 #92 之后单独一条，是为了让移动端改造不阻塞后端口径与工作台改造。
+**验证**：390/320 两个宽度无横向溢出；390×844 移动沙盘实测 59.8fps（10 秒采样，`MOBILE_PERF_SECONDS`），桌面同轮 55.8fps 不回退；640×360 走移动布局且无溢出；`pnpm test:e2e` 增至 15 条（移动 project 新增「工作台单列可用」「点站点弹底部抽屉」）；实现为 CSS 断点 + `data-open` 抽屉 + `dpr`/阴影降级，未改 R3F 场景结构。
+**拍板时间**：2026-11-13

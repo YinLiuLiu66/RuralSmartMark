@@ -44,3 +44,27 @@ test("未知码与超长码显示 404 且不溢出", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "这个码没有记录" })).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
+
+test("390px 工作台单列可用，点卡进项目页", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "我的项目" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  await page.locator('a[href^="/project/zhaotong-ugly-apple"]').click();
+  await expect(page).toHaveURL(/\/project\/zhaotong-ugly-apple\?batch=\d+/);
+  await expect(page.locator("canvas")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test("390px 沙盘点站点弹出底部抽屉", async ({ page }) => {
+  await page.goto("/project/zhaotong-ugly-apple");
+  await expect(page.locator("canvas")).toBeVisible();
+
+  const rail = page.locator(".right-rail");
+  await expect(rail).toBeHidden();
+
+  await page.getByRole("button", { name: /^包装/ }).click();
+  await expect(rail).toBeVisible();
+  await expect(rail).toHaveAttribute("data-open", "true");
+  await expectNoHorizontalOverflow(page);
+});

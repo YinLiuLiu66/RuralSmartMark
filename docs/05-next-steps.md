@@ -1,7 +1,7 @@
 # 05 · 下一步任务清单（v2）
 
-> 状态：🟢 Phase 6 已完成；两批新产品真实跑到 traced（2026-10-25）；外部实物补证待做
-> 更新时间：2026-10-26
+> 状态：🟢 Phase 7 已完成（工作台 + 全局总控 + 移动端，2026-11-13）；外部实物补证待做
+> 更新时间：2026-11-13
 > 用法：完成一项就在「当前进度」打勾；决策变化先改 [decisions.md](decisions.md) 的 v2 段（#32 起）
 > 注意：本文是 v2；v1 的 M0–M6 记录只保留在 git history 与旧 docs 中
 
@@ -160,6 +160,25 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 生产部署文档：`docs/deploy.md`（nginx + systemd 单 worker、env/备份/验收；Docker 仍不做，#90）
 - [ ] 真实手机扫码、包装厂书面报价、真实盒型/刀版
 
+## 5.2 Phase 7 · 工作台 + 全局总控 + 移动端（已完成，2026-11-13）
+
+> 决策：#92（入口分层 + 全局单会话 + 页面上下文 + 目标冻结）、#93（移动端适配）
+> 口径变化：会话不再按批次创建；旧总控会话与消息在迁移中直接删除，不迁移历史。
+
+- [x] **P0 决策与任务**：#92/#93 落库，本文条目与假设补齐
+- [x] **P1 全局单例会话语义**：迁移删旧会话 + 无条件单行唯一索引；`POST /sessions` get-or-create 并忽略 `product_slug/batch_id/fresh`；`models.py` 的 `event.listen` DDL 换新索引名
+- [x] **P2 PageContext 贯通**：`ControllerPageContext` schema；`resolve_page_context()` 校验归属；`ControllerDeps` 拆 `page_*`/`focus_*`；上下文快照加 `page`；user 消息持久化上下文；历史消息加页面前缀
+- [x] **P3 目标冻结与安全**：pending 冻结目标/状态/更新时间/草案哈希；`_execute_pending` 只读 pending；草案归属校验；跨页清旧卡；单把全局锁覆盖 turn+confirm，冲突 409
+- [x] **P4 工具与提示词**：写工具只读页面批次，缺失返回 `needs_target` 并透传到 `done.turn`；新增 `list_batches`；`get_workspace` 支持显式只读目标；重写总控与压缩提示词
+- [x] **P5 seed 多产品**：列表驱动；麻江 canonical 数据移入 `seed/products/majiang/`（含 benchmark），slug 用 `majiang-blueberry-demo`、批次停在 `raw`；修 `test_seed` 断言与三处「第一个 raw 批次」helper
+- [x] **P6 前端壳与工作台**：`/` 工作台、`/project/:slug` 详情、全局 Dock；`ControllerPanel` 拆 `ControllerChat`/`ControllerDock`；`stores/controller.ts`（无 localStorage、`dataVersion`）；沙盘 URL 化并删产品下拉/空沙盘
+- [x] **P7 e2e 与文档收口**：`testMatch` 加 workbench；改 sandbox/perf 用例；新增 workbench 3 条；同步 ui/controller/AGENTS/runbook/README
+- [x] **P8 移动端适配**：工作台响应式；沙盘右栏改底部抽屉、触控/固定机位、DPR 1.5；390×844 30fps 预算与新 perf 用例
+
+**验收记录（2026-11-13）**：后端 106 passed + 2 skipped、ruff 干净；前端 typecheck/lint/build 全绿；Playwright 15 条全绿（桌面 10 + 移动 5）；perf 3 条：桌面 55.8fps、移动 390×844 59.8fps、640×360 无溢出；迁移在全新 SQLite 与开发库均通过；seed 出 2 产品 / 3 批次 / 16 篇知识库 / 6 条基准价。
+
+**验收命令**：`make test`、`make e2e`、`PERF_SECONDS=20 make perf`；迁移在全新 SQLite 与开发库都要 `alembic upgrade head` 通过。
+
 ## 6. 未验证假设（开工即验证）
 
 - [x] 真实 LLM key 可用；空 key mock 路径已跑通
@@ -175,6 +194,9 @@ cd frontend && pnpm typecheck && pnpm lint && pnpm build
 - [x] 200% 等效视口：640×360 回退桌面提示且无横向溢出；H5 320px/超长码已压测
 - [x] 第二产品档案：麻江蓝莓夹具跑通 mock 四站与真实 V4.1-Flash 四站，不改核心代码
 - [ ] 包装印刷成本/小批量报价（当前 5.7 元/盒为演示估算；只找到 1000 个起订线索）
+- [ ] 全局总控假设：页面上下文缺失时写操作必须反问，候选 chip 跳转即可满足「用户指明目标」，不需要第二套 `explicit_batch_id`；若真实对话里反问过于频繁，再补显式目标（记 #94）
+- [ ] 全局会话假设：`window.focus` 重拉足以覆盖多标签场景；若演示需要两屏并排，再评估 `BroadcastChannel`（不加后端事件类型）
+- [ ] 移动端假设：固定机位或单指旋转足够支撑演示；390×844 30fps 预算需实测，不达标即退化为「静帧 + 站点列表」
 - [x] 80–85mm 精选果公开挂牌价：惠农网 4 个页面（5斤 25/36/40 元，10斤 6.2 元/斤）；成交价/同渠道长期价仍待跟
 - [x] 地理标志公告原文/公告号：农业部公告第1478号，AGI2010-07-00370（商务部政策法规库转录）
 

@@ -1,6 +1,6 @@
 import json
 
-from ruralsmartmark.seed import seed_demo
+from ruralsmartmark.seed import ZHAOTONG_RAW_BATCH_CODE, seed_demo
 
 AGENTS = ["story", "packaging", "marketing", "pricing"]
 
@@ -9,7 +9,9 @@ async def _seed_and_get_raw_batch(client, session) -> int:
     await seed_demo(session)
     response = await client.get("/api/batches")
     assert response.status_code == 200
-    raw = next(batch for batch in response.json() if batch["state"] == "raw")
+    raw = next(
+        batch for batch in response.json() if batch["code"] == ZHAOTONG_RAW_BATCH_CODE
+    )
     return raw["id"]
 
 

@@ -27,6 +27,31 @@ export interface PendingAction {
   summary: string;
   agent?: string;
   note?: string;
+  batch_code?: string | null;
+  target_source?: string;
+}
+
+export interface TargetCandidate {
+  kind: "batch" | "product";
+  label: string;
+  product_slug: string;
+  batch_id?: number;
+  product_id?: number;
+  code?: string;
+  state?: string;
+  hint?: string;
+}
+
+export interface NeedsTarget {
+  message: string;
+  candidates: TargetCandidate[];
+}
+
+export interface ControllerPageContext {
+  route?: string | null;
+  product_slug?: string | null;
+  batch_id?: number | null;
+  focus_agent?: string | null;
 }
 
 export interface ControllerSession {
@@ -50,6 +75,7 @@ export interface ControllerTurn {
   pending_action: PendingAction | null;
   events: Record<string, unknown>[];
   thinking: string[];
+  needs_target?: NeedsTarget | null;
 }
 
 export type ControllerStreamEvent =
@@ -144,34 +170,35 @@ async function streamRequest(
 }
 
 export const controllerApi = {
-  createSession: (
-    productSlug?: string | null,
-    batchId?: number | null,
-    fresh = false,
-    signal?: AbortSignal,
-  ) =>
+  // 全局唯一会话（decisions #92）：服务端 get-or-create，目标由每条消息的 context 携带。
+  createSession: (signal?: AbortSignal) =>
     request<ControllerSession>("/controller/sessions", {
       method: "POST",
       signal,
-      body: JSON.stringify({
-        product_slug: productSlug ?? null,
-        batch_id: batchId ?? null,
-        fresh,
-      }),
+      body: JSON.stringify({}),
     }),
   getSession: (sessionId: number) =>
     request<ControllerSession>(`/controller/sessions/${sessionId}`),
-  sendMessage: (sessionId: number, message: string) =>
+  sendMessage: (
+    sessionId: number,
+    message: string,
+    context?: ControllerPageContext | null,
+  ) =>
     request<ControllerTurn>(`/controller/sessions/${sessionId}/messages`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, context: context ?? null }),
     }),
   streamMessage: (
     sessionId: number,
     message: string,
+    context: ControllerPageContext | null,
     onEvent: (event: ControllerStreamEvent) => void,
   ) =>
-    streamRequest(`/controller/sessions/${sessionId}/messages/stream`, { message }, onEvent),
+    streamRequest(
+      `/controller/sessions/${sessionId}/messages/stream`,
+      { message, context },
+      onEvent,
+    ),
   confirm: (
     sessionId: number,
     actionId: string,
