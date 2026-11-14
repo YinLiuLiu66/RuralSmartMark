@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { MessageSquare, Plus, Sparkles, Sprout } from "lucide-react";
+import { Plus, Sparkles, Sprout } from "lucide-react";
 
 import { api, type Batch, type Product } from "../api/client";
 import ProjectCard from "../components/workbench/ProjectCard";
@@ -67,13 +66,6 @@ export default function Workbench() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/controller"
-              className="hidden h-8 items-center gap-1 rounded-control border border-line px-2.5 text-[11px] text-ink-muted hover:border-apple/40 hover:text-apple sm:flex"
-            >
-              <MessageSquare size={12} />
-              全页聊天
-            </Link>
             <button
               type="button"
               onClick={() => setControllerOpen(true)}

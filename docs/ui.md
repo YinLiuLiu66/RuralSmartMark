@@ -195,7 +195,7 @@ Borrowed patterns:   项目卡网格、顶栏 + 批次切换、右侧上下文�
 `Workbench`、`ProjectCard`、`ControllerDock`、`ControllerChat`。
 
 - `ProjectCard`：包装缩略图（traced 用 `/api/trace/{code}/packaging.png`，包装已通过用 preview，其余用 `palette` 色块 + 产品名首字，加载失败永久回退色块）、项目名、产地 + 规格、状态胶囊、`n/6` 进度条、批次数量；整卡可点进 `/project/:slug?batch=最新批次`。
-- 工作台顶栏：品牌 + 「全页聊天」+「总控」+「新建产品」；不出现批次概念。
+- 工作台顶栏：品牌 + 「总控」+「新建产品」；不出现批次概念。`/controller` 全页版只保留直链（测试与深度链接用），不作为顶栏入口。
 - 空态两种：无项目（引导对总控说产品名/产地/品类）、有项目无批次（卡片显示「还没有批次」）。
 - 刷新：总控 `dataVersion` 自增后重拉 products/batches，不轮询。
 
